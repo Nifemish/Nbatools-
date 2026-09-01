@@ -10,12 +10,12 @@ const CACHE_VERSION = 'trackport-v1';
 //    Keep this list lean — only the files needed to render the first screen.
 //    Everything else will be cached on first fetch (network-first strategy).
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/apple-touch-icon.png',
 ];
 
 // ── 3. INSTALL — pre-cache shell assets ──────────────────────────────────

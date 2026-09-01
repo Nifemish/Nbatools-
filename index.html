@@ -5,19 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TrackPort — Shipment &amp; Flight Tracking, One Place</title>
 <meta name="description" content="TrackPort lets you create, publish and follow shipment and flight tracking records with live route maps, stopovers and status history.">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="manifest" href="./manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <meta name="theme-color" content="#0A0B12">
-<meta name="application-name" content="TrackPort">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
@@ -301,10 +299,10 @@
   .footer-logo{height:24px; width:auto; display:block; margin-bottom:14px;}
   .nav-center{display:flex; align-items:center; justify-content:center; gap:0; flex:1;}
   .nav-side{display:flex; align-items:center; gap:14px;}
-  .install-app-btn{border-color:rgba(212,175,90,.5); color:var(--primary); box-shadow:0 0 0 1px rgba(212,175,90,.08) inset;}
-  .install-app-btn:hover{background:rgba(212,175,90,.14); border-color:var(--primary); color:var(--ink);}
-  .install-app-btn[hidden]{display:none;}
-  .install-app-label{display:inline;}
+  .nav-link.install-app-btn{color:var(--primary);}
+  .nav-link.install-app-btn::after{background:var(--primary);}
+  .nav-link.install-app-btn:hover{color:var(--ink);}
+  .nav-link.install-app-btn[hidden]{display:none;}
   .nav-toggle{display:none; flex-direction:column; justify-content:center; gap:5px; width:38px; height:38px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:0;}
   .nav-toggle span{display:block; width:16px; height:1.5px; background:var(--ink); margin:0 auto; transition:.2s;}
   .nav-toggle.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg);}
@@ -317,12 +315,6 @@
     .nav-center{display:none;}
     .nav-toggle{display:flex;}
     .nav-side{gap:8px;}
-    .install-app-btn{padding:9px 12px; font-size:10px; letter-spacing:.06em;}
-  }
-  @media (max-width:520px){
-    .install-app-label{display:none;}
-    .install-app-btn{width:38px; height:38px; padding:0; border-radius:12px;}
-    .install-app-btn svg{margin:0;}
   }
   .nav-link{position:relative; margin:0 16px; padding:8px 0; font-size:11.5px; font-weight:600; color:var(--muted); transition:color .15s; text-transform:uppercase; letter-spacing:.14em;}
   .nav-link::after{content:''; position:absolute; left:0; right:100%; bottom:2px; height:1px; background:var(--primary); transition:right .28s cubic-bezier(.4,0,.2,1);}
@@ -972,11 +964,11 @@
   .split-cell.icon-panel{flex:0 0 18%; background:var(--dark); align-items:center; justify-content:center;}
   .split-cell.icon-panel svg{width:46px; height:46px; color:var(--primary); stroke-width:1.2;}
   .split-cell.indigo-panel{flex:0 0 36%; background:transparent; display:flex; align-items:center; justify-content:center; padding:28px;}
-  .split-cell.indigo-panel .lux-card{position:relative; width:100%; max-width:440px; padding:42px 38px; border-radius:28px; overflow:hidden; background:linear-gradient(145deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), rgba(212,175,90,0.34); backdrop-filter:blur(26px) saturate(160%); -webkit-backdrop-filter:blur(26px) saturate(160%); border:1px solid rgba(255,255,255,0.38); box-shadow:0 32px 90px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.40), 0 0 0 1px rgba(0,0,0,0.06), 0 0 40px rgba(212,175,90,0.18); color:#fff;}
-  .split-cell.indigo-panel .lux-card::before{content:''; position:absolute; inset:0; border-radius:28px; padding:1px; background:linear-gradient(160deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.15) 100%); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;}
-  .split-cell.indigo-panel .lux-card .sub{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,0.92); margin-bottom:18px; display:block; text-shadow:0 1px 2px rgba(0,0,0,0.18);}
-  .split-cell.indigo-panel .lux-card h3{font-family:'Playfair Display',serif; font-size:30px; line-height:1.18; margin-bottom:18px; color:#fff; font-weight:700; text-shadow:0 2px 10px rgba(0,0,0,0.22);}
-  .split-cell.indigo-panel .lux-card p{font-size:15px; line-height:1.75; color:rgba(255,255,255,0.95); font-weight:400; text-shadow:0 1px 3px rgba(0,0,0,0.16);}
+  .split-cell.indigo-panel .lux-card{position:relative; width:100%; max-width:440px; padding:42px 38px; border-radius:28px; overflow:hidden; background:linear-gradient(160deg, rgba(212,175,90,0.16), rgba(255,255,255,0.03)); backdrop-filter:blur(30px) saturate(180%); -webkit-backdrop-filter:blur(30px) saturate(180%); border:1px solid rgba(212,175,90,0.32); box-shadow:0 32px 90px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 60px rgba(212,175,90,0.14); color:var(--ink);}
+  .split-cell.indigo-panel .lux-card::before{content:''; position:absolute; inset:0; border-radius:28px; padding:1px; background:linear-gradient(160deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.02) 50%, rgba(212,175,90,0.25) 100%); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;}
+  .split-cell.indigo-panel .lux-card .sub{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--primary); margin-bottom:18px; display:block;}
+  .split-cell.indigo-panel .lux-card h3{font-family:'Playfair Display',serif; font-size:30px; line-height:1.18; margin-bottom:18px; color:var(--ink); font-weight:700;}
+  .split-cell.indigo-panel .lux-card p{font-size:15px; line-height:1.75; color:rgba(243,241,234,0.78); font-weight:500;}
   .split-cell.dark-panel{flex:1; background:var(--card); align-items:flex-start;}
   .split-cell.dark-panel .sub{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--primary); margin-bottom:14px;}
   .split-cell.dark-panel h2{font-size:32px; line-height:1.2; max-width:380px;}
@@ -1015,7 +1007,8 @@
   .footer-col h5{font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-bottom:16px; font-weight:600;}
   .footer-col a{display:block; font-size:13.5px; color:#B8BFCF; margin-bottom:11px; transition:.15s;}
   .footer-col a:hover{color:var(--primary);}
-  .footer-bottom{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-top:1px solid var(--border); padding:20px 0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted);}
+  .footer-bottom{display:flex; justify-content:center; align-items:center; text-align:center; flex-wrap:wrap; gap:6px 12px; border-top:1px solid var(--border); padding:20px 0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--muted);}
+  @media (max-width:680px){ .footer-bottom{flex-direction:column; gap:6px;} }
   @media (max-width:860px){ .footer-grid{grid-template-columns:1fr 1fr; row-gap:32px;} }
 
   @keyframes fadeUp{from{opacity:0; transform:translateY(18px);} to{opacity:1; transform:translateY(0);}}
@@ -1317,33 +1310,27 @@
     .no-print{display:none!important;}
   }
 
-  /* ---- Floating Install App banner ---- */
-  #tp-install-banner{position:fixed; top:calc(10px + env(safe-area-inset-top, 0px)); left:50%; transform:translate(-50%,-140%); z-index:9999; width:min(94vw, 480px); display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:20px; background:linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05)), rgba(10,11,18,0.82); -webkit-backdrop-filter:blur(22px) saturate(160%); backdrop-filter:blur(22px) saturate(160%); border:1px solid rgba(255,255,255,0.16); box-shadow:0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18); color:#fff; transition:transform .55s cubic-bezier(.22,1,.36,1), opacity .4s ease; opacity:0; pointer-events:none;}
-  #tp-install-banner.tp-banner-show{transform:translate(-50%,0); opacity:1; pointer-events:auto;}
-  #tp-install-banner .tp-banner-icon{width:42px; height:42px; flex:0 0 42px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.35);}
-  #tp-install-banner .tp-banner-text{flex:1; min-width:0;}
-  #tp-install-banner .tp-banner-title{font-family:'Inter',sans-serif; font-size:14px; font-weight:800; letter-spacing:.01em; line-height:1.2;}
-  #tp-install-banner .tp-banner-sub{font-family:'Inter',sans-serif; font-size:11.5px; font-weight:500; color:rgba(255,255,255,0.72); line-height:1.35; margin-top:2px;}
-  #tp-install-banner .tp-banner-install{flex:0 0 auto; font-family:'Inter',sans-serif; font-size:13px; font-weight:800; letter-spacing:.02em; color:#0A0B12; background:linear-gradient(160deg,#E8C87E,#D4AF5A); border:none; border-radius:12px; padding:10px 16px; cursor:pointer; box-shadow:0 8px 20px rgba(212,175,90,0.35), inset 0 1px 0 rgba(255,255,255,0.5); transition:transform .18s ease, box-shadow .18s ease;}
-  #tp-install-banner .tp-banner-install:hover{transform:translateY(-1px); box-shadow:0 12px 26px rgba(212,175,90,0.45), inset 0 1px 0 rgba(255,255,255,0.5);}
-  #tp-install-banner .tp-banner-install:active{transform:translateY(0) scale(.97);}
-  #tp-install-banner .tp-banner-close{flex:0 0 auto; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:rgba(255,255,255,0.75); font-size:15px; line-height:1; cursor:pointer; transition:background .18s ease, color .18s ease;}
-  #tp-install-banner .tp-banner-close:hover{background:rgba(255,255,255,0.16); color:#fff;}
-  @media (max-width:400px){
-    #tp-install-banner .tp-banner-sub{display:none;}
+  /* ---- Scroll-reveal text animation ---- */
+  .reveal{opacity:0; transition:opacity .85s cubic-bezier(.22,1,.36,1), transform .85s cubic-bezier(.22,1,.36,1); will-change:opacity, transform;}
+  .reveal-left{transform:translateX(-56px);}
+  .reveal-right{transform:translateX(56px);}
+  .reveal.in{opacity:1; transform:translateX(0);}
+  .tile-grid-6 .tile:nth-child(1){transition-delay:.02s;}
+  .tile-grid-6 .tile:nth-child(2){transition-delay:.08s;}
+  .tile-grid-6 .tile:nth-child(3){transition-delay:.14s;}
+  .tile-grid-6 .tile:nth-child(4){transition-delay:.2s;}
+  .tile-grid-6 .tile:nth-child(5){transition-delay:.26s;}
+  .tile-grid-6 .tile:nth-child(6){transition-delay:.32s;}
+  .stat-grid .stat-card:nth-child(1){transition-delay:.02s;}
+  .stat-grid .stat-card:nth-child(2){transition-delay:.09s;}
+  .stat-grid .stat-card:nth-child(3){transition-delay:.16s;}
+  .stat-grid .stat-card:nth-child(4){transition-delay:.23s;}
+  @media (prefers-reduced-motion: reduce){
+    .reveal, .reveal-left, .reveal-right{opacity:1 !important; transform:none !important; transition:none !important;}
   }
 </style>
 </head>
 <body>
-<div id="tp-install-banner" role="dialog" aria-label="Install TrackPort app" aria-hidden="true">
-  <img class="tp-banner-icon" src="./icons/icon-192.png" alt="TrackPort app icon">
-  <div class="tp-banner-text">
-    <div class="tp-banner-title">Install TrackPort</div>
-    <div class="tp-banner-sub">Full-screen, edge-to-edge — right from your home screen.</div>
-  </div>
-  <button type="button" class="tp-banner-install" data-action="install-app">Install App</button>
-  <button type="button" class="tp-banner-close" id="tp-banner-dismiss" aria-label="Dismiss install banner">&times;</button>
-</div>
 <div id="app"></div>
 <div id="toast" class="toast"></div>
 
@@ -1370,6 +1357,25 @@ const ICONS = {
 };
 function icon(name, cls){ return `<i data-feather="${ICONS[name]||name}" class="${cls||''}"></i>`; }
 function renderIcons(){ if(window.feather) feather.replace({ 'stroke-width': 2 }); }
+function initScrollReveal(){
+  const els = document.querySelectorAll('.reveal:not(.in)');
+  if(!els.length) return;
+  if(!('IntersectionObserver' in window)){
+    els.forEach(el=>el.classList.add('in'));
+    return;
+  }
+  if(window.__tpRevealObserver) window.__tpRevealObserver.disconnect();
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        entry.target.classList.add('in');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {threshold:0.15, rootMargin:'0px 0px -10% 0px'});
+  els.forEach(el=>observer.observe(el));
+  window.__tpRevealObserver = observer;
+}
 
 /* ---------- state ---------- */
 let usersDB = {};
@@ -2161,6 +2167,8 @@ function navbar(active){
     ` : `
       <a href="#/login" class="nav-link ${active==='login'?'active':''}" onclick="closeMobileNav()">Login</a>
     `}
+    <a href="#about" class="nav-link" onclick="goToAbout(event)">About</a>
+    <button type="button" class="nav-link install-app-btn" data-action="install-app" onclick="closeMobileNav()" aria-label="Install TrackPort app" title="Install TrackPort app">Install App</button>
   `;
   return `
   <div class="navbar">
@@ -2168,7 +2176,6 @@ function navbar(active){
       <a href="#/" class="brand"><span class="brand-word">Track<span class="dot">Port</span></span></a>
       <div class="nav-center">${links}</div>
       <div class="nav-side">
-        <button type="button" class="btn btn-ghost btn-sm install-app-btn" data-action="install-app" aria-label="Install TrackPort app" title="Install TrackPort app">${icon('download')}<span class="install-app-label">Install app</span></button>
         ${authed ? '' : `<a href="#/register" class="btn btn-accent btn-sm">Sign Up</a>`}
         <button class="nav-toggle" aria-label="Menu" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
       </div>
@@ -2177,6 +2184,18 @@ function navbar(active){
       ${authed ? '' : `<a href="#/register" class="btn btn-accent btn-block" style="margin-top:6px;" onclick="closeMobileNav()">Sign Up</a>`}
     </div>
   </div>`;
+}
+function goToAbout(event){
+  event.preventDefault();
+  closeMobileNav();
+  const scrollToAbout = () => document.getElementById('about')?.scrollIntoView({behavior:'smooth', block:'start'});
+  const hash = location.hash.replace(/^#/,'');
+  if(hash && hash !== '/' ){
+    location.hash = '/';
+    setTimeout(scrollToAbout, 150);
+  } else {
+    scrollToAbout();
+  }
 }
 function toggleMobileNav(){ const m=$('#nav-mobile'); const t=$('.nav-toggle'); if(m){ m.classList.toggle('open'); } if(t){ t.classList.toggle('open'); } }
 function closeMobileNav(){ const m=$('#nav-mobile'); const t=$('.nav-toggle'); if(m) m.classList.remove('open'); if(t) t.classList.remove('open'); }
@@ -2262,10 +2281,10 @@ function pageLanding(){
   <div class="hero">
     <div class="hero-grid"></div>
     <div class="wrap hero-inner">
-      <span class="eyebrow-route"><span class="route-dot"></span> Shipment &amp; Flight Tracking Toolkit</span>
-      <h1>Stop wondering.<br><span class="accent">Start tracking.</span></h1>
-      <p class="sub">Create a shipment or flight record, publish it once, and let anyone follow the route, stopovers and status history from a single link — no calls, no chasing, no guesswork.</p>
-      <div class="hero-ctas">
+      <span class="eyebrow-route reveal reveal-left"><span class="route-dot"></span> Shipment &amp; Flight Tracking Toolkit</span>
+      <h1 class="reveal reveal-left">Stop wondering.<br><span class="accent">Start tracking.</span></h1>
+      <p class="sub reveal reveal-right">Create a shipment or flight record, publish it once, and let anyone follow the route, stopovers and status history from a single link — no calls, no chasing, no guesswork.</p>
+      <div class="hero-ctas reveal reveal-left">
         <a href="#/register" class="btn btn-accent">${icon('plus')} Get Started</a>
         <a href="#/track" class="btn btn-outline-light">${icon('search')} Track Something</a>
       </div>
@@ -2273,19 +2292,19 @@ function pageLanding(){
   </div>
 
   <!-- THE BEGINNING -->
-  <div class="split-box">
+  <div class="split-box" id="about">
     <div class="split-cell icon-panel">${icon('chart')}</div>
     <div class="split-cell indigo-panel">
-      <div class="lux-card">
+      <div class="lux-card reveal reveal-left">
         <span class="sub">Our Story</span>
-        <h3>Built by shippers, for shippers<span style="color:rgba(255,255,255,.75)">.</span></h3>
+        <h3>Built by shippers, for shippers<span style="color:var(--primary)">.</span></h3>
         <p>TrackPort began as a spreadsheet — a couple of us logging parcel handoffs and flight legs by hand because nothing gave senders and passengers a clear, shareable record. What started as one dashboard is now a full tracking toolkit, refined the way anything worth keeping around should be: slowly, and on purpose.</p>
       </div>
     </div>
     <div class="split-cell dark-panel">
       <div class="big-icon-bg">${icon('trending-up')}</div>
-      <span class="sub">Behind every scan</span>
-      <h2>We turn tracking events into a <em>living</em> journey</h2>
+      <span class="sub reveal reveal-right">Behind every scan</span>
+      <h2 class="reveal reveal-right">We turn tracking events into a <em>living</em> journey</h2>
     </div>
   </div>
 
@@ -2293,19 +2312,19 @@ function pageLanding(){
   <div class="section">
     <div class="wrap">
       <div class="section-head">
-        <span class="kicker">What's Inside</span>
-        <h2>Everything a tracking record needs</h2>
-        <p>Three tools, quietly built into one toolkit — everything you need to follow a package or a flight properly.</p>
+        <span class="kicker reveal reveal-left">What's Inside</span>
+        <h2 class="reveal reveal-left">Everything a tracking record needs</h2>
+        <p class="reveal reveal-right">Three tools, quietly built into one toolkit — everything you need to follow a package or a flight properly.</p>
       </div>
 
       <div class="feature-row">
-        <div class="f-copy">
+        <div class="f-copy reveal reveal-left">
           <div class="f-icon">${icon('chart')}</div>
           <h3>Live Shipment Tracking</h3>
           <p>Every scan, every handoff, updated as it happens. Follow a parcel from pickup to delivery with stopovers, timestamps and a live route map.</p>
           <a href="#/track" class="f-link">Track a shipment ${icon('arrow')}</a>
         </div>
-        <div class="f-visual card card-pad">
+        <div class="f-visual card card-pad reveal reveal-right">
           <div class="mockup-title">Transit Progress — Last 5 Checkpoints</div>
           <div class="f-bars">
             <div class="bar" style="height:20%;"><span>Pickup</span></div>
@@ -2318,13 +2337,13 @@ function pageLanding(){
       </div>
 
       <div class="feature-row rev">
-        <div class="f-copy">
+        <div class="f-copy reveal reveal-right">
           <div class="f-icon">${icon('globe')}</div>
           <h3>Flight Ticket Tracking</h3>
           <p>Airline, flight number, terminal, gate, seat and route legs — the details a passenger actually needs, laid out so anyone can read them at a glance.</p>
           <a href="#/track" class="f-link">Track a flight ${icon('arrow')}</a>
         </div>
-        <div class="f-visual card card-pad">
+        <div class="f-visual card card-pad reveal reveal-left">
           <div class="mockup-title">Route Legs — SQ 402</div>
           <div class="f-lb-row"><span class="f-lb-rank">01</span><span class="f-lb-name">SIN · Singapore</span><span class="f-lb-val">Departed</span></div>
           <div class="f-lb-row"><span class="f-lb-rank">02</span><span class="f-lb-name">DXB · Dubai</span><span class="f-lb-val">Stopover</span></div>
@@ -2333,13 +2352,13 @@ function pageLanding(){
       </div>
 
       <div class="feature-row">
-        <div class="f-copy">
+        <div class="f-copy reveal reveal-left">
           <div class="f-icon">${icon('dollar')}</div>
           <h3>Shareable Tracking Links</h3>
           <p>One public link per record, shareable by WhatsApp, email or SMS — so recipients can check progress themselves instead of asking for updates.</p>
           <a href="#/track" class="f-link">See a tracking page ${icon('arrow')}</a>
         </div>
-        <div class="f-visual card card-pad">
+        <div class="f-visual card card-pad reveal reveal-right">
           <div class="mockup-title">Delivery Snapshot — This Month</div>
           <div class="review-grid">
             <div class="k">Delivered</div><div class="v" style="color:var(--primary);">68%</div>
@@ -2355,32 +2374,32 @@ function pageLanding(){
   <div class="section" style="padding-top:0;">
     <div class="wrap">
       <div class="section-head">
-        <span class="kicker">The Toolkit</span>
-        <h2>Six tools, one tab</h2>
-        <p>Everything below lives inside TrackPort — switch between them without ever leaving the page.</p>
+        <span class="kicker reveal reveal-left">The Toolkit</span>
+        <h2 class="reveal reveal-left">Six tools, one tab</h2>
+        <p class="reveal reveal-right">Everything below lives inside TrackPort — switch between them without ever leaving the page.</p>
       </div>
       <div class="tile-grid tile-grid-6">
-        <div class="tile">
+        <div class="tile reveal reveal-left">
           <span class="tile-icon">${icon('globe')}</span>
           <div class="tile-mask"><h4>Live Route Map</h4><p>Current position and full path.</p></div>
         </div>
-        <div class="tile">
+        <div class="tile reveal reveal-right">
           <span class="tile-icon">${icon('list')}</span>
           <div class="tile-mask"><h4>Status History</h4><p>Every checkpoint, time-stamped.</p></div>
         </div>
-        <div class="tile">
+        <div class="tile reveal reveal-left">
           <span class="tile-icon">${icon('user')}</span>
           <div class="tile-mask"><h4>Boarding Pass</h4><p>Flight details at a glance.</p></div>
         </div>
-        <div class="tile">
+        <div class="tile reveal reveal-right">
           <span class="tile-icon">${icon('share')}</span>
           <div class="tile-mask"><h4>Share Links</h4><p>WhatsApp, email or SMS, instantly.</p></div>
         </div>
-        <div class="tile">
+        <div class="tile reveal reveal-left">
           <span class="tile-icon">${icon('dollar')}</span>
           <div class="tile-mask"><h4>Shipment Records</h4><p>Value, weight and photo proof.</p></div>
         </div>
-        <div class="tile">
+        <div class="tile reveal reveal-right">
           <span class="tile-icon">${icon('alert')}</span>
           <div class="tile-mask"><h4>Delay Alerts</h4><p>Status updates as they're issued.</p></div>
         </div>
@@ -2391,9 +2410,9 @@ function pageLanding(){
   <!-- TESTIMONIAL -->
   <div class="section" style="background:var(--card); border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
     <div class="wrap testimonial-wrap">
-      <span class="quote-mark">“</span>
-      <blockquote>TrackPort replaced the four tabs and endless "where is it?" messages I used to deal with every week. Now it's one link — and customers check it themselves.</blockquote>
-      <div class="testimonial-who">
+      <span class="quote-mark reveal reveal-left">“</span>
+      <blockquote class="reveal reveal-left">TrackPort replaced the four tabs and endless "where is it?" messages I used to deal with every week. Now it's one link — and customers check it themselves.</blockquote>
+      <div class="testimonial-who reveal reveal-right">
         <div class="av">JT</div>
         <div style="text-align:left;">
           <div class="name">Jordan T.</div>
@@ -2406,25 +2425,25 @@ function pageLanding(){
   <!-- BIG FAMILY / COMMUNITY -->
   <div class="section">
     <div class="wrap community-copy">
-      <span class="kicker">Built For Everyone Who Ships Or Flies</span>
-      <h2 style="font-size:clamp(26px,4vw,38px); margin-bottom:18px;">One toolkit, every kind of journey</h2>
-      <p>Small sellers use TrackPort so buyers can follow a parcel in ten seconds. Freight teams use it to publish customs and stopover updates. Travel agents use it to hand passengers a clean flight record. Same tracking, wherever you need it.</p>
+      <span class="kicker reveal reveal-left">Built For Everyone Who Ships Or Flies</span>
+      <h2 class="reveal reveal-left" style="font-size:clamp(26px,4vw,38px); margin-bottom:18px;">One toolkit, every kind of journey</h2>
+      <p class="reveal reveal-right">Small sellers use TrackPort so buyers can follow a parcel in ten seconds. Freight teams use it to publish customs and stopover updates. Travel agents use it to hand passengers a clean flight record. Same tracking, wherever you need it.</p>
     </div>
     <div class="wrap" style="margin-top:44px;">
       <div class="stat-grid">
-        <div class="card stat-card">
+        <div class="card stat-card reveal reveal-left">
           <div class="stat-val">180K+</div>
           <div class="stat-label">Tracking Events Logged</div>
         </div>
-        <div class="card stat-card">
+        <div class="card stat-card reveal reveal-right">
           <div class="stat-val">4.8/5</div>
           <div class="stat-label">Average Rating</div>
         </div>
-        <div class="card stat-card">
+        <div class="card stat-card reveal reveal-left">
           <div class="stat-val">200+</div>
           <div class="stat-label">Countries &amp; Airports</div>
         </div>
-        <div class="card stat-card">
+        <div class="card stat-card reveal reveal-right">
           <div class="stat-val">0.4s</div>
           <div class="stat-label">Avg Update Lag</div>
         </div>
@@ -2435,8 +2454,8 @@ function pageLanding(){
   <!-- VISIT US / JOIN -->
   <div class="cta-band">
     <div class="wrap cta-band-inner">
-      <h2>Start tracking today</h2>
-      <p>Create a free account and publish your first shipment or flight record in under a minute.</p>
+      <h2 class="reveal reveal-left">Start tracking today</h2>
+      <p class="reveal reveal-right">Create a free account and publish your first shipment or flight record in under a minute.</p>
       <form id="landing-signup-form" class="signup-box">
         <input type="email" placeholder="you@email.com" required>
         <button class="btn btn-accent" type="submit">Get Started</button>
@@ -2448,14 +2467,14 @@ function pageLanding(){
   <!-- CONTACT AND MEET US -->
   <div class="section">
     <div class="wrap contact-grid">
-      <div class="contact-info">
+      <div class="contact-info reveal reveal-left">
         <span class="kicker">Get In Touch</span>
         <h2 style="font-size:clamp(26px,4vw,36px); margin-bottom:16px;">Questions? We're on the line</h2>
         <p>Whether it's a bug report, a tracking question, or a partnership idea — the team behind TrackPort reads every message.</p>
         <div class="contact-line"><span class="ic">${icon('mail')}</span> hello@trackport.app</div>
         <div class="contact-line"><span class="ic">${icon('globe')}</span> Remote-first · Worldwide</div>
       </div>
-      <div class="card card-pad">
+      <div class="card card-pad reveal reveal-right">
         <form id="landing-contact-form">
           <div class="field-row">
             <div class="field"><label>First Name</label><input type="text" placeholder="Jordan"></div>
@@ -5029,6 +5048,8 @@ function wirePageEvents(parts){
       tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
   });
+
+  initScrollReveal();
 }
 
 function rerenderCurrentPage(){ router(); }
@@ -6180,7 +6201,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     const message = isIos
       ? 'To install TrackPort, tap Share in Safari, then choose “Add to Home Screen”.'
-      : 'TrackPort can be installed from your browser menu when this page is opened over HTTPS. If your browser only shows “Add to home screen”, reload the secure site and try again.';
+      : 'Use your browser menu and choose “Install app” or “Add to Home screen”.';
     if(typeof window.showToast === 'function') window.showToast(message);
     else window.alert(message);
   }
@@ -6205,44 +6226,15 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     }
   }
 
-  /* ---- Floating install banner ---- */
-  const bannerEl = () => document.getElementById('tp-install-banner');
-  const bannerDismissed = () => { try{ return sessionStorage.getItem('tp-install-banner-dismissed') === '1'; }catch(_e){ return false; } };
-
-  function showInstallBanner(){
-    const banner = bannerEl();
-    const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-    if(!banner || isStandalone() || bannerDismissed() || (!deferredInstallPrompt && !isIos)) return;
-    banner.classList.add('tp-banner-show');
-    banner.setAttribute('aria-hidden', 'false');
-  }
-
-  function hideInstallBanner(){
-    const banner = bannerEl();
-    if(!banner) return;
-    banner.classList.remove('tp-banner-show');
-    banner.setAttribute('aria-hidden', 'true');
-  }
-
-  document.getElementById('tp-banner-dismiss')?.addEventListener('click', () => {
-    try{ sessionStorage.setItem('tp-install-banner-dismissed', '1'); }catch(_e){}
-    hideInstallBanner();
-  });
-
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     deferredInstallPrompt = event;
     updateInstallButtons();
-    showInstallBanner();
   });
-
-  // iOS/Safari never fires beforeinstallprompt, so show the Safari guidance there.
-  setTimeout(showInstallBanner, 2500);
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     updateInstallButtons();
-    hideInstallBanner();
     if(typeof window.showToast === 'function') window.showToast('TrackPort installed successfully');
   });
 
@@ -6256,7 +6248,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   function registerServiceWorker(){
     if(!('serviceWorker' in navigator) || !/^https?:$/.test(window.location.protocol)) return;
-    navigator.serviceWorker.register('/sw.js', {scope:'/'}).catch(error => {
+    navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(error => {
       console.warn('TrackPort offline support could not be enabled.', error);
     });
   }
