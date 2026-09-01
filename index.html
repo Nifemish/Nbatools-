@@ -5,17 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TrackPort — Shipment &amp; Flight Tracking, One Place</title>
 <meta name="description" content="TrackPort lets you create, publish and follow shipment and flight tracking records with live route maps, stopovers and status history.">
-<link rel="manifest" href="./manifest.webmanifest">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <meta name="theme-color" content="#0A0B12">
+<meta name="application-name" content="TrackPort">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
@@ -970,11 +972,11 @@
   .split-cell.icon-panel{flex:0 0 18%; background:var(--dark); align-items:center; justify-content:center;}
   .split-cell.icon-panel svg{width:46px; height:46px; color:var(--primary); stroke-width:1.2;}
   .split-cell.indigo-panel{flex:0 0 36%; background:transparent; display:flex; align-items:center; justify-content:center; padding:28px;}
-  .split-cell.indigo-panel .lux-card{position:relative; width:100%; max-width:440px; padding:42px 38px; border-radius:28px; overflow:hidden; background:var(--primary); backdrop-filter:blur(26px) saturate(160%); -webkit-backdrop-filter:blur(26px) saturate(160%); border:1px solid rgba(255,255,255,0.45); box-shadow:0 32px 90px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.55), 0 0 0 1px rgba(0,0,0,0.06), 0 0 50px rgba(212,175,90,0.35); color:#0A0B12;}
-  .split-cell.indigo-panel .lux-card::before{content:''; position:absolute; inset:0; border-radius:28px; padding:1px; background:linear-gradient(160deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.2) 100%); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;}
-  .split-cell.indigo-panel .lux-card .sub{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(10,11,18,0.78); margin-bottom:18px; display:block;}
-  .split-cell.indigo-panel .lux-card h3{font-family:'Playfair Display',serif; font-size:30px; line-height:1.18; margin-bottom:18px; color:#0A0B12; font-weight:700;}
-  .split-cell.indigo-panel .lux-card p{font-size:15px; line-height:1.75; color:rgba(10,11,18,0.82); font-weight:500;}
+  .split-cell.indigo-panel .lux-card{position:relative; width:100%; max-width:440px; padding:42px 38px; border-radius:28px; overflow:hidden; background:linear-gradient(145deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.08) 100%), rgba(212,175,90,0.34); backdrop-filter:blur(26px) saturate(160%); -webkit-backdrop-filter:blur(26px) saturate(160%); border:1px solid rgba(255,255,255,0.38); box-shadow:0 32px 90px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.40), 0 0 0 1px rgba(0,0,0,0.06), 0 0 40px rgba(212,175,90,0.18); color:#fff;}
+  .split-cell.indigo-panel .lux-card::before{content:''; position:absolute; inset:0; border-radius:28px; padding:1px; background:linear-gradient(160deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.15) 100%); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;}
+  .split-cell.indigo-panel .lux-card .sub{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,0.92); margin-bottom:18px; display:block; text-shadow:0 1px 2px rgba(0,0,0,0.18);}
+  .split-cell.indigo-panel .lux-card h3{font-family:'Playfair Display',serif; font-size:30px; line-height:1.18; margin-bottom:18px; color:#fff; font-weight:700; text-shadow:0 2px 10px rgba(0,0,0,0.22);}
+  .split-cell.indigo-panel .lux-card p{font-size:15px; line-height:1.75; color:rgba(255,255,255,0.95); font-weight:400; text-shadow:0 1px 3px rgba(0,0,0,0.16);}
   .split-cell.dark-panel{flex:1; background:var(--card); align-items:flex-start;}
   .split-cell.dark-panel .sub{font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--primary); margin-bottom:14px;}
   .split-cell.dark-panel h2{font-size:32px; line-height:1.2; max-width:380px;}
@@ -1316,33 +1318,19 @@
   }
 
   /* ---- Floating Install App banner ---- */
-  @keyframes tp-banner-in{
-    0%{ transform:translate(-50%,-140%) scale(.9); opacity:0; }
-    55%{ transform:translate(-50%,6px) scale(1.015); opacity:1; }
-    75%{ transform:translate(-50%,-2px) scale(.998); }
-    100%{ transform:translate(-50%,0) scale(1); opacity:1; }
-  }
-  @keyframes tp-install-glow{
-    0%,100%{ box-shadow:0 6px 14px rgba(212,175,90,0.35), inset 0 1px 0 rgba(255,255,255,0.5); }
-    50%{ box-shadow:0 6px 20px rgba(212,175,90,0.65), inset 0 1px 0 rgba(255,255,255,0.6); }
-  }
-  #tp-install-banner{position:fixed; top:calc(8px + env(safe-area-inset-top, 0px)); left:50%; transform:translate(-50%,-140%); z-index:9999; width:min(90vw, 360px); display:flex; align-items:center; gap:9px; padding:8px 9px 8px 10px; border-radius:16px; background:linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05)), rgba(10,11,18,0.82); -webkit-backdrop-filter:blur(22px) saturate(160%); backdrop-filter:blur(22px) saturate(160%); border:1px solid rgba(255,255,255,0.16); box-shadow:0 18px 44px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.18); color:#fff; transition:opacity .35s ease; opacity:0; pointer-events:none;}
-  #tp-install-banner.tp-banner-show{opacity:1; pointer-events:auto; animation:tp-banner-in .65s cubic-bezier(.22,1,.36,1) forwards;}
-  #tp-install-banner .tp-banner-icon{width:32px; height:32px; flex:0 0 32px; border-radius:9px; box-shadow:0 4px 10px rgba(0,0,0,0.35);}
+  #tp-install-banner{position:fixed; top:calc(10px + env(safe-area-inset-top, 0px)); left:50%; transform:translate(-50%,-140%); z-index:9999; width:min(94vw, 480px); display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:20px; background:linear-gradient(145deg, rgba(255,255,255,0.14), rgba(255,255,255,0.05)), rgba(10,11,18,0.82); -webkit-backdrop-filter:blur(22px) saturate(160%); backdrop-filter:blur(22px) saturate(160%); border:1px solid rgba(255,255,255,0.16); box-shadow:0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18); color:#fff; transition:transform .55s cubic-bezier(.22,1,.36,1), opacity .4s ease; opacity:0; pointer-events:none;}
+  #tp-install-banner.tp-banner-show{transform:translate(-50%,0); opacity:1; pointer-events:auto;}
+  #tp-install-banner .tp-banner-icon{width:42px; height:42px; flex:0 0 42px; border-radius:12px; box-shadow:0 6px 16px rgba(0,0,0,0.35);}
   #tp-install-banner .tp-banner-text{flex:1; min-width:0;}
-  #tp-install-banner .tp-banner-title{font-family:'Inter',sans-serif; font-size:12.5px; font-weight:800; letter-spacing:.01em; line-height:1.2;}
-  #tp-install-banner .tp-banner-sub{font-family:'Inter',sans-serif; font-size:10.5px; font-weight:500; color:rgba(255,255,255,0.68); line-height:1.3; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  #tp-install-banner .tp-banner-install{flex:0 0 auto; font-family:'Inter',sans-serif; font-size:11.5px; font-weight:800; letter-spacing:.02em; color:#0A0B12; background:linear-gradient(160deg,#E8C87E,#D4AF5A); border:none; border-radius:10px; padding:7px 12px; cursor:pointer; box-shadow:0 6px 14px rgba(212,175,90,0.35), inset 0 1px 0 rgba(255,255,255,0.5); transition:transform .18s ease, box-shadow .18s ease; animation:tp-install-glow 2.4s ease-in-out .8s infinite;}
-  #tp-install-banner .tp-banner-install:hover{transform:translateY(-1px); box-shadow:0 12px 26px rgba(212,175,90,0.45), inset 0 1px 0 rgba(255,255,255,0.5); animation-play-state:paused;}
+  #tp-install-banner .tp-banner-title{font-family:'Inter',sans-serif; font-size:14px; font-weight:800; letter-spacing:.01em; line-height:1.2;}
+  #tp-install-banner .tp-banner-sub{font-family:'Inter',sans-serif; font-size:11.5px; font-weight:500; color:rgba(255,255,255,0.72); line-height:1.35; margin-top:2px;}
+  #tp-install-banner .tp-banner-install{flex:0 0 auto; font-family:'Inter',sans-serif; font-size:13px; font-weight:800; letter-spacing:.02em; color:#0A0B12; background:linear-gradient(160deg,#E8C87E,#D4AF5A); border:none; border-radius:12px; padding:10px 16px; cursor:pointer; box-shadow:0 8px 20px rgba(212,175,90,0.35), inset 0 1px 0 rgba(255,255,255,0.5); transition:transform .18s ease, box-shadow .18s ease;}
+  #tp-install-banner .tp-banner-install:hover{transform:translateY(-1px); box-shadow:0 12px 26px rgba(212,175,90,0.45), inset 0 1px 0 rgba(255,255,255,0.5);}
   #tp-install-banner .tp-banner-install:active{transform:translateY(0) scale(.97);}
-  #tp-install-banner .tp-banner-close{flex:0 0 auto; width:24px; height:24px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:8px; color:rgba(255,255,255,0.75); font-size:13px; line-height:1; cursor:pointer; transition:background .18s ease, color .18s ease;}
+  #tp-install-banner .tp-banner-close{flex:0 0 auto; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:rgba(255,255,255,0.75); font-size:15px; line-height:1; cursor:pointer; transition:background .18s ease, color .18s ease;}
   #tp-install-banner .tp-banner-close:hover{background:rgba(255,255,255,0.16); color:#fff;}
   @media (max-width:400px){
     #tp-install-banner .tp-banner-sub{display:none;}
-  }
-  @media (prefers-reduced-motion: reduce){
-    #tp-install-banner.tp-banner-show{animation:none; transform:translate(-50%,0);}
-    #tp-install-banner .tp-banner-install{animation:none;}
   }
 </style>
 </head>
@@ -2290,7 +2278,7 @@ function pageLanding(){
     <div class="split-cell indigo-panel">
       <div class="lux-card">
         <span class="sub">Our Story</span>
-        <h3>Built by shippers, for shippers<span style="color:rgba(10,11,18,.6)">.</span></h3>
+        <h3>Built by shippers, for shippers<span style="color:rgba(255,255,255,.75)">.</span></h3>
         <p>TrackPort began as a spreadsheet — a couple of us logging parcel handoffs and flight legs by hand because nothing gave senders and passengers a clear, shareable record. What started as one dashboard is now a full tracking toolkit, refined the way anything worth keeping around should be: slowly, and on purpose.</p>
       </div>
     </div>
@@ -6192,7 +6180,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     const message = isIos
       ? 'To install TrackPort, tap Share in Safari, then choose “Add to Home Screen”.'
-      : 'Use your browser menu and choose “Install app” or “Add to Home screen”.';
+      : 'TrackPort can be installed from your browser menu when this page is opened over HTTPS. If your browser only shows “Add to home screen”, reload the secure site and try again.';
     if(typeof window.showToast === 'function') window.showToast(message);
     else window.alert(message);
   }
@@ -6223,7 +6211,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   function showInstallBanner(){
     const banner = bannerEl();
-    if(!banner || isStandalone() || bannerDismissed()) return;
+    const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    if(!banner || isStandalone() || bannerDismissed() || (!deferredInstallPrompt && !isIos)) return;
     banner.classList.add('tp-banner-show');
     banner.setAttribute('aria-hidden', 'false');
   }
@@ -6247,8 +6236,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     showInstallBanner();
   });
 
-  // iOS/Safari never fires beforeinstallprompt — show the banner anyway;
-  // requestInstall() falls back to "Add to Home Screen" instructions there.
+  // iOS/Safari never fires beforeinstallprompt, so show the Safari guidance there.
   setTimeout(showInstallBanner, 2500);
 
   window.addEventListener('appinstalled', () => {
@@ -6268,7 +6256,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   function registerServiceWorker(){
     if(!('serviceWorker' in navigator) || !/^https?:$/.test(window.location.protocol)) return;
-    navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(error => {
+    navigator.serviceWorker.register('/sw.js', {scope:'/'}).catch(error => {
       console.warn('TrackPort offline support could not be enabled.', error);
     });
   }
