@@ -5,7 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrackPort — Shipment &amp; Flight Tracking, One Place</title>
 <meta name="description" content="TrackPort lets you create, publish and follow shipment and flight tracking records with live route maps, stopovers and status history.">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TrackPort">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://unpkg.com" crossorigin>
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+<meta name="theme-color" content="#0A0B12">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
@@ -34,6 +44,49 @@
       console.warn('Firebase could not be initialized. The app will use local fallback storage.', error);
     }
 
+    // --- Resilience helpers: never let a network call hang the UI ---
+    window.withTimeout = function(promiseLike, ms, message){
+      return new Promise((resolve, reject)=>{
+        let settled = false;
+        const timer = setTimeout(()=>{
+          if(settled) return;
+          settled = true;
+          if(promiseLike && typeof promiseLike.cancel === 'function'){ try{ promiseLike.cancel(); }catch(_e){} }
+          reject(new Error(message || 'Request timed out'));
+        }, ms);
+        Promise.resolve(promiseLike).then(value=>{
+          if(settled) return;
+          settled = true; clearTimeout(timer); resolve(value);
+        }, error=>{
+          if(settled) return;
+          settled = true; clearTimeout(timer); reject(error);
+        });
+      });
+    };
+
+    // Downscale a data-URL image so uploads stay small and fast.
+    window.compressDataUrlImage = function(dataUrl, maxSize, quality){
+      return new Promise((resolve)=>{
+        try{
+          const image = new Image();
+          image.onload = ()=>{
+            try{
+              const scale = Math.min(1, (maxSize||720) / Math.max(image.width, image.height));
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.max(1, Math.round(image.width * scale));
+              canvas.height = Math.max(1, Math.round(image.height * scale));
+              const context = canvas.getContext('2d');
+              context.drawImage(image, 0, 0, canvas.width, canvas.height);
+              resolve(canvas.toDataURL('image/jpeg', quality || 0.82));
+            }catch(_e){ resolve(dataUrl); }
+          };
+          image.onerror = ()=>resolve(dataUrl);
+          image.src = dataUrl;
+        }catch(_e){ resolve(dataUrl); }
+      });
+    };
+
+
     window.firebaseCloud = {
       isReady: !!firestore,
       async getState(key){
@@ -54,24 +107,37 @@
         if(!firestore) throw new Error('Firebase Firestore is not initialized');
         const documentRef = firestore.collection('nbatoolsGeneratedDocuments').doc();
         const payload = { ...data };
+        // Portraits are large data URLs. Shrink first, then upload with a hard
+        // timeout so a blocked Storage request can never hang the Generate button.
+        if(typeof payload.photo === 'string' && payload.photo.startsWith('data:image/')){
+          try{ payload.photo = await window.compressDataUrlImage(payload.photo, 720, 0.82); }catch(_e){}
+        }
         if(firebaseStorage && typeof payload.photo === 'string' && payload.photo.startsWith('data:image/')){
           const typeMatch = payload.photo.match(/^data:([^;,]+)[;,]/);
           const contentType = typeMatch ? typeMatch[1] : 'image/jpeg';
           const fileRef = firebaseStorage.ref(`nbatools/licenses/${encodeURIComponent(userId)}/${documentRef.id}.jpg`);
-          const snapshot = await fileRef.putString(payload.photo, 'data_url', { contentType });
-          payload.photo = await snapshot.ref.getDownloadURL();
+          try{
+            const uploadTask = fileRef.putString(payload.photo, 'data_url', { contentType });
+            const snapshot = await window.withTimeout(uploadTask, 20000, 'Portrait upload timed out');
+            payload.photo = await window.withTimeout(snapshot.ref.getDownloadURL(), 15000, 'Portrait URL timed out');
+          }catch(uploadError){
+            console.warn('Portrait upload failed — saving the card without a hosted photo.', uploadError);
+            // Firestore documents cap at ~1MB; drop oversized inline images.
+            if(payload.photo.length > 700000) payload.photo = '';
+          }
         }
         const createdAt = payload.createdAt || new Date().toISOString();
-        await documentRef.set({
+        await window.withTimeout(documentRef.set({
           userId: String(userId),
           licenseType: payload.licenseType || 'hawaii',
           licenseName: payload.licenseName || 'Hawaii',
           payload,
           createdAt,
           createdAtServer: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        }), 20000, 'Saving to Cloud Firestore timed out');
         return { id:documentRef.id, data:payload };
       },
+
       async listLicenseDocuments(userId){
         if(!firestore) throw new Error('Firebase Firestore is not initialized');
         const snapshot = await firestore.collection('nbatoolsGeneratedDocuments')
@@ -233,6 +299,10 @@
   .footer-logo{height:24px; width:auto; display:block; margin-bottom:14px;}
   .nav-center{display:flex; align-items:center; justify-content:center; gap:0; flex:1;}
   .nav-side{display:flex; align-items:center; gap:14px;}
+  .install-app-btn{border-color:rgba(212,175,90,.5); color:var(--primary); box-shadow:0 0 0 1px rgba(212,175,90,.08) inset;}
+  .install-app-btn:hover{background:rgba(212,175,90,.14); border-color:var(--primary); color:var(--ink);}
+  .install-app-btn[hidden]{display:none;}
+  .install-app-label{display:inline;}
   .nav-toggle{display:none; flex-direction:column; justify-content:center; gap:5px; width:38px; height:38px; background:transparent; border:1px solid var(--border); border-radius:8px; padding:0;}
   .nav-toggle span{display:block; width:16px; height:1.5px; background:var(--ink); margin:0 auto; transition:.2s;}
   .nav-toggle.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg);}
@@ -244,6 +314,13 @@
   @media (max-width:860px){
     .nav-center{display:none;}
     .nav-toggle{display:flex;}
+    .nav-side{gap:8px;}
+    .install-app-btn{padding:9px 12px; font-size:10px; letter-spacing:.06em;}
+  }
+  @media (max-width:520px){
+    .install-app-label{display:none;}
+    .install-app-btn{width:38px; height:38px; padding:0; border-radius:12px;}
+    .install-app-btn svg{margin:0;}
   }
   .nav-link{position:relative; margin:0 16px; padding:8px 0; font-size:11.5px; font-weight:600; color:var(--muted); transition:color .15s; text-transform:uppercase; letter-spacing:.14em;}
   .nav-link::after{content:''; position:absolute; left:0; right:100%; bottom:2px; height:1px; background:var(--primary); transition:right .28s cubic-bezier(.4,0,.2,1);}
@@ -373,7 +450,7 @@
   /* Plain centering wrapper — the boarding pass itself is fully responsive
      (fluid width + wrapping fields on narrow screens) so nothing needs to be
      scaled or scrolled horizontally to be seen. */
-  .boarding-pass-scale-wrap{ position:relative; width:100%; max-width:1040px; margin:0 auto; overflow-x:hidden; }
+  .boarding-pass-scale-wrap{ position:relative; width:100%; max-width:1040px; min-width:0; margin:0 auto; overflow:hidden; }
   .flight-ticket-stage::before{
     content:''; position:absolute; inset:-35%; opacity:.25; pointer-events:none;
     background:repeating-linear-gradient(116deg,transparent 0 26px,rgba(255,255,255,.07) 27px 29px,transparent 30px 68px);
@@ -384,8 +461,9 @@
     background:rgba(7,7,7,.25); filter:blur(25px); border-radius:50%; transform:rotate(-10deg); pointer-events:none;
   }
   .boarding-pass{
-    position:relative; z-index:1; display:grid; grid-template-columns:minmax(0,1fr) 230px;
-    width:100%; max-width:1040px; min-height:320px; overflow:hidden; color:#2d241e;
+    position:absolute; top:0; left:0; z-index:1; display:grid; grid-template-columns:minmax(0,1fr) 230px;
+    width:1040px; max-width:none; min-height:320px; overflow:hidden; color:#2d241e;
+    transform-origin:top left;
     background:#ead8bc; border:0; border-radius:5px 14px 14px 5px;
     box-shadow:10px 18px 26px rgba(0,0,0,.38), 0 1px 0 rgba(255,255,255,.5) inset;
     transform:rotate(-1.1deg); font-family:'IBM Plex Mono',monospace;
@@ -454,7 +532,7 @@
     .track-summary{max-width:none; margin:0; padding:0;}
     .flight-ticket-stage{padding:24px; box-shadow:none; border-radius:0; background:#fff;}
     .flight-ticket-stage::before,.flight-ticket-stage::after{display:none;}
-    .boarding-pass{transform:none !important; box-shadow:none; border:1px solid #3c2d24;}
+    .boarding-pass{transform:none !important; width:100% !important; max-width:100% !important; box-shadow:none; border:1px solid #3c2d24;}
     .boarding-pass-scale-wrap{height:auto !important;}
   }
 
@@ -554,28 +632,10 @@
     .flight-ticket-stage::before,.flight-ticket-stage::after{display:none;}
   }
 
-  /* Below ~600px a fixed 230px stub column plus route/detail rows with
-     nowrap values no longer have room to fit — stack the pass into a single
-     column and let fields wrap onto two per row instead of forcing an
-     overflow that needs horizontal scrolling. Placed last so it wins the
-     cascade over the earlier boarding-pass styling passes above. */
-  @media (max-width:600px){
-    .boarding-pass{grid-template-columns:1fr; min-height:0;}
-    .ticket-main,.ticket-stub{padding:18px 16px 16px; min-width:0;}
-    .ticket-stub{border-left:0; border-top:2px dashed rgba(57,42,31,.42);}
-    .ticket-header{flex-wrap:wrap; row-gap:8px;}
-    .ticket-brand-name{white-space:normal;}
-    .ticket-class{font-size:19px;}
-    .ticket-passenger{white-space:normal; overflow-wrap:anywhere; font-size:17px;}
-    .ticket-route-row{grid-template-columns:1fr 1fr; row-gap:14px; margin-top:16px;}
-    .ticket-detail-row{grid-template-columns:1fr 1fr; row-gap:14px; align-items:start; padding:11px 0 12px;}
-    .ticket-detail-row .value{font-size:20px;}
-    .ticket-field .value{white-space:normal; overflow-wrap:anywhere;}
-    .ticket-footer{flex-direction:column; align-items:flex-start; gap:14px;}
-    .ticket-numbers{flex-wrap:wrap;}
-    .stub-route{white-space:normal;}
-    .stub-seat .value{font-size:22px;}
-  }
+  /* Narrow screens no longer restack the pass: the preview is rendered at a
+     fixed 1040px design width and scaled down by fitBoardingPassPreview()
+     (same technique as the driver's license live preview), so the horizontal
+     boarding-pass layout always fits the screen with no sideways scrolling. */
 
   /* How it works */
   .section{padding:88px 0;}
@@ -777,7 +837,8 @@
   /* Tracking page */
   .track-hero{background:var(--dark); color:#fff; padding:48px 0 44px;}
   .track-search-inline{max-width:480px; margin:0 auto;}
-  .track-summary{max-width:820px; margin:-40px auto 0; padding:0 24px 60px;}
+  .track-summary{max-width:820px; width:100%; min-width:0; box-sizing:border-box; margin:-40px auto 0; padding:0 24px 60px;}
+  .track-summary > *{min-width:0;}
   .summary-card{padding:28px; margin-bottom:24px;}
   .summary-top{display:flex; gap:18px; align-items:center; margin-bottom:22px; flex-wrap:wrap;}
   .summary-top img{width:72px; height:72px; border-radius:14px; object-fit:cover; border:1px solid var(--border);}
@@ -802,6 +863,22 @@
   .route-stop-row.current .route-stop-marker{background:var(--primary); border-color:var(--primary); color:#191207;}
   .route-stop-name{font-weight:600; color:inherit;}
   .route-stop-kind{display:block; margin-top:2px; font-size:10px; text-transform:uppercase; letter-spacing:.08em; opacity:.72;}
+  .automation-panel{margin-top:22px; padding:18px; border:1px solid rgba(212,175,90,.25); border-radius:14px; background:linear-gradient(135deg,rgba(212,175,90,.08),rgba(255,255,255,.025));}
+  .automation-panel h4{display:flex; align-items:center; gap:8px; margin:0 0 5px; font-size:14px;}
+  .automation-panel h4 svg{width:16px; height:16px; color:var(--primary);}
+  .automation-intro{margin:0 0 14px; color:var(--muted); font-size:12px; line-height:1.5;}
+  .automation-summary{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px;}
+  .automation-stat{padding:10px 11px; border:1px solid var(--border); border-radius:10px; background:rgba(0,0,0,.12);}
+  .automation-stat .k{display:block; margin-bottom:4px; color:var(--muted); font:600 9px 'IBM Plex Mono',monospace; letter-spacing:.06em; text-transform:uppercase;}
+  .automation-stat .v{display:block; color:var(--ink); font-size:12px; font-weight:600; line-height:1.35;}
+  .automation-status{display:flex; align-items:flex-start; gap:8px; margin-top:12px; color:var(--muted); font-size:12px; line-height:1.45;}
+  .automation-status svg{width:15px; height:15px; flex:0 0 15px; margin-top:1px; color:var(--primary);}
+  .automation-status.is-ready{color:var(--success);}
+  .automation-status.is-error{color:var(--error);}
+  .automation-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:14px;}
+  .automation-actions .btn{margin-top:0;}
+  .automation-paused{display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid var(--warning); border-radius:999px; color:var(--warning); font:600 10px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.04em;}
+  @media (max-width:680px){ .automation-summary{grid-template-columns:1fr;} }
   .tracking-standalone-header{height:62px; display:flex; align-items:center; justify-content:space-between; gap:14px; padding:0 24px; background:rgba(10,11,18,0.9); border-bottom:1px solid var(--glass-border);}
   .tracking-standalone-header .brand{font-size:18px;}
   .tracking-standalone-header .brand svg{width:16px; height:16px; color:var(--primary);}
@@ -1095,11 +1172,11 @@
   .license-output-actions{max-width:420px; width:100%; margin:0 auto;}
   .license-edit-again{border:0; background:none; color:var(--muted); font:600 13px 'Inter',sans-serif; cursor:pointer; text-decoration:underline; text-underline-offset:3px;}
   .license-edit-again svg{width:13px; height:13px; vertical-align:-2px; margin-right:4px;}
-  .license-card-scroll{width:100%; overflow-x:auto; padding:16px 0 48px; scrollbar-color:var(--primary) transparent;}
-  .license-tabletop{position:relative; min-width:800px; padding:42px 32px 54px; border-radius:18px; overflow:hidden; background-color:#8b5a3c; background-image:repeating-linear-gradient(8deg,rgba(255,220,170,.12) 0,rgba(255,220,170,.12) 2px,transparent 2px,transparent 13px),repeating-linear-gradient(92deg,rgba(57,25,12,.16) 0,rgba(57,25,12,.16) 1px,transparent 1px,transparent 29px),radial-gradient(ellipse at 15% 20%,rgba(255,235,192,.24),transparent 34%),radial-gradient(ellipse at 84% 75%,rgba(45,18,8,.24),transparent 38%); box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 12px 28px rgba(55,32,18,.18);}
+  .license-card-scroll{width:100%; min-width:0; overflow-x:hidden; padding:16px 0 48px;}
+  .license-tabletop{--license-preview-scale:1; position:relative; width:min(100%,800px); min-width:0; box-sizing:border-box; margin:0 auto; padding:calc(42px * var(--license-preview-scale)) calc(32px * var(--license-preview-scale)) calc(54px * var(--license-preview-scale)); border-radius:calc(18px * var(--license-preview-scale)); overflow:hidden; background-color:#8b5a3c; background-image:repeating-linear-gradient(8deg,rgba(255,220,170,.12) 0,rgba(255,220,170,.12) 2px,transparent 2px,transparent 13px),repeating-linear-gradient(92deg,rgba(57,25,12,.16) 0,rgba(57,25,12,.16) 1px,transparent 1px,transparent 29px),radial-gradient(ellipse at 15% 20%,rgba(255,235,192,.24),transparent 34%),radial-gradient(ellipse at 84% 75%,rgba(45,18,8,.24),transparent 38%); box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 12px 28px rgba(55,32,18,.18);}
   .license-tabletop::before{content:""; position:absolute; inset:0; pointer-events:none; opacity:.5; background:repeating-radial-gradient(ellipse at 20% 30%,transparent 0 16px,rgba(72,34,15,.12) 17px 18px,transparent 19px 42px); mix-blend-mode:multiply;}
-  .license-card-min{position:relative; z-index:1; min-width:0; display:flex; justify-content:center; padding:0;}
-  .license-card-wrapper{width:736px; height:469px; padding:8px; flex:0 0 736px; background:#fff; border-radius:28px; box-shadow:0 22px 40px rgba(15,23,42,.23); border:1px solid #cbd5e1; user-select:none;}
+  .license-card-min{position:relative; z-index:1; width:100%; height:calc(469px * var(--license-preview-scale)); min-width:0; padding:0;}
+  .license-card-wrapper{position:absolute; top:0; left:50%; width:736px; height:469px; padding:8px; box-sizing:border-box; background:#fff; border-radius:28px; box-shadow:0 22px 40px rgba(15,23,42,.23); border:1px solid #cbd5e1; user-select:none; transform:translateX(-50%) scale(var(--license-preview-scale)); transform-origin:top center;}
   .license-card{position:relative; width:720px; height:453px; border-radius:22px; overflow:hidden; color:#000; box-shadow:inset 0 1px 2px rgba(0,0,0,.14); font-family:'Inter',sans-serif;}
   .license-card .license-layer{position:absolute; z-index:10;}
   .license-holo-bg{background:
@@ -1221,8 +1298,6 @@
   @media (max-width:920px){
     .license-generator-layout{display:block;}
     .license-editor{width:100%; max-width:620px; margin:0 auto 20px;}
-    .license-card-min{justify-content:flex-start;}
-    .license-tabletop{min-width:800px;}
   }
   @media (max-width:520px){
     .license-action-row{flex-direction:column; gap:0;}
@@ -1414,6 +1489,245 @@ function wireFlightRouteStops(){
   refresh();
 }
 
+/* ---------- timestamp-driven progression ---------- */
+const AUTOMATION_TICK_MS = 15000;
+let automationTimer = null;
+
+function parseAutomationDate(value){
+  const date = new Date(value || '');
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function automationLocalValue(iso){
+  const date = parseAutomationDate(iso);
+  if(!date) return '';
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset()*60000);
+  return offsetDate.toISOString().slice(0,16);
+}
+function automationDateValue(value){
+  const date = parseAutomationDate(value);
+  return date ? date.toISOString() : '';
+}
+function formatTransitDuration(milliseconds){
+  if(!Number.isFinite(milliseconds) || milliseconds<=0) return '—';
+  const totalMinutes = Math.round(milliseconds/60000);
+  const days = Math.floor(totalMinutes/1440);
+  const hours = Math.floor((totalMinutes%1440)/60);
+  const minutes = totalMinutes%60;
+  const parts = [];
+  if(days) parts.push(`${days}d`);
+  if(hours) parts.push(`${hours}h`);
+  if(minutes || !parts.length) parts.push(`${minutes}m`);
+  return parts.join(' ');
+}
+function recordAutomation(record){
+  return record && record.trackingAutomation ? record.trackingAutomation : {};
+}
+function automationRouteStops(record, kind){
+  if(kind==='flight'){
+    return Array.isArray(record.routeStops)&&record.routeStops.length
+      ? record.routeStops : buildRouteStops(record.origin, record.destination);
+  }
+  return shipmentRouteStops(record);
+}
+function calculateAutomationProgress(record, kind, originAt, destinationAt, now=Date.now()){
+  const origin = parseAutomationDate(originAt);
+  const destination = parseAutomationDate(destinationAt);
+  if(!origin || !destination || destination.getTime()<=origin.getTime()) return null;
+  const duration = destination.getTime()-origin.getTime();
+  const ratio = Math.max(0, Math.min(1, (now-origin.getTime())/duration));
+  const flow = kind==='flight' ? FLIGHT_STATUS_FLOW : STATUS_FLOW;
+  const statusIndex = Math.min(flow.length-1, Math.floor(ratio*(flow.length-1)));
+  const stops = automationRouteStops(record, kind);
+  const stopIndex = Math.min(Math.max(stops.length-1, 0), Math.floor(ratio*Math.max(stops.length-1, 0)));
+  const stop = stops[stopIndex] || null;
+  const stageAt = origin.getTime() + duration*(statusIndex/Math.max(flow.length-1,1));
+  return {
+    ratio,
+    duration,
+    status:flow[statusIndex],
+    statusIndex,
+    stop,
+    stopIndex,
+    stageAt:new Date(stageAt).toISOString(),
+    location:stop?.name || (kind==='flight' ? record.destination : record.recipient?.city) || 'Destination',
+    stopId:stop?.id || ''
+  };
+}
+function automationProgressMessage(record, kind, originValue, destinationValue){
+  const origin = parseAutomationDate(originValue);
+  const destination = parseAutomationDate(destinationValue);
+  if(!origin || !destination || destination<=origin) return 'Choose an origin and destination timestamp to calculate the transit time.';
+  if(Date.now()<origin.getTime()) return `Schedule ready — automatic updates begin at ${fmtDateTime(origin.toISOString())}.`;
+  return `Automatic ${kind==='flight'?'flight':'shipping'} updates use the elapsed time between these two timestamps. Manual updates remain available while this schedule is active.`;
+}
+function automationSummaryHtml(record, kind, originValue, destinationValue, panelId){
+  const origin = parseAutomationDate(originValue);
+  const destination = parseAutomationDate(destinationValue);
+  const progress = calculateAutomationProgress(record, kind, originValue, destinationValue);
+  const invalid = originValue && destinationValue && (!origin || !destination || destination<=origin);
+  let message = automationProgressMessage(record, kind, originValue, destinationValue);
+  let cls = '';
+  if(invalid){
+    message = 'Destination must be later than the origin.';
+    cls = ' is-error';
+  }else if(origin && destination){
+    cls = ' is-ready';
+  }
+  return `
+    <div class="automation-summary">
+      <div class="automation-stat"><span class="k">Exact transit time</span><span class="v" data-automation-duration>${origin&&destination&&destination>origin?formatTransitDuration(destination-origin):'—'}</span></div>
+      <div class="automation-stat"><span class="k">Current calculated stage</span><span class="v" data-automation-stage>${progress?esc(progress.status):'Waiting for timestamps'}</span></div>
+      <div class="automation-stat"><span class="k">Current movement</span><span class="v" data-automation-location>${progress?esc(progress.location):'Waiting for timestamps'}</span></div>
+    </div>
+    <div class="automation-status${cls}" data-automation-message>${icon(cls?'check':'clock')}${message}</div>`;
+}
+function automationCardHtml(record, kind, prefix){
+  const config = recordAutomation(record);
+  const originFallback = kind==='flight' ? record.departure : record.createdAt;
+  const originValue = automationLocalValue(config.originAt || originFallback);
+  const destinationFallback = kind==='flight' ? '' : (record.shipping?.eta ? `${record.shipping.eta}T23:59` : '');
+  const destinationValue = automationLocalValue(config.destinationAt || destinationFallback);
+  const mode = config.mode==='auto' ? 'auto' : 'manual';
+  const paused = mode==='auto' && !!config.paused;
+  return `
+    <div class="automation-panel" data-automation-panel data-kind="${kind}" data-prefix="${prefix}">
+      <h4>${icon('clock')} Timestamp-based progression</h4>
+      <p class="automation-intro">Calculate the exact time from origin to destination, then let TrackPort move through progression stages and route stops according to the timestamps.</p>
+      <div class="field">
+        <label for="${prefix}_automation_mode">Update mode</label>
+        <select id="${prefix}_automation_mode" data-automation-mode>
+          <option value="manual"${mode==='manual'?' selected':''}>Manual updates</option>
+          <option value="auto"${mode==='auto'?' selected':''}>Automatic updates from timestamps</option>
+        </select>
+      </div>
+      <div class="field-row" style="margin-top:12px;">
+        <div class="field"><label for="${prefix}_origin_at">Origin timestamp</label><input id="${prefix}_origin_at" data-automation-origin type="datetime-local" value="${esc(originValue)}"></div>
+        <div class="field"><label for="${prefix}_destination_at">Destination timestamp</label><input id="${prefix}_destination_at" data-automation-destination type="datetime-local" value="${esc(destinationValue)}"></div>
+      </div>
+      <div data-automation-summary>${automationSummaryHtml(record, kind, originValue, destinationValue, prefix)}</div>
+      ${paused ? `<div class="automation-paused">${icon('pause')} Automatic updates paused</div>` : ''}
+      <div class="automation-actions">
+        <button type="button" class="btn btn-accent btn-sm" data-action="save-automation" data-id="${esc(record.trackingNumber)}" data-kind="${kind}" data-prefix="${prefix}">${icon('save')} Save update mode</button>
+        ${mode==='auto' ? `<button type="button" class="btn btn-ghost btn-sm" data-action="toggle-automation" data-id="${esc(record.trackingNumber)}" data-kind="${kind}">${icon(paused?'play':'pause')} ${paused?'Resume automatic updates':'Pause automatic updates'}</button>` : ''}
+      </div>
+    </div>`;
+}
+function wireAutomationPanels(){
+  $all('[data-automation-panel]').forEach(panel=>{
+    if(panel.dataset.automationWired) return;
+    panel.dataset.automationWired='1';
+    const origin = panel.querySelector('[data-automation-origin]');
+    const destination = panel.querySelector('[data-automation-destination]');
+    const refresh = ()=>{
+      const owner = panel.dataset.kind==='flight'
+        ? flightsDB[panel.querySelector('[data-action="save-automation"]')?.dataset.id]
+        : shipmentsDB[panel.querySelector('[data-action="save-automation"]')?.dataset.id];
+      if(!owner) return;
+      const summary = panel.querySelector('[data-automation-summary]');
+      if(summary) summary.innerHTML = automationSummaryHtml(owner, panel.dataset.kind, origin.value, destination.value, panel.dataset.prefix);
+      const mode = panel.querySelector('[data-automation-mode]');
+      const disabled = mode && mode.value==='manual';
+      origin.disabled = false;
+      destination.disabled = false;
+      if(disabled) panel.classList.add('manual-mode'); else panel.classList.remove('manual-mode');
+    };
+    [origin,destination,panel.querySelector('[data-automation-mode]')].forEach(el=>{
+      if(el) ['input','change'].forEach(eventName=>el.addEventListener(eventName, refresh));
+    });
+    refresh();
+  });
+}
+async function applyAutomaticUpdate(record, kind, now=Date.now()){
+  const config = recordAutomation(record);
+  if(config.mode!=='auto' || config.paused) return false;
+  const progress = calculateAutomationProgress(record, kind, config.originAt, config.destinationAt, now);
+  if(!progress) return false;
+  const signature = `${progress.status}|${progress.stopId}`;
+  if(config.lastAppliedSignature===signature && record.status===progress.status) return false;
+  const timestamp = new Date().toISOString();
+  const event = {
+    id:genId(), status:progress.status, location:progress.location,
+    routeStopId:progress.stopId, timestamp:progress.stageAt,
+    description:'Automatic timestamp-based update'
+  };
+  if(Number.isFinite(Number(progress.stop?.latitude)) && Number.isFinite(Number(progress.stop?.longitude))){
+    event.latitude = Number(progress.stop.latitude);
+    event.longitude = Number(progress.stop.longitude);
+  }
+  record.events = record.events||[];
+  record.events.push(event);
+  record.status = progress.status;
+  record.updatedAt = timestamp;
+  if(kind==='flight'){
+    record.routeStops = automationRouteStops(record, kind);
+    record.currentLocationId = progress.stopId;
+  }else if(event.latitude!==undefined){
+    record.shipping = record.shipping||{};
+    record.shipping.latitude = event.latitude;
+    record.shipping.longitude = event.longitude;
+  }
+  record.trackingAutomation = {...config, lastAppliedSignature:signature, lastAutoUpdatedAt:timestamp};
+  return true;
+}
+async function runAutomaticUpdates(shouldRerender=false){
+  let shipmentsChanged = false, flightsChanged = false;
+  for(const shipment of Object.values(shipmentsDB)) shipmentsChanged = await applyAutomaticUpdate(shipment,'shipment') || shipmentsChanged;
+  for(const flight of Object.values(flightsDB)) flightsChanged = await applyAutomaticUpdate(flight,'flight') || flightsChanged;
+  if(shipmentsChanged) await saveShipments();
+  if(flightsChanged) await saveFlights();
+  if(shouldRerender && (shipmentsChanged||flightsChanged) && !document.querySelector('[data-automation-panel] input:focus, [data-automation-panel] select:focus, [data-automation-panel] textarea:focus')) rerenderCurrentPage();
+  return shipmentsChanged||flightsChanged;
+}
+function startAutomationTicker(){
+  if(automationTimer) clearInterval(automationTimer);
+  automationTimer = setInterval(()=>runAutomaticUpdates(true), AUTOMATION_TICK_MS);
+  runAutomaticUpdates(false);
+}
+async function saveAutomationSettings(kind, id, prefix){
+  const record = kind==='flight' ? flightsDB[id] : shipmentsDB[id];
+  if(!record) return;
+  if(!currentUser || (record.userId && currentUser.email!==record.userId && !currentUser.isAdmin)){
+    showToast('Only the creator can change automatic updates', true); return;
+  }
+  const mode = $(`#${prefix}_automation_mode`)?.value || 'manual';
+  const originAt = automationDateValue($(`#${prefix}_origin_at`)?.value);
+  const destinationAt = automationDateValue($(`#${prefix}_destination_at`)?.value);
+  if(mode==='auto' && (!originAt || !destinationAt || new Date(destinationAt)<=new Date(originAt))){
+    showToast('Choose valid timestamps with the destination after the origin', true); return;
+  }
+  const previous = JSON.stringify(record);
+  const current = recordAutomation(record);
+  record.trackingAutomation = {
+    ...current, mode, originAt, destinationAt,
+    paused:mode==='auto' && current.mode==='auto' ? !!current.paused : false,
+    lastAppliedSignature:''
+  };
+  const changed = mode==='auto' ? await applyAutomaticUpdate(record, kind) : false;
+  record.updatedAt = new Date().toISOString();
+  const saved = kind==='flight' ? await saveFlights() : await saveShipments();
+  if(!saved){
+    Object.assign(record, JSON.parse(previous));
+    return;
+  }
+  showToast(mode==='auto' ? (changed?'Automatic updates enabled':'Automatic schedule saved') : 'Manual updates enabled');
+  rerenderCurrentPage();
+}
+async function toggleAutomation(kind, id){
+  const record = kind==='flight' ? flightsDB[id] : shipmentsDB[id];
+  if(!record || !record.trackingAutomation || record.trackingAutomation.mode!=='auto') return;
+  if(!currentUser || (record.userId && currentUser.email!==record.userId && !currentUser.isAdmin)){
+    showToast('Only the creator can pause automatic updates', true); return;
+  }
+  record.trackingAutomation.paused = !record.trackingAutomation.paused;
+  record.trackingAutomation.lastAppliedSignature = '';
+  if(!record.trackingAutomation.paused) await applyAutomaticUpdate(record, kind);
+  record.updatedAt = new Date().toISOString();
+  const saved = kind==='flight' ? await saveFlights() : await saveShipments();
+  if(!saved) return;
+  showToast(record.trackingAutomation.paused ? 'Automatic updates paused — manual updates are available' : 'Automatic updates resumed');
+  rerenderCurrentPage();
+}
+
 function flightStatusColor(s){
   if(s==='Landed') return {bg:'var(--success-light)', fg:'var(--success)'};
   if(s==='Boarding' || s==='Departed') return {bg:'var(--warning-light)', fg:'var(--warning)'};
@@ -1585,7 +1899,7 @@ async function saveShipments(){
   catch(e){ showToast('Could not save — try again', true); return false; }
 }
 async function saveFlights(){
-  try{ await storageAPI.set('nbatools-flights', JSON.stringify(flightsDB), true); }
+  try{ await storageAPI.set('nbatools-flights', JSON.stringify(flightsDB), true); return true; }
   catch(e){ showToast('Could not save — try again', true); }
 }
 async function loadLicenseHistory(){
@@ -1762,6 +2076,46 @@ function bindEditImageUI(tn){
   });
 }
 
+/* Keeps whatever the user has already typed on wizard step 1 (Product) in
+   wizard.data WITHOUT validating anything. Called on every keystroke and
+   before any DOM swap, so an image upload can never wipe typed details. */
+function stashWizardProductFields(){
+  if(typeof wizard === 'undefined' || !wizard || wizard.step !== 1) return;
+  const d = wizard.data;
+  const nameEl = $('#w_productName');
+  if(!nameEl) return; // step 1 not on screen
+  d.productName = nameEl.value;
+  const descEl = $('#w_description'); if(descEl) d.description = descEl.value;
+  const catEl  = $('#w_category');    if(catEl)  d.category = catEl.value;
+  const qtyEl  = $('#w_quantity');    if(qtyEl)  d.quantity = qtyEl.value;
+  const valEl  = $('#w_value');       if(valEl)  d.value = valEl.value;
+  const curEl  = $('#w_currency');    if(curEl)  d.currency = curEl.value;
+}
+
+/* Wizard product image: swaps ONLY the #upload-area markup (no page
+   re-render), exactly like the edit form does, so the other product
+   fields keep their current values. */
+function bindWizardImageUI(){
+  const area = $('#upload-area');
+  if(!area) return;
+  wireImageUpload('w_image', 'upload-area', null, dataUrl=>{
+    stashWizardProductFields();
+    wizard.data.imageUrl = dataUrl;
+    area.innerHTML = `<div class="preview-wrap"><img src="${dataUrl}" alt=""><button type="button" class="preview-remove" id="w_remove_image">${icon('x')}</button></div>`;
+    renderIcons();
+    bindWizardImageUI();
+    showToast('Product photo added');
+  });
+  const removeBtn = $('#w_remove_image');
+  if(removeBtn) removeBtn.addEventListener('click', ()=>{
+    stashWizardProductFields();
+    wizard.data.imageUrl = null;
+    area.innerHTML = `<label class="upload-zone" for="w_image">${icon('image')}<p><b>Click to upload</b> a product photo</p></label><input type="file" id="w_image" accept="image/jpeg,image/png,image/webp" style="display:none;">`;
+    renderIcons();
+    bindWizardImageUI();
+  });
+}
+
 /* ---------- shared UI pieces ---------- */
 function navbar(active){
   const authed = !!currentUser;
@@ -1782,6 +2136,7 @@ function navbar(active){
       <a href="#/" class="brand"><span class="brand-word">Track<span class="dot">Port</span></span></a>
       <div class="nav-center">${links}</div>
       <div class="nav-side">
+        <button type="button" class="btn btn-ghost btn-sm install-app-btn" data-action="install-app" aria-label="Install TrackPort app" title="Install TrackPort app">${icon('download')}<span class="install-app-label">Install app</span></button>
         ${authed ? '' : `<a href="#/register" class="btn btn-accent btn-sm">Sign Up</a>`}
         <button class="nav-toggle" aria-label="Menu" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
       </div>
@@ -2931,13 +3286,39 @@ async function generateLicenseCard(){
     serial: val('input-serial'),
     photo: photoEl ? photoEl.src : ''
   };
-  if(!currentUser || !window.firebaseCloud || !window.firebaseCloud.isReady){
-    showToast('Cloud Firestore is unavailable — the card was not saved', true);
-    if(button){
-      button.disabled = false;
-      button.innerHTML = `${icon('credit-card')} Generate ID CARD`;
-      renderIcons();
+  // Portraits arrive as very large data URLs; shrink before storing anywhere.
+  if(typeof data.photo === 'string' && data.photo.startsWith('data:image/')){
+    try{ data.photo = await window.compressDataUrlImage(data.photo, 720, 0.82); }catch(_e){}
+  }
+
+  const resetButton = ()=>{
+    if(!button) return;
+    button.disabled = false;
+    button.innerHTML = `${icon('credit-card')} Generate ID CARD`;
+    try{ renderIcons(); }catch(_e){}
+  };
+
+  // localStorage throws QuotaExceededError on big photos — never let that block the card.
+  const cacheLocally = ()=>{
+    try{
+      localStorage.setItem(`generatedLicenseCard:${type}`, JSON.stringify(data));
+      localStorage.setItem('generatedLicenseCard', JSON.stringify(data));
+    }catch(storageError){
+      console.warn('Local cache skipped (storage full).', storageError);
+      try{
+        const light = { ...data, photo:'' };
+        localStorage.setItem(`generatedLicenseCard:${type}`, JSON.stringify(light));
+        localStorage.setItem('generatedLicenseCard', JSON.stringify(light));
+      }catch(_e){}
     }
+  };
+
+  if(!currentUser || !window.firebaseCloud || !window.firebaseCloud.isReady){
+    // Offline / signed out: still generate the card locally instead of stalling.
+    cacheLocally();
+    showToast('Cloud is unavailable — the card was generated locally', true);
+    resetButton();
+    navigate(`#/license-output/${type}`);
     return;
   }
   try{
@@ -2952,24 +3333,19 @@ async function generateLicenseCard(){
       createdAt:data.createdAt,
       payload:data
     }, ...licenseHistoryDB];
-    localStorage.setItem(`generatedLicenseCard:${type}`, JSON.stringify(data));
-    localStorage.setItem('generatedLicenseCard', JSON.stringify(data));
+    cacheLocally();
     showToast('Driver’s license saved to Cloud Firestore');
     navigate(`#/license-output/${type}`);
   }catch(err){
     console.warn('License document could not be saved to Firebase.', err);
-    showToast('Could not save the license to Cloud Firestore', true);
-    return;
+    cacheLocally();
+    showToast('Saved locally — the cloud save did not complete', true);
+    navigate(`#/license-output/${type}`);
   }finally{
-    if(button){
-      button.disabled = false;
-      if(button.textContent === 'Saving to Cloud Firestore…'){
-        button.innerHTML = `${icon('credit-card')} Generate ID CARD`;
-        renderIcons();
-      }
-    }
+    resetButton();
   }
 }
+
 
 const LICENSE_PRESETS = {
   hawaii: {
@@ -3660,6 +4036,7 @@ function pageConfirmation(tn){
           <button type="button" class="btn btn-primary btn-sm" data-action="shipment-update" data-id="${esc(s.trackingNumber)}">${icon('check')} Update movement</button>
           <a href="#/track/${tn}" class="btn btn-ghost btn-sm">${icon('eye')} View read-only tracking</a>
         </div>
+        ${automationCardHtml(s, 'shipment', 'shipment')}
       </div>
       ` : ''}
       ${routeMapCardHtml('confirmation-shipment-map', shipmentRoute, selectedShipmentStop, shipmentMapLocation, 'Live package route', `${s.shipping?.method||'Shipping'} · creator view`)}
@@ -4058,6 +4435,7 @@ function pageFlightDetail(code){
           <button class="btn btn-primary btn-sm" data-action="flight-update" data-id="${esc(f.trackingNumber)}">${icon('check')} Update movement</button>
           <button class="btn btn-accent btn-sm" data-action="share-flight-link" data-id="${esc(f.trackingNumber)}">${icon('share')} Share tracking link</button>
         </div>
+        ${automationCardHtml(f, 'flight', 'flight')}
       </div>
     ` : ''}
     ${!isSharedTrackingView ? `<div class="flight-ticket-actions no-print">
@@ -4109,6 +4487,7 @@ function updateModalHtml(tn){
         <button type="button" class="btn btn-ghost btn-sm" style="margin-top:0;margin-bottom:12px;" data-action="use-current-location" data-lat-target="u_latitude" data-lng-target="u_longitude">${icon('pin')} Use my current location</button>
         <div class="field"><label>Date &amp; time</label><input id="u_datetime" type="datetime-local" value="${nowLocalInputValue()}" required></div>
         <div class="field"><label>Note <span class="hint">optional</span></label><textarea id="u_note" placeholder="Additional details for this update"></textarea></div>
+         ${automationCardHtml(s, 'shipment', 'modal')}
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button>
           <button type="submit" class="btn btn-primary">${icon('check')} Save update</button>
@@ -4330,6 +4709,28 @@ function fitLicenseSignatures(){
   });
 }
 
+/* Scales the fixed 1040px-wide boarding pass down so the whole ticket
+   preview always fits the available screen width — the same fit-to-screen
+   technique used by the driver's license live preview. */
+const TICKET_DESIGN_WIDTH = 1040;
+function fitBoardingPassPreview(){
+  const wrap = document.getElementById('boardingPassScaleWrap');
+  const pass = document.getElementById('boardingPassEl');
+  if(!wrap || !pass) return;
+  const scale = Math.min(1, Math.max(1, wrap.clientWidth) / TICKET_DESIGN_WIDTH);
+  pass.style.transform = scale < 1 ? `scale(${scale})` : '';
+  wrap.style.height = `${Math.ceil(pass.offsetHeight * scale)}px`;
+}
+
+function fitLicensePreviews(){
+  $all('.license-card-scroll').forEach(scroll=>{
+    const tabletop = scroll.querySelector('.license-tabletop');
+    if(!tabletop) return;
+    const scale = Math.min(1, Math.max(1, scroll.clientWidth) / 800);
+    tabletop.style.setProperty('--license-preview-scale', String(scale));
+  });
+}
+
 function wireLicenseGenerator(){
   const map = [
     { id:'input-state', out:'output-state' },
@@ -4377,6 +4778,7 @@ function wireLicenseGenerator(){
   });
   fitLicenseSignatures();
   if(document.fonts) document.fonts.ready.then(()=>fitLicenseSignatures());
+  fitLicensePreviews();
 
   const photoInput = $('#input-photo-file');
   if(photoInput) photoInput.addEventListener('change', e=>{
@@ -4396,6 +4798,7 @@ function wireLicenseGenerator(){
     reader.readAsDataURL(file);
   });
 }
+window.addEventListener('resize', ()=>{ fitLicensePreviews(); fitBoardingPassPreview(); });
 function wirePageEvents(parts){
   // hero / search track forms
   const heroForm = $('#hero-track-form');
@@ -4445,8 +4848,11 @@ function wirePageEvents(parts){
     navigate('#/flight/'+encodeURIComponent(code));
   });
   wireLicenseGenerator();
+  fitBoardingPassPreview();
+  if(document.fonts) document.fonts.ready.then(()=>fitBoardingPassPreview());
   wireRouteStopSelects();
   wireFlightRouteStops();
+  wireAutomationPanels();
   wireTrackingMap();
   if(parts[0]==='track' && parts[1]) wireTrackingLiveUpdates(decodeURIComponent(parts[1]));
   else stopTrackingLiveUpdates();
@@ -4504,10 +4910,18 @@ function wirePageEvents(parts){
   const forgot = $('#forgot-link');
   if(forgot) forgot.addEventListener('click', e=>{ e.preventDefault(); showToast('If that email exists, a reset link was sent'); });
 
-  // wizard image upload
-  wireImageUpload('w_image', 'upload-area', null, dataUrl=>{ wizard.data.imageUrl = dataUrl; rerenderCurrentPage(); });
-  const wRemove = $('#w_remove_image');
-  if(wRemove) wRemove.addEventListener('click', ()=>{ wizard.data.imageUrl=null; rerenderCurrentPage(); });
+  // wizard image upload (in-place swap: never re-renders the step, so typed
+  // product details survive uploading / removing a photo)
+  bindWizardImageUI();
+  // live-save step 1 fields so nothing is ever lost, even if something else
+  // triggers a re-render while the user is typing
+  ['w_productName','w_description','w_category','w_quantity','w_value','w_currency'].forEach(id=>{
+    const el = $('#'+id);
+    if(el){
+      el.addEventListener('input', stashWizardProductFields);
+      el.addEventListener('change', stashWizardProductFields);
+    }
+  });
 
   // edit image upload (supports upload -> remove -> upload again)
   if($('#edit-upload-area')) bindEditImageUI(parts[1]);
@@ -4966,6 +5380,8 @@ document.addEventListener('click', async (e)=>{
   if(action==='share-email'){ const s=shipmentsDB[id]; shareEmail(id, s?s.productName:''); return; }
   if(action==='share-sms'){ const s=shipmentsDB[id]; shareSMS(id, s?s.productName:''); return; }
   if(action==='shipment-update'){ await updateShipmentMovement(id); return; }
+  if(action==='save-automation'){ await saveAutomationSettings(t.dataset.kind, id, t.dataset.prefix); return; }
+  if(action==='toggle-automation'){ await toggleAutomation(t.dataset.kind, id); return; }
   if(action==='open-update'){ openUpdateModal(id); return; }
   if(action==='close-modal'){ closeModal(); return; }
   if(action==='confirm-delete'){ await performDelete(id); return; }
@@ -5065,6 +5481,7 @@ function openUpdateModal(tn){
   document.body.appendChild(wrap);
   renderIcons();
   wireRouteStopSelects();
+  wireAutomationPanels();
   $('#update-form').dataset.tn = tn;
   $('#update-form').addEventListener('submit', async e=>{
     e.preventDefault();
@@ -5131,6 +5548,7 @@ async function performDelete(tn){
 window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', async ()=>{
   await loadDB();
+  startAutomationTicker();
   router();
 });
 </script>
@@ -5422,6 +5840,373 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
+})();
+</script>
+
+<!-- ==========================================================
+     TRACKPORT — PREMIUM EXPERIENCE LAYER (design + motion + perf)
+     Self-contained: only additive CSS/JS, no app logic touched.
+     ========================================================== -->
+<style id="tp-premium-layer">
+  :root{
+    --ease-lux: cubic-bezier(.16,1,.3,1);
+    --ease-soft: cubic-bezier(.33,1,.68,1);
+    --dur-fast: .28s;
+    --dur-mid: .55s;
+    --dur-slow: .9s;
+    --glass-glow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 1px 0 rgba(255,255,255,.10) inset,
+                  0 18px 50px rgba(0,0,0,.45), 0 0 60px -18px var(--primary-glow);
+  }
+
+  /* ---------- 1. Luxury soft scrolling ---------- */
+  html{scroll-behavior:smooth; scroll-padding-top:104px;}
+  html.tp-smooth, html.tp-smooth body{overscroll-behavior-y:none;}
+  body{scrollbar-gutter:stable;}
+  ::-webkit-scrollbar-thumb{transition:background .4s var(--ease-lux);}
+
+  /* Ambient scroll progress ribbon */
+  #tp-progress{
+    position:fixed; top:0; left:0; height:2px; width:100%; z-index:9999;
+    transform:scaleX(0); transform-origin:0 50%;
+    background:linear-gradient(90deg, rgba(212,175,90,0), var(--primary), #8f7ce8, rgba(212,175,90,0));
+    box-shadow:0 0 18px var(--primary-glow);
+    pointer-events:none; will-change:transform;
+  }
+
+  /* ---------- 2. Glowing glass background ---------- */
+  #tp-aura{position:fixed; inset:0; z-index:-3; pointer-events:none; overflow:hidden;}
+  #tp-aura .orb{
+    position:absolute; border-radius:50%; filter:blur(90px); opacity:.55;
+    will-change:transform; mix-blend-mode:screen;
+    animation:tpDrift 26s var(--ease-soft) infinite alternate;
+  }
+  #tp-aura .orb.a{width:46vw; height:46vw; left:-8vw; top:-10vh;
+    background:radial-gradient(circle at 30% 30%, rgba(212,175,90,.55), transparent 70%); animation-duration:24s;}
+  #tp-aura .orb.b{width:52vw; height:52vw; right:-12vw; top:12vh;
+    background:radial-gradient(circle at 60% 40%, rgba(110,96,235,.48), transparent 70%); animation-duration:31s; animation-delay:-6s;}
+  #tp-aura .orb.c{width:44vw; height:44vw; left:26vw; bottom:-18vh;
+    background:radial-gradient(circle at 50% 50%, rgba(36,174,168,.40), transparent 70%); animation-duration:37s; animation-delay:-13s;}
+  #tp-aura .veil{
+    position:absolute; inset:-10%;
+    background:
+      radial-gradient(1200px 700px at var(--mx,50%) var(--my,30%), rgba(255,255,255,.07), transparent 62%),
+      linear-gradient(180deg, rgba(6,7,12,.35), rgba(6,7,12,.72));
+    transition:background-position .6s var(--ease-lux);
+  }
+  #tp-grain{
+    position:fixed; inset:0; z-index:-2; pointer-events:none; opacity:.05;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
+  }
+  @keyframes tpDrift{
+    0%{transform:translate3d(0,0,0) scale(1);}
+    50%{transform:translate3d(4vw,-3vh,0) scale(1.12);}
+    100%{transform:translate3d(-3vw,4vh,0) scale(1.05);}
+  }
+
+  /* ---------- 3. Premium glass surfaces ---------- */
+  .glass, .card, .panel, .modal, .sheet, .navbar, .stat, .tile, .box{
+    transition:transform var(--dur-mid) var(--ease-lux),
+               box-shadow var(--dur-mid) var(--ease-lux),
+               border-color var(--dur-mid) var(--ease-lux),
+               background var(--dur-mid) var(--ease-lux);
+  }
+  .glass, .card, .panel{
+    -webkit-backdrop-filter:blur(26px) saturate(165%);
+    backdrop-filter:blur(26px) saturate(165%);
+    box-shadow:var(--glass-glow);
+  }
+  .glass:hover, .card:hover, .panel:hover{
+    border-color:rgba(255,255,255,.22);
+    box-shadow:0 0 0 1px rgba(255,255,255,.12) inset, 0 26px 70px rgba(0,0,0,.5), 0 0 80px -18px var(--primary-glow);
+  }
+  /* Specular sheen that follows the pointer */
+  .tp-sheen{position:relative; overflow:hidden;}
+  .tp-sheen::after{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:0;
+    background:radial-gradient(320px circle at var(--px,50%) var(--py,50%), rgba(255,255,255,.14), transparent 60%);
+    transition:opacity .45s var(--ease-lux);
+  }
+  .tp-sheen:hover::after{opacity:1;}
+
+  /* ---------- 4. Touch / press micro-interactions ---------- */
+  button, .btn, a.btn, .nav-link, [role="button"], .tab, .chip{
+    -webkit-tap-highlight-color:transparent;
+    transition:transform var(--dur-fast) var(--ease-lux), box-shadow var(--dur-fast) var(--ease-lux),
+               background var(--dur-fast) var(--ease-lux), color var(--dur-fast) var(--ease-lux),
+               opacity var(--dur-fast) var(--ease-lux);
+  }
+  .btn:hover, button:hover{transform:translateY(-1.5px);}
+  .btn:active, button:active, [role="button"]:active{transform:translateY(0) scale(.975);}
+  .tp-press{transform:scale(.97) !important;}
+  .tp-ripple{
+    position:absolute; border-radius:50%; transform:translate(-50%,-50%) scale(0);
+    background:radial-gradient(circle, rgba(255,255,255,.55), rgba(212,175,90,.25) 45%, transparent 70%);
+    pointer-events:none; animation:tpRipple .65s var(--ease-lux) forwards; mix-blend-mode:screen;
+  }
+  @keyframes tpRipple{to{transform:translate(-50%,-50%) scale(1); opacity:0;}}
+  input, select, textarea{transition:box-shadow var(--dur-fast) var(--ease-lux), border-color var(--dur-fast) var(--ease-lux), background var(--dur-fast) var(--ease-lux);}
+  input:focus, select:focus, textarea:focus{
+    box-shadow:0 0 0 3px var(--primary-light), 0 0 30px -8px var(--primary-glow); outline:none;
+  }
+  :focus-visible{outline:2px solid var(--primary); outline-offset:3px; border-radius:8px;}
+
+  /* ---------- 5. Reveal-on-scroll choreography ---------- */
+  .tp-reveal{opacity:0; transform:translate3d(0,22px,0) scale(.985); filter:blur(6px); will-change:opacity, transform;}
+  .tp-reveal.tp-in{
+    opacity:1 !important; transform:none !important; filter:blur(0) !important;
+    transition:opacity var(--dur-slow) var(--ease-lux), transform var(--dur-slow) var(--ease-lux), filter var(--dur-slow) var(--ease-lux);
+    transition-delay:var(--tp-delay, 0ms);
+  }
+  .tp-fade-page{animation:tpPageIn .7s var(--ease-lux) both;}
+  @keyframes tpPageIn{from{opacity:0; transform:translate3d(0,14px,0) scale(.995); filter:blur(4px);} to{opacity:1; transform:none; filter:none;}}
+
+  /* ---------- 6. Performance hints ---------- */
+  img, video{content-visibility:auto;}
+  .card, .panel, section{contain:paint;}
+  #tp-aura, #tp-progress, .tp-reveal{backface-visibility:hidden;}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
+    .tp-reveal{opacity:1; transform:none; filter:none;}
+  }
+</style>
+
+<div id="tp-progress"></div>
+<div id="tp-aura" aria-hidden="true">
+  <div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>
+  <div class="veil"></div>
+</div>
+<div id="tp-grain" aria-hidden="true"></div>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const raf = requestAnimationFrame;
+
+  /* ---- Luxury inertia scrolling (wheel-driven, touch stays native) ---- */
+  if(!reduce && matchMedia('(pointer:fine)').matches){
+    document.documentElement.classList.add('tp-smooth');
+    let target = window.scrollY, current = window.scrollY, running = false;
+    const ease = 0.11;
+    const max = () => document.documentElement.scrollHeight - window.innerHeight;
+    const loop = () => {
+      current += (target - current) * ease;
+      if(Math.abs(target - current) < .4){ current = target; running = false; }
+      window.scrollTo(0, current);
+      if(running) raf(loop);
+    };
+    addEventListener('wheel', e => {
+      if(e.ctrlKey) return;
+      const path = e.composedPath?.() || [];
+      for(const el of path){
+        if(el instanceof HTMLElement){
+          const st = getComputedStyle(el).overflowY;
+          if((st === 'auto' || st === 'scroll') && el.scrollHeight > el.clientHeight + 2) return;
+        }
+      }
+      e.preventDefault();
+      target = Math.min(max(), Math.max(0, target + e.deltaY * 1.05));
+      if(!running){ running = true; current = window.scrollY; raf(loop); }
+    }, { passive:false });
+    addEventListener('scroll', () => { if(!running) target = current = window.scrollY; }, { passive:true });
+    addEventListener('resize', () => { target = current = window.scrollY; }, { passive:true });
+  }
+
+  /* ---- Scroll progress ribbon ---- */
+  const bar = document.getElementById('tp-progress');
+  let ticking = false;
+  const drawProgress = () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.transform = `scaleX(${h > 0 ? Math.min(1, scrollY / h) : 0})`;
+    ticking = false;
+  };
+  addEventListener('scroll', () => { if(!ticking){ ticking = true; raf(drawProgress); } }, { passive:true });
+  drawProgress();
+
+  /* ---- Aura follows the pointer (throttled to one frame) ---- */
+  const veil = document.querySelector('#tp-aura .veil');
+  let pending = false, px = 50, py = 30;
+  const movePointer = (x, y) => {
+    px = (x / innerWidth) * 100; py = (y / innerHeight) * 100;
+    if(!pending){ pending = true; raf(() => { veil.style.setProperty('--mx', px + '%'); veil.style.setProperty('--my', py + '%'); pending = false; }); }
+  };
+  if(!reduce){
+    addEventListener('pointermove', e => movePointer(e.clientX, e.clientY), { passive:true });
+  }
+
+  /* ---- Reveal on scroll (works with dynamically rendered views) ---- */
+  const SELECTOR = '.card, .panel, .glass, section, .stat, .tile, .hero, .feature, .step, .row-item, table, .box';
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver((entries) => {
+    entries.forEach((en, i) => {
+      if(en.isIntersecting){
+        en.target.style.setProperty('--tp-delay', Math.min(i * 55, 260) + 'ms');
+        en.target.classList.add('tp-in');
+        io.unobserve(en.target);
+      }
+    });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 }) : null;
+
+  const enhance = (root) => {
+    if(reduce || !io) return;
+    root.querySelectorAll?.(SELECTOR).forEach(el => {
+      if(el.dataset.tpSeen) return;
+      el.dataset.tpSeen = '1';
+      el.classList.add('tp-reveal');
+      if(el.matches('.card, .panel, .glass, .tile, .stat')) el.classList.add('tp-sheen');
+      io.observe(el);
+    });
+  };
+
+  const app = document.getElementById('app') || document.body;
+  enhance(document);
+  let mo_t;
+  new MutationObserver(() => { clearTimeout(mo_t); mo_t = setTimeout(() => {
+    enhance(app);
+    app.firstElementChild?.classList.add('tp-fade-page');
+  }, 60); }).observe(app, { childList:true, subtree:true });
+
+  /* ---- Pointer sheen coordinates ---- */
+  document.addEventListener('pointermove', e => {
+    const card = e.target.closest?.('.tp-sheen');
+    if(!card) return;
+    const r = card.getBoundingClientRect();
+    card.style.setProperty('--px', ((e.clientX - r.left) / r.width * 100) + '%');
+    card.style.setProperty('--py', ((e.clientY - r.top) / r.height * 100) + '%');
+  }, { passive:true });
+
+  /* ---- Touch / click ripple + press feedback ---- */
+  const RIPPLE_SEL = 'button, .btn, [role="button"], .nav-link, .chip, .tab, .addr-gen-btn';
+  document.addEventListener('pointerdown', e => {
+    const el = e.target.closest?.(RIPPLE_SEL);
+    if(!el || reduce) return;
+    el.classList.add('tp-press');
+    const cs = getComputedStyle(el);
+    if(cs.position === 'static') el.style.position = 'relative';
+    if(cs.overflow === 'visible') el.style.overflow = 'hidden';
+    const r = el.getBoundingClientRect();
+    const size = Math.max(r.width, r.height) * 2.2;
+    const s = document.createElement('span');
+    s.className = 'tp-ripple';
+    s.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - r.left}px;top:${e.clientY - r.top}px;`;
+    el.appendChild(s);
+    setTimeout(() => s.remove(), 680);
+  }, { passive:true });
+  const unpress = () => document.querySelectorAll('.tp-press').forEach(el => el.classList.remove('tp-press'));
+  addEventListener('pointerup', unpress, { passive:true });
+  addEventListener('pointercancel', unpress, { passive:true });
+
+  /* ---- Haptic tap on supported touch devices ---- */
+  addEventListener('pointerdown', e => {
+    if(e.pointerType === 'touch' && navigator.vibrate && e.target.closest?.(RIPPLE_SEL)) navigator.vibrate(8);
+  }, { passive:true });
+
+  /* ---- Performance: lazy-load + async decode every image ---- */
+  const lazify = (root) => root.querySelectorAll?.('img').forEach(img => {
+    if(!img.loading) img.loading = 'lazy';
+    img.decoding = 'async';
+  });
+  lazify(document);
+  new MutationObserver(() => lazify(document)).observe(document.body, { childList:true, subtree:true });
+
+  /* ---- Pause heavy background work when the tab is hidden ---- */
+  document.addEventListener('visibilitychange', () => {
+    const aura = document.getElementById('tp-aura');
+    aura.style.animationPlayState = document.hidden ? 'paused' : 'running';
+    aura.querySelectorAll('.orb').forEach(o => o.style.animationPlayState = document.hidden ? 'paused' : 'running');
+  });
+})();
+</script>
+
+<script id="trackport-pwa">
+/* ---------- installable PWA experience ---------- */
+(function(){
+  'use strict';
+
+  let deferredInstallPrompt = null;
+  const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+
+  function installButtons(){
+    return Array.from(document.querySelectorAll('[data-action="install-app"]'));
+  }
+
+  function updateInstallButtons(){
+    const installed = isStandalone();
+    installButtons().forEach(button => {
+      button.hidden = installed;
+      button.setAttribute('aria-hidden', installed ? 'true' : 'false');
+      if(deferredInstallPrompt){
+        button.title = 'Install TrackPort on this device';
+      }
+    });
+  }
+
+  function explainInstall(){
+    const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    const message = isIos
+      ? 'To install TrackPort, tap Share in Safari, then choose “Add to Home Screen”.'
+      : 'Use your browser menu and choose “Install app” or “Add to Home screen”.';
+    if(typeof window.showToast === 'function') window.showToast(message);
+    else window.alert(message);
+  }
+
+  async function requestInstall(){
+    if(!deferredInstallPrompt){
+      explainInstall();
+      return;
+    }
+    const promptEvent = deferredInstallPrompt;
+    deferredInstallPrompt = null;
+    updateInstallButtons();
+    try{
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      if(choice && choice.outcome === 'accepted'){
+        if(typeof window.showToast === 'function') window.showToast('TrackPort is being installed');
+      }
+    }catch(error){
+      console.warn('TrackPort install prompt was not completed.', error);
+      explainInstall();
+    }
+  }
+
+  window.addEventListener('beforeinstallprompt', event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallButtons();
+  });
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    updateInstallButtons();
+    if(typeof window.showToast === 'function') window.showToast('TrackPort installed successfully');
+  });
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-action="install-app"]');
+    if(button){
+      event.preventDefault();
+      requestInstall();
+    }
+  });
+
+  function registerServiceWorker(){
+    if(!('serviceWorker' in navigator) || !/^https?:$/.test(window.location.protocol)) return;
+    navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(error => {
+      console.warn('TrackPort offline support could not be enabled.', error);
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', () => {
+      updateInstallButtons();
+      registerServiceWorker();
+    }, {once:true});
+  }else{
+    updateInstallButtons();
+    registerServiceWorker();
+  }
 })();
 </script>
 
