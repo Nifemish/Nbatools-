@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
+<!-- Change only this number when uploading a new HTML version. -->
+<meta name="trackport-version" content="1.0.0">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -206,6 +208,7 @@
     --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 10px 34px rgba(0,0,0,0.32);
     --shadow-lift: 0 10px 24px rgba(0,0,0,0.4), 0 30px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset;
     --shadow-glow: 0 0 0 1px rgba(212,175,90,0.25), 0 8px 30px rgba(212,175,90,0.12);
+     --app-top-space: 52px;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -271,13 +274,13 @@
   }
 
   /* Layout */
-  #app{min-height:100vh; display:flex; flex-direction:column;}
-  .wrap{max-width:1120px; margin:0 auto; padding:0 24px;}
+  #app{min-height:100vh; width:100%; max-width:100%; min-width:0; display:flex; flex-direction:column; padding-top:calc(var(--app-top-space) + env(safe-area-inset-top,0px)); overflow-x:clip;}
+  .wrap{width:100%; max-width:1120px; min-width:0; margin:0 auto; padding:0 24px;}
   .container-narrow{max-width:520px; margin:0 auto; padding:0 24px;}
 
   /* Nav */
   .navbar{
-    position:sticky; top:0; z-index:50;
+    position:sticky; top:calc(var(--app-top-space) + env(safe-area-inset-top,0px)); z-index:50;
     background:rgba(10,11,18,0.62);
     -webkit-backdrop-filter:blur(20px) saturate(160%);
     backdrop-filter:blur(20px) saturate(160%);
@@ -510,6 +513,7 @@
   .stub-footer .member{font-family:Arial,sans-serif; font-size:8px; text-align:right; margin-top:10px; font-weight:700;}
   .flight-ticket-actions{display:flex; gap:10px; align-items:center; justify-content:center; margin-top:18px; flex-wrap:wrap; text-align:center;}
   .flight-history-card,.flight-share-card{margin-top:24px;}
+  .flight-history-panel{margin-bottom:24px;}
   .track-summary{max-width:1160px;}
   @media (max-width:760px){
     .flight-ticket-stage{padding:16px 8px;}
@@ -1132,6 +1136,22 @@
    .license-history-item-meta{display:block; margin-top:3px; color:var(--muted); font-size:12px;}
    .license-history-item-arrow{color:var(--muted);}
    .license-history-empty{padding:22px 0 8px; color:var(--muted); font-size:13px;}
+  .record-history-list{display:grid; gap:10px;}
+  .record-history-item{display:flex; align-items:center; gap:14px; padding:14px 16px; border:1px solid var(--border); border-radius:14px; color:var(--ink); background:rgba(255,255,255,.025); transition:transform .2s var(--ease),border-color .2s var(--ease),background .2s var(--ease);}
+  .record-history-item:hover{transform:translateY(-2px); border-color:var(--primary); background:rgba(212,175,90,.08);}
+  .record-history-item-icon{width:40px; height:40px; flex:0 0 40px; display:flex; align-items:center; justify-content:center; border-radius:12px; background:var(--primary-light); color:var(--primary);}
+  .record-history-item-icon svg{width:19px; height:19px;}
+  .record-history-item-copy{min-width:0; flex:1;}
+  .record-history-item-title{display:block; font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .record-history-item-meta{display:block; margin-top:3px; color:var(--muted); font-size:12px; line-height:1.45;}
+  .record-history-item-actions{display:flex; align-items:center; justify-content:flex-end; gap:7px; flex-wrap:wrap;}
+  .record-history-item-actions .btn{margin-top:0; white-space:nowrap;}
+  .record-history-empty{padding:22px 0 8px; color:var(--muted); font-size:13px;}
+  @media (max-width:680px){
+    .record-history-item{align-items:flex-start; flex-wrap:wrap;}
+    .record-history-item-copy{min-width:calc(100% - 54px);}
+    .record-history-item-actions{width:100%; padding-left:54px; justify-content:flex-start;}
+  }
   .license-generator-shell{min-height:calc(100vh - 88px); background:radial-gradient(circle at 50% -20%,rgba(203,161,53,.08),transparent 42%),var(--bg); color:var(--ink); padding:32px 24px 64px;}
   .license-generator{max-width:1280px; margin:0 auto; font-family:'Inter',sans-serif;}
   .license-generator h1,.license-generator h2{font-family:'Playfair Display',serif; color:var(--ink); letter-spacing:-.025em;}
@@ -1313,7 +1333,7 @@
   /* ---- Scroll-reveal text animation ---- */
   .reveal{opacity:0; transition:opacity .85s cubic-bezier(.22,1,.36,1), transform .85s cubic-bezier(.22,1,.36,1); will-change:opacity, transform;}
   .reveal-left{transform:translateX(-56px);}
-  .reveal-right{transform:translateX(56px);}
+  .reveal-right{transform:translateX(-56px);}
   .reveal.in{opacity:1; transform:translateX(0);}
   .tile-grid-6 .tile:nth-child(1){transition-delay:.02s;}
   .tile-grid-6 .tile:nth-child(2){transition-delay:.08s;}
@@ -1385,6 +1405,8 @@ let licenseHistoryDB = [];
 let currentUser = null; // {email, fullName, phone, isAdmin}
 const AUTH_SESSION_KEY = 'trackport-auth-session-v1';
 const LAST_ROUTE_KEY = 'trackport-last-route-v1';
+const DEFAULT_AUTH_ROUTE = '#/dashboard';
+let initialRouteHistorySeeded = false;
 let wizard = { step:1, data:{} };
 let dbReady = false;
 let trackingLiveUnsubscribe = null;
@@ -1895,19 +1917,47 @@ function clearAuthSession(){
     console.warn('Login session could not be cleared.', error);
   }
 }
+function isRestorableRoute(route){
+  return /^#\/(dashboard|flight-history|shipment-history|license-history|admin)\/?$/.test(String(route||''));
+}
+function isProtectedRoute(route){
+  return /^#\/(dashboard|create-flight|create|create-license|flight-history|shipment-history|license-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
+}
 function rememberCurrentRoute(){
   const route = location.hash || '#/';
+  // Only remember stable destinations. Forms, editors, confirmations, and
+  // detail pages should not trap a returning user on stale or half-complete UI.
+  if(!currentUser || !isRestorableRoute(route)) return;
   try{ localStorage.setItem(LAST_ROUTE_KEY, route); }
   catch(error){ console.warn('Current page could not be remembered.', error); }
 }
-function restoreLastRoute(){
-  if(location.hash || !currentUser) return;
+function restoredRoute(){
   try{
     const route = localStorage.getItem(LAST_ROUTE_KEY);
-    if(route && route.startsWith('#/')) location.hash = route;
+    return isRestorableRoute(route) ? route : DEFAULT_AUTH_ROUTE;
   }catch(error){
     console.warn('Previous page could not be restored.', error);
+    return DEFAULT_AUTH_ROUTE;
   }
+}
+function seedInitialRouteHistory(){
+  if(initialRouteHistorySeeded) return;
+  const requestedRoute = location.hash || '';
+  let route = requestedRoute || (currentUser ? restoredRoute() : '#/');
+  if(!currentUser && isProtectedRoute(route)) route = '#/login';
+  if(currentUser && /^#\/(login|register)\/?$/.test(route)) route = DEFAULT_AUTH_ROUTE;
+  // Give every authenticated deep link an in-app page behind it. This makes
+  // the first Back press return to the dashboard instead of closing the PWA.
+  const baseRoute = currentUser ? DEFAULT_AUTH_ROUTE : '#/';
+  try{
+    history.replaceState({ trackportRoot:true }, '', baseRoute);
+    if(route !== baseRoute){
+      history.pushState({ trackportRoute:true }, '', route);
+    }
+  }catch(error){
+    console.warn('App navigation history could not be initialized.', error);
+  }
+  initialRouteHistorySeeded = true;
 }
 async function saveUsers(){
   try{ await storageAPI.set('nbatools-users', JSON.stringify(usersDB), true); }
@@ -1938,7 +1988,7 @@ async function saveShipments(){
 }
 async function saveFlights(){
   try{ await storageAPI.set('nbatools-flights', JSON.stringify(flightsDB), true); return true; }
-  catch(e){ showToast('Could not save — try again', true); }
+  catch(e){ showToast('Could not save — try again', true); return false; }
 }
 async function loadLicenseHistory(){
   licenseHistoryDB = [];
@@ -2573,10 +2623,48 @@ function licenseHistoryMarkup(items){
   }).join('')}</div>`;
 }
 
+function flightHistoryMarkup(items){
+  if(!items.length) return `<div class="record-history-empty">No flight tickets yet. Generate your first ticket to start a separate flight history.</div>`;
+  return `<div class="record-history-list">${items.map(f=>{
+    const route = [f.origin,f.destination].filter(Boolean).join(' → ');
+    return `<div class="record-history-item">
+      <span class="record-history-item-icon">${icon('plane')}</span>
+      <span class="record-history-item-copy">
+        <span class="record-history-item-title">${esc(f.flightNo||'Flight ticket')} — ${esc(f.passenger||'Unnamed passenger')}</span>
+        <span class="record-history-item-meta">${esc(f.airline||'Airline')} · ${esc(route||'Route not set')}<br><span class="mono">${esc(f.trackingNumber)}</span> · ${esc(f.status||'Ticket Booked')} · Updated ${esc(fmtDateTime(f.updatedAt||f.createdAt))}</span>
+      </span>
+      <span class="record-history-item-actions">
+        <a href="#/flight/${encodeURIComponent(f.trackingNumber)}" class="btn btn-primary btn-sm">${icon('edit')} Continue update</a>
+        <a href="#/track/${encodeURIComponent(f.trackingNumber)}" class="btn btn-ghost btn-sm">${icon('eye')} View</a>
+      </span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function shipmentHistoryMarkup(items){
+  if(!items.length) return `<div class="record-history-empty">No shipping products yet. Create your first shipment to start a separate shipping history.</div>`;
+  return `<div class="record-history-list">${items.map(s=>{
+    const recipient = s.recipient || {};
+    return `<div class="record-history-item">
+      <span class="record-history-item-icon">${icon('package')}</span>
+      <span class="record-history-item-copy">
+        <span class="record-history-item-title">${esc(s.productName||'Shipping product')}</span>
+        <span class="record-history-item-meta"><span class="mono">${esc(s.trackingNumber)}</span> · ${esc(recipient.fullName||'Recipient not set')} · ${esc(recipient.city||'Destination not set')}<br>${esc(s.status||'Order Created')} · Updated ${esc(fmtDateTime(s.updatedAt||s.createdAt))}</span>
+      </span>
+      <span class="record-history-item-actions">
+        <a href="#/track/${encodeURIComponent(s.trackingNumber)}" class="btn btn-ghost btn-sm">${icon('eye')} View</a>
+        <a href="#/edit/${encodeURIComponent(s.trackingNumber)}" class="btn btn-primary btn-sm">${icon('edit')} Edit</a>
+      </span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function pageDashboard(){
   const mine = Object.values(shipmentsDB).filter(s=>s.userId===currentUser.email).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  const flightsMine = Object.values(flightsDB).filter(f=>f.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
   const stats = computeStats(mine);
   const recent = mine.slice(0,8);
+  const recentFlights = flightsMine.slice(0,5);
 
   const rowsDesktop = recent.map(s=>`
     <tr>
@@ -2649,8 +2737,16 @@ function pageDashboard(){
       <div class="card stat-card"><div class="top"><span class="stat-label">Delivered</span><span class="stat-icon" style="background:var(--success-light);color:var(--success);">${icon('checkc')}</span></div><span class="stat-val">${stats.delivered}</span></div>
     </div>
 
+    <div class="card card-pad flight-history-panel">
+      <div class="section-title-row">
+        <h3>Recent flight tickets</h3>
+        ${flightsMine.length ? `<a href="#/flight-history" style="font-size:13px;color:var(--primary);font-weight:600;">View flight history</a>` : ''}
+      </div>
+      ${recentFlights.length ? flightHistoryMarkup(recentFlights) : `<div class="record-history-empty">No flight tickets yet. <a href="#/create-flight" style="color:var(--primary);font-weight:600;">Create a trackable flight ticket</a> to see it here.</div>`}
+    </div>
+
     <div class="card card-pad">
-      <div class="section-title-row"><h3>Recent shipments</h3>${mine.length>8?`<span style="font-size:13px;color:var(--muted);">${mine.length} total</span>`:''}</div>
+      <div class="section-title-row"><h3>Recent shipments</h3>${mine.length ? `<a href="#/shipment-history" style="font-size:13px;color:var(--primary);font-weight:600;">View shipping history</a>` : ''}</div>
       ${recent.length===0 ? empty : `
         <table class="shipment-table">
           <thead><tr><th>Product</th><th>Tracking #</th><th>Recipient</th><th>Destination</th><th>Status</th><th>Created</th><th></th></tr></thead>
@@ -2666,6 +2762,46 @@ function pageDashboard(){
        </div>
        ${licenseHistoryMarkup(licenseHistoryDB.slice(0,5))}
      </div>
+  </div>
+  <div style="height:60px;"></div>
+  ${footer()}`;
+}
+
+function pageFlightHistory(){
+  const flights = Object.values(flightsDB)
+    .filter(f=>f.userId===currentUser.email)
+    .sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  return `
+  ${navbar('dashboard')}
+  <div class="wrap">
+    <div class="page-head">
+      <div><h1>Flight ticket history</h1><div class="greet">Reopen any saved ticket to continue its movement updates.</div></div>
+      <a href="#/create-flight" class="btn btn-accent">${icon('plus')} New flight ticket</a>
+    </div>
+    <div class="card card-pad">
+      <div class="section-title-row"><h3>All flight tickets</h3><span style="font-size:13px;color:var(--muted);">${flights.length} saved</span></div>
+      ${flightHistoryMarkup(flights)}
+    </div>
+  </div>
+  <div style="height:60px;"></div>
+  ${footer()}`;
+}
+
+function pageShipmentHistory(){
+  const shipments = Object.values(shipmentsDB)
+    .filter(s=>s.userId===currentUser.email)
+    .sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  return `
+  ${navbar('dashboard')}
+  <div class="wrap">
+    <div class="page-head">
+      <div><h1>Shipping product history</h1><div class="greet">Every saved shipping product and its latest movement, in one place.</div></div>
+      <a href="#/create" class="btn btn-accent">${icon('plus')} New shipment</a>
+    </div>
+    <div class="card card-pad">
+      <div class="section-title-row"><h3>All shipping products</h3><span style="font-size:13px;color:var(--muted);">${shipments.length} saved</span></div>
+      ${shipmentHistoryMarkup(shipments)}
+    </div>
   </div>
   <div style="height:60px;"></div>
   ${footer()}`;
@@ -4682,7 +4818,7 @@ function pageAdmin(){
 /* ================= ROUTER ================= */
 async function router(){
   if(!dbReady) await loadDB();
-  restoreLastRoute();
+  seedInitialRouteHistory();
   rememberCurrentRoute();
   const hash = location.hash.replace(/^#/,'') || '/';
   const parts = hash.split('/').filter(Boolean);
@@ -4703,6 +4839,14 @@ async function router(){
   else if(parts[0]==='create'){
     if(!currentUser){ html = redirectTo('/login'); }
     else { html = pageCreateShipment(); }
+  }
+  else if(parts[0]==='flight-history'){
+    if(!currentUser){ html = redirectTo('/login'); }
+    else { html = pageFlightHistory(); }
+  }
+  else if(parts[0]==='shipment-history'){
+    if(!currentUser){ html = redirectTo('/login'); }
+    else { html = pageShipmentHistory(); }
   }
   else if(parts[0]==='create-license'){
     if(!currentUser){ html = redirectTo('/login'); }
@@ -4742,6 +4886,7 @@ async function router(){
   renderIcons();
   wirePageEvents(parts);
   window.scrollTo(0,0);
+  document.documentElement.scrollTop = 0;
 }
 function redirectTo(hash){ location.hash = hash; return null; }
 
@@ -4895,7 +5040,11 @@ function wirePageEvents(parts){
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       events: [{ id:genId(), status:'Ticket Booked', location:currentLocation?.name || customLocation || origin, routeStopId:currentLocationId||routeStops[0]?.id||'', timestamp:new Date().toISOString(), description:'Flight ticket generated' }]
     };
-    await saveFlights();
+    const saved = await saveFlights();
+    if(!saved){
+      delete flightsDB[code];
+      return;
+    }
     flightForm.reset();
     showToast('Flight ticket created');
     navigate('#/flight/'+encodeURIComponent(code));
@@ -5448,6 +5597,7 @@ document.addEventListener('click', async (e)=>{
       showToast('Only the creator can update this flight', true);
       return;
     }
+    const previous = JSON.stringify(f);
     const previousStatus = f.status;
     const selectedStatus = $('#flight_progression')?.value || previousStatus;
     const routeStops = Array.isArray(f.routeStops)&&f.routeStops.length ? f.routeStops : buildRouteStops(f.origin, f.destination);
@@ -5468,7 +5618,11 @@ document.addEventListener('click', async (e)=>{
       timestamp:new Date().toISOString(),
       description:selectedStatus!==previousStatus ? 'Flight progression updated' : 'Flight movement updated'
     });
-    await saveFlights();
+    const saved = await saveFlights();
+    if(!saved){
+      Object.assign(f, JSON.parse(previous));
+      return;
+    }
     showToast('Flight movement updated');
     rerenderCurrentPage();
     return;
@@ -5916,7 +6070,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   /* ---------- 1. Luxury soft scrolling ---------- */
   html{scroll-behavior:smooth; scroll-padding-top:104px;}
   html.tp-smooth, html.tp-smooth body{overscroll-behavior-y:none;}
-  body{scrollbar-gutter:stable;}
+  html, body{width:100%; max-width:100%; overflow-x:hidden;}
+  body{scrollbar-gutter:auto;}
+  @media (min-width:721px){ body{scrollbar-gutter:stable;} }
   ::-webkit-scrollbar-thumb{transition:background .4s var(--ease-lux);}
 
   /* Ambient scroll progress ribbon */
@@ -6020,10 +6176,42 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   .card, .panel, section{contain:paint;}
   #tp-aura, #tp-progress, .tp-reveal{backface-visibility:hidden;}
 
+  /* Touch scrolling should stay visually anchored: keep the soft fade,
+     but remove horizontal reveal motion and moving ambient layers. */
+  @media (max-width:720px), (pointer:coarse){
+    #tp-aura .orb{animation:none; transform:none; will-change:auto;}
+    #tp-aura .veil{transition:none;}
+    .reveal-left, .reveal-right{transform:none;}
+  }
+
   @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto;}
     *,*::before,*::after{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}
     .tp-reveal{opacity:1; transform:none; filter:none;}
+  }
+</style>
+
+<style id="trackport-version-update">
+  #tp-app-update{
+    position:fixed; top:calc(var(--app-top-space) + env(safe-area-inset-top,0px) + 12px);
+    left:50%; width:min(calc(100% - 24px), 520px); transform:translateX(-50%);
+    z-index:10000; display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:15px 16px 15px 18px; border:1px solid rgba(212,175,90,.4); border-radius:18px;
+    color:#fff; background:rgba(17,18,29,.96); box-shadow:0 18px 50px rgba(0,0,0,.5), 0 0 36px -12px rgba(212,175,90,.5);
+    -webkit-backdrop-filter:blur(22px) saturate(150%); backdrop-filter:blur(22px) saturate(150%);
+  }
+  #tp-app-update[hidden]{display:none;}
+  #tp-app-update .tp-update-copy{min-width:0; display:grid; gap:4px;}
+  #tp-app-update strong{font-size:14px; letter-spacing:.01em;}
+  #tp-app-update span{font-size:12px; line-height:1.45; color:rgba(255,255,255,.7);}
+  #tp-app-update .tp-update-actions{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
+  #tp-app-update button{border:0; font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;}
+  #tp-app-update .tp-update-now{padding:10px 13px; border-radius:10px; color:#11131d; background:var(--primary);}
+  #tp-app-update .tp-update-later{padding:8px 4px; color:rgba(255,255,255,.68); background:transparent;}
+  #tp-app-update button:disabled{cursor:wait; opacity:.65;}
+  @media (max-width:560px){
+    #tp-app-update{align-items:flex-start; flex-direction:column; gap:12px; padding:15px;}
+    #tp-app-update .tp-update-actions{width:100%; justify-content:flex-end;}
   }
 </style>
 
@@ -6179,6 +6367,143 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   'use strict';
 
   let deferredInstallPrompt = null;
+  const VERSION_META = document.querySelector('meta[name="trackport-version"]');
+  const APP_VERSION = (VERSION_META?.content || '0.0.0').trim();
+  const INSTALLED_VERSION_KEY = 'trackport:installed-version';
+  const DISMISSED_VERSION_PREFIX = 'trackport:update-dismissed:';
+  let serviceWorkerRegistration = null;
+  let updateTargetVersion = '';
+  let updateReloadStarted = false;
+  let versionCheckBusy = false;
+
+  const storageGet = (storage, key) => {
+    try{ return storage.getItem(key); }catch(_error){ return null; }
+  };
+  const storageSet = (storage, key, value) => {
+    try{ storage.setItem(key, value); }catch(_error){}
+  };
+  const isDismissed = version => Boolean(storageGet(sessionStorage, DISMISSED_VERSION_PREFIX + (version || 'latest')));
+
+  function hideUpdateBanner(){
+    const banner = document.getElementById('tp-app-update');
+    if(banner) banner.hidden = true;
+  }
+
+  function showUpdateBanner(version){
+    const nextVersion = String(version || '').trim();
+    if(nextVersion && nextVersion === APP_VERSION && !storageGet(localStorage, INSTALLED_VERSION_KEY)) return;
+    if(isDismissed(nextVersion)) return;
+    updateTargetVersion = nextVersion;
+
+    let banner = document.getElementById('tp-app-update');
+    if(!banner){
+      banner = document.createElement('aside');
+      banner.id = 'tp-app-update';
+      banner.setAttribute('role', 'status');
+      banner.setAttribute('aria-live', 'polite');
+      banner.innerHTML = `
+        <div class="tp-update-copy">
+          <strong>TrackPort update available</strong>
+          <span data-tp-update-copy>A newer version is ready. Update without losing your saved records.</span>
+        </div>
+        <div class="tp-update-actions">
+          <button type="button" class="tp-update-later" data-tp-update="later">Later</button>
+          <button type="button" class="tp-update-now" data-tp-update="now">Update now</button>
+        </div>`;
+      document.body.appendChild(banner);
+      banner.addEventListener('click', event => {
+        const action = event.target.closest?.('[data-tp-update]')?.dataset.tpUpdate;
+        if(action === 'later'){
+          storageSet(sessionStorage, DISMISSED_VERSION_PREFIX + (updateTargetVersion || 'latest'), '1');
+          hideUpdateBanner();
+        }
+        if(action === 'now') applyAppUpdate();
+      });
+    }
+    const copy = banner.querySelector('[data-tp-update-copy]');
+    if(copy){
+      copy.textContent = nextVersion
+        ? `Version ${nextVersion} is ready. Update without losing your saved records.`
+        : 'A newer version is ready. Update without losing your saved records.';
+    }
+    banner.hidden = false;
+  }
+
+  function currentVersionWasPreviouslyInstalled(){
+    const installedVersion = storageGet(localStorage, INSTALLED_VERSION_KEY);
+    if(!installedVersion){
+      storageSet(localStorage, INSTALLED_VERSION_KEY, APP_VERSION);
+      return;
+    }
+    if(installedVersion !== APP_VERSION) showUpdateBanner(APP_VERSION);
+  }
+
+  function versionProbeUrl(){
+    const url = new URL(window.location.href);
+    url.hash = '';
+    url.searchParams.delete('tp_update');
+    url.searchParams.set('tp_version_probe', String(Date.now()));
+    return url.toString();
+  }
+
+  function versionFromHtml(html){
+    try{
+      const parsed = new DOMParser().parseFromString(html, 'text/html');
+      return (parsed.querySelector('meta[name="trackport-version"]')?.content || '').trim();
+    }catch(_error){
+      return '';
+    }
+  }
+
+  async function checkForNewVersion(){
+    if(versionCheckBusy || !/^https?:$/.test(window.location.protocol)) return;
+    versionCheckBusy = true;
+    try{
+      const response = await fetch(versionProbeUrl(), {
+        cache:'no-store',
+        credentials:'same-origin',
+        headers:{'Cache-Control':'no-cache'}
+      });
+      if(!response.ok) return;
+      const remoteVersion = versionFromHtml(await response.text());
+      if(remoteVersion && remoteVersion !== APP_VERSION) showUpdateBanner(remoteVersion);
+    }catch(error){
+      console.warn('TrackPort version check could not be completed.', error);
+    }finally{
+      versionCheckBusy = false;
+    }
+  }
+
+  function forceFreshReload(){
+    const url = new URL(window.location.href);
+    url.searchParams.set('tp_update', String(Date.now()));
+    window.location.replace(url.toString());
+  }
+
+  async function applyAppUpdate(){
+    if(updateReloadStarted) return;
+    updateReloadStarted = true;
+    const button = document.querySelector('[data-tp-update="now"]');
+    if(button){
+      button.disabled = true;
+      button.textContent = 'Updating…';
+    }
+    if(updateTargetVersion) storageSet(localStorage, INSTALLED_VERSION_KEY, updateTargetVersion);
+    try{
+      if(serviceWorkerRegistration){
+        await serviceWorkerRegistration.update();
+        const waiting = serviceWorkerRegistration.waiting;
+        if(waiting){
+          waiting.postMessage({type:'SKIP_WAITING'});
+          return;
+        }
+      }
+    }catch(error){
+      console.warn('TrackPort service worker update could not be completed.', error);
+    }
+    forceFreshReload();
+  }
+
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
 
@@ -6248,18 +6573,51 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 
   function registerServiceWorker(){
     if(!('serviceWorker' in navigator) || !/^https?:$/.test(window.location.protocol)) return;
-    navigator.serviceWorker.register('./sw.js', {scope:'./'}).catch(error => {
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(updateReloadStarted) window.location.reload();
+    });
+    navigator.serviceWorker.register('./sw.js', {scope:'./'}).then(registration => {
+      serviceWorkerRegistration = registration;
+      if(registration.waiting && navigator.serviceWorker.controller) showUpdateBanner('');
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        if(!installing) return;
+        installing.addEventListener('statechange', () => {
+          if(installing.state === 'installed' && navigator.serviceWorker.controller){
+            showUpdateBanner('');
+          }
+        });
+      });
+      setTimeout(() => registration.update().catch(() => {}), 1200);
+    }).catch(error => {
       console.warn('TrackPort offline support could not be enabled.', error);
     });
+  }
+
+  function startVersionUpdateChecks(){
+    const openedFromUpdate = new URL(window.location.href);
+    if(openedFromUpdate.searchParams.has('tp_update')){
+      openedFromUpdate.searchParams.delete('tp_update');
+      window.history.replaceState(null, '', openedFromUpdate.pathname + openedFromUpdate.search + openedFromUpdate.hash);
+    }
+    currentVersionWasPreviouslyInstalled();
+    checkForNewVersion();
+    window.addEventListener('online', checkForNewVersion, {passive:true});
+    document.addEventListener('visibilitychange', () => {
+      if(!document.hidden) checkForNewVersion();
+    }, {passive:true});
+    window.setInterval(checkForNewVersion, 15 * 60 * 1000);
   }
 
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', () => {
       updateInstallButtons();
+      startVersionUpdateChecks();
       registerServiceWorker();
     }, {once:true});
   }else{
     updateInstallButtons();
+    startVersionUpdateChecks();
     registerServiceWorker();
   }
 })();
