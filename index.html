@@ -11,14 +11,14 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.0.0">
+<meta name="trackport-version" content="1.2.1">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <meta name="theme-color" content="#0A0B12">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
@@ -2707,26 +2707,7 @@ function trackingStandaloneFooter(){
     </div>
   </footer>`;
 }
-function isAppShellRoute(route){
-  return /^#\/(dashboard|create-flight|create|create-license|flight-history|shipment-history|license-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
-}
-function bottomTabs(){
-  const h = location.hash || '#/';
-  const on = (re)=> re.test(h) ? 'active' : '';
-  const tabs = [
-    { href:'#/dashboard', label:'Home',    ico:'home',   on:on(/^#\/dashboard/) },
-    { href:'#/create',    label:'Create',  ico:'plus',   on:on(/^#\/(create|create-flight|create-license|edit)/) },
-    { href:'#/track',     label:'Track',   ico:'search', on:on(/^#\/track/) },
-    { href:'#/shipment-history', label:'History', ico:'list', on:on(/^#\/(shipment-history|flight-history|license-history|license-output|confirmation)/) }
-  ];
-  return `<nav class="tp-tabbar" aria-label="Primary">
-    <div class="tp-tabbar-inner">
-      ${tabs.map(t=>`<a class="tp-tab ${t.on}" href="${t.href}"><span class="tp-tab-ico">${icon(t.ico)}</span><span class="tp-tab-label">${t.label}</span></a>`).join('')}
-    </div>
-  </nav>`;
-}
 function footer(){
-  if(isAppShellRoute(location.hash||'#/')) return bottomTabs();
   return `
   <footer class="site-footer">
     <div class="wrap footer-grid">
@@ -3186,17 +3167,17 @@ function pageDashboard(){
     <div class="creation-cta-grid">
       <a href="#/create-flight" class="creation-cta flight-cta">
         <span class="cta-icon">${icon('plane')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Travel tools</span><span class="cta-title">Flight Ticket</span></span>
+        <span class="cta-copy"><span class="cta-kicker">Travel tools</span><span class="cta-title">CREATE A TRACKABLE FLIGHT TICKET</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
       <a href="#/create" class="creation-cta shipping-cta">
         <span class="cta-icon">${icon('package')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Delivery tools</span><span class="cta-title">Shipping Product</span></span>
+        <span class="cta-copy"><span class="cta-kicker">Delivery tools</span><span class="cta-title">CREATE A TRACKABLE SHIPPING PRODUCT</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
       <a href="#/create-license" class="creation-cta license-cta">
         <span class="cta-icon">${icon('credit-card')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Identity mockups</span><span class="cta-title">Driver's License</span></span>
+        <span class="cta-copy"><span class="cta-kicker">Identity mockups</span><span class="cta-title">CREATE DRIVER'S LICENSE</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
     </div>
@@ -5369,9 +5350,6 @@ async function router(){
 
   if(html===null) return; // redirect happened
   app.innerHTML = html;
-  app.classList.toggle('has-fixed-nav', !!app.querySelector('.navbar') && !!app.querySelector('.tp-tabbar'));
-  app.classList.toggle('has-tabbar', !!app.querySelector('.tp-tabbar'));
-  document.body.classList.toggle('app-shell', !!app.querySelector('.tp-tabbar'));
   renderIcons();
   wirePageEvents(parts);
   window.scrollTo(0,0);
@@ -7142,123 +7120,553 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 })();
 </script>
 
+<!-- ==========================================================
+     TRACKPORT — DASHBOARD APP SHELL
+     Keeps the existing TrackPort data and navigation intact while
+     presenting signed-in screens as a fixed-header mobile workspace.
+     ========================================================== -->
+<style id="trackport-dashboard-shell">
+  :root{
+    --tp-shell-ink:#111827;
+    --tp-shell-muted:#657089;
+    --tp-shell-paper:#f2f5fa;
+    --tp-shell-card:#ffffff;
+    --tp-shell-navy:#111c35;
+    --tp-shell-navy-2:#19294a;
+    --tp-shell-line:#e3e8f0;
+  }
 
-<style id="tp-ui-refresh">
-  /* ===== Typography: reference-template geometric sans ===== */
-  :root{ --tp-font:'Plus Jakarta Sans','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
-         --tp-nav-h:60px; --tp-tabbar-h:64px; }
-  body.app-shell, body.app-shell button, body.app-shell input, body.app-shell select,
-  body.app-shell textarea, body.app-shell .nav-link{ font-family:var(--tp-font); }
-  body.app-shell h1, body.app-shell h2, body.app-shell h3, body.app-shell h4, body.app-shell h5,
-  body.app-shell .brand, body.app-shell .brand-word, body.app-shell .stat-val,
-  body.app-shell .section-title-row h3, body.app-shell .empty-state h4{
-    font-family:var(--tp-font) !important; font-weight:800; letter-spacing:-.022em;
+  /* The dashboard is intentionally lighter and calmer than the public site. */
+  body.tp-dashboard-mode{
+    background:var(--tp-shell-paper);
+    color:var(--tp-shell-ink);
+    isolation:isolate;
   }
-  /* keep printed artefacts (tickets / licenses) exactly as designed */
-  body.app-shell .ticket-brand-name, body.app-shell .ticket-warning, body.app-shell .stub-route,
-  body.app-shell .stub-footer .member{ font-family:Arial,sans-serif !important; }
-  body.app-shell .ticket-class{ font-family:Georgia,serif !important; }
-  body.app-shell .mono, body.app-shell .bp-city .code, body.app-shell .bp-tn,
-  body.app-shell .bp-mid .item .v.mono{ font-family:'IBM Plex Mono',monospace !important; }
+  body.tp-dashboard-mode::before,
+  body.tp-dashboard-mode::after,
+  body.tp-dashboard-mode #tp-aura,
+  body.tp-dashboard-mode #tp-grain{display:none !important;}
+  body.tp-dashboard-mode #app{
+    padding-top:0;
+    padding-bottom:92px;
+  }
 
-  /* ===== Fixed header (never scrolls with content) ===== */
-  body.app-shell .navbar{
-    position:fixed !important; top:0; left:0; right:0; width:100%;
-    z-index:900;
-    padding-top:env(safe-area-inset-top,0px);
-    background:rgba(10,11,18,0.86);
-    -webkit-backdrop-filter:blur(22px) saturate(160%);
-    backdrop-filter:blur(22px) saturate(160%);
-    box-shadow:0 6px 24px rgba(0,0,0,.35);
+  /* Fixed app header: the existing top-right menu button remains untouched. */
+  body.tp-dashboard-mode .navbar{
+    position:fixed;
+    inset:0 0 auto;
+    top:0;
+    z-index:950;
+    background:rgba(255,255,255,.94);
+    color:var(--tp-shell-ink);
+    border-bottom:1px solid rgba(17,28,53,.10);
+    box-shadow:0 8px 24px rgba(17,28,53,.08);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    backdrop-filter:blur(18px) saturate(150%);
   }
-  body.app-shell .nav-inner{ height:var(--tp-nav-h); }
-  body.app-shell .navbar .brand-word, body.app-shell .navbar .brand{ font-size:20px; }
-  body.app-shell .nav-mobile{ max-height:0; }
-  body.app-shell .nav-toggle{ width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.05); }
-  body.app-shell .nav-toggle span{ width:18px; }
-  body.app-shell #app.has-fixed-nav{
-    padding-top:calc(var(--tp-nav-h) + env(safe-area-inset-top,0px)) !important;
+  body.tp-dashboard-mode .navbar .brand{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .navbar .nav-toggle{
+    border-color:rgba(17,28,53,.16);
+    background:rgba(255,255,255,.76);
   }
-  #app.has-tabbar{ padding-bottom:calc(var(--tp-tabbar-h) + env(safe-area-inset-bottom,0px) + 12px); }
+  body.tp-dashboard-mode .navbar .nav-toggle span{background:var(--tp-shell-navy);}
+  body.tp-dashboard-mode .navbar .nav-link{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .navbar .nav-link:hover,
+  body.tp-dashboard-mode .navbar .nav-link.active{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .navbar .nav-mobile{
+    background:rgba(255,255,255,.98);
+    border-color:var(--tp-shell-line);
+  }
+  body.tp-dashboard-mode .navbar .nav-mobile .nav-link{border-color:var(--tp-shell-line);}
 
-  /* ===== Bottom tab bar ===== */
-  .tp-tabbar{
-    position:fixed; left:0; right:0; bottom:0; z-index:950;
-    background:rgba(12,14,22,0.92);
-    -webkit-backdrop-filter:blur(22px) saturate(160%);
-    backdrop-filter:blur(22px) saturate(160%);
-    border-top:1px solid var(--glass-border);
-    box-shadow:0 -8px 30px rgba(0,0,0,.42);
-    padding-bottom:env(safe-area-inset-bottom,0px);
+  /* Give every signed-in screen breathing room below the fixed header. */
+  body.tp-dashboard-mode #app > .wrap{
+    max-width:1180px;
+    padding-top:84px;
+    padding-left:18px;
+    padding-right:18px;
   }
-  .tp-tabbar-inner{
-    max-width:640px; margin:0 auto; height:var(--tp-tabbar-h);
-    display:grid; grid-template-columns:repeat(4,1fr); align-items:center;
+  body.tp-dashboard-mode .page-head{
+    position:relative;
+    overflow:hidden;
+    align-items:flex-start;
+    margin:0 0 18px;
+    padding:28px 24px 26px;
+    border:0;
+    border-radius:26px;
+    color:#fff;
+    background:
+      radial-gradient(420px 170px at 88% 0%, rgba(212,175,90,.24), transparent 70%),
+      linear-gradient(135deg,var(--tp-shell-navy),var(--tp-shell-navy-2));
+    box-shadow:0 18px 38px rgba(17,28,53,.18);
   }
-  .tp-tab{
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
-    height:100%; color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.01em;
-    transition:color .18s var(--ease), transform .18s var(--ease);
+  body.tp-dashboard-mode .page-head::after{
+    content:'';
+    position:absolute;
+    width:210px;
+    height:210px;
+    right:-72px;
+    bottom:-110px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:50%;
+    box-shadow:0 0 0 22px rgba(255,255,255,.035),0 0 0 44px rgba(255,255,255,.025);
+    pointer-events:none;
   }
-  .tp-tab-ico{ display:flex; align-items:center; justify-content:center; width:34px; height:30px; border-radius:12px; transition:background .18s, color .18s; }
-  .tp-tab svg{ width:20px; height:20px; }
-  .tp-tab:hover{ color:var(--ink); }
-  .tp-tab.active{ color:var(--primary); }
-  .tp-tab.active .tp-tab-ico{ background:rgba(212,175,90,.14); }
-  .tp-tab.active{ transform:translateY(-1px); }
+  body.tp-dashboard-mode .page-head h1{
+    position:relative;
+    z-index:1;
+    font-family:'Inter',sans-serif;
+    font-size:clamp(28px,5vw,42px);
+    line-height:1.05;
+    font-style:normal;
+    letter-spacing:-.045em;
+  }
+  body.tp-dashboard-mode .page-head h1::after{color:var(--primary);}
+  body.tp-dashboard-mode .page-head .greet{
+    position:relative;
+    z-index:1;
+    margin-top:9px;
+    color:rgba(255,255,255,.72);
+    font-size:13px;
+  }
+  body.tp-dashboard-mode .page-head > :last-child{position:relative;z-index:2;}
 
-  /* ===== Dashboard / app layout in the reference style ===== */
-  body.app-shell .wrap{ padding:0 16px; }
-  body.app-shell .page-head{
-    margin:18px 0 16px; padding:18px 18px 20px; border-radius:var(--radius-lg);
-    background:var(--glass); border:1px solid var(--glass-border); box-shadow:var(--shadow);
+  /* Creation actions become the three visual shortcuts from the reference. */
+  body.tp-dashboard-mode .creation-cta-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:18px;
   }
-  body.app-shell .page-head h1{ font-size:24px; line-height:1.2; }
-  body.app-shell .page-head .greet{ margin-top:6px; font-size:13.5px; color:var(--muted); }
+  body.tp-dashboard-mode .creation-cta{
+    min-height:142px;
+    padding:20px;
+    border:1px solid var(--tp-shell-line);
+    border-radius:20px;
+    background:var(--tp-shell-card);
+    color:var(--tp-shell-ink);
+    box-shadow:0 10px 24px rgba(17,28,53,.07);
+  }
+  body.tp-dashboard-mode .creation-cta:hover{
+    border-color:rgba(212,175,90,.64);
+    box-shadow:0 16px 30px rgba(17,28,53,.12);
+  }
+  body.tp-dashboard-mode .creation-cta .cta-icon{
+    width:44px;
+    height:44px;
+    border-radius:15px;
+    background:var(--primary-light);
+    color:var(--primary-dark);
+  }
+  body.tp-dashboard-mode .creation-cta .cta-icon svg{width:21px;height:21px;stroke-width:1.7;}
+  body.tp-dashboard-mode .creation-cta .cta-kicker{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .creation-cta .cta-title{
+    color:var(--tp-shell-ink);
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    line-height:1.35;
+    letter-spacing:.02em;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-arrow{color:var(--primary-dark);}
 
-  /* quick-action tiles: circular icon over a short label, like the reference grid */
-  body.app-shell .creation-cta-grid{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
-    padding:16px 12px; margin-bottom:16px;
-    background:var(--glass); border:1px solid var(--glass-border);
-    border-radius:var(--radius-lg); box-shadow:var(--shadow);
+  body.tp-dashboard-mode .stat-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:18px;
   }
-  body.app-shell .creation-cta{
-    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:10px;
-    text-align:center; padding:10px 6px; background:transparent; border:0; box-shadow:none; min-height:0;
+  body.tp-dashboard-mode .stat-card,
+  body.tp-dashboard-mode .card{
+    color:var(--tp-shell-ink);
+    background:var(--tp-shell-card);
+    border:1px solid var(--tp-shell-line);
+    box-shadow:0 10px 24px rgba(17,28,53,.06);
   }
-  body.app-shell .creation-cta::before, body.app-shell .creation-cta::after{ display:none; }
-  body.app-shell .creation-cta .cta-icon{
-    width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    background:rgba(212,175,90,.13); color:var(--primary); border:1px solid rgba(212,175,90,.22);
-    transition:transform .2s var(--ease), background .2s;
+  body.tp-dashboard-mode .stat-card{padding:18px;}
+  body.tp-dashboard-mode .stat-card .stat-label,
+  body.tp-dashboard-mode .stat-card .stat-val{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .stat-card .stat-label{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .stat-card .stat-icon{border:1px solid rgba(212,175,90,.22);}
+  body.tp-dashboard-mode .section-title-row h3{
+    color:var(--tp-shell-ink);
+    font-family:'Inter',sans-serif;
+    font-size:16px;
+    letter-spacing:-.02em;
+    font-style:normal;
   }
-  body.app-shell .creation-cta .cta-icon svg{ width:24px; height:24px; }
-  body.app-shell .creation-cta:hover .cta-icon{ transform:translateY(-2px); background:rgba(212,175,90,.2); }
-  body.app-shell .creation-cta .cta-kicker{ display:none; }
-  body.app-shell .creation-cta .cta-title{
-    font-size:12px; font-weight:700; letter-spacing:0; line-height:1.3; text-transform:none; color:var(--ink);
+  body.tp-dashboard-mode .section-title-row a{color:var(--primary-dark) !important;}
+  body.tp-dashboard-mode .flight-history-panel,
+  body.tp-dashboard-mode .license-history-panel{margin-bottom:18px;}
+  body.tp-dashboard-mode .record-history-empty,
+  body.tp-dashboard-mode .record-history-item-meta,
+  body.tp-dashboard-mode .ship-card .rows div,
+  body.tp-dashboard-mode .ship-card .tn{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .record-history-item{border-color:var(--tp-shell-line);}
+  body.tp-dashboard-mode .record-history-item-title,
+  body.tp-dashboard-mode .ship-card h4{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .shipment-table th{
+    color:var(--tp-shell-muted);
+    border-color:var(--tp-shell-line);
   }
-  body.app-shell .creation-cta .cta-arrow{ display:none; }
+  body.tp-dashboard-mode .shipment-table td{border-color:var(--tp-shell-line);}
+  body.tp-dashboard-mode .shipment-table tbody tr:hover{background:#fafbfe;}
+  body.tp-dashboard-mode .empty-state{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .empty-state h4{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .btn-icon{
+    color:var(--tp-shell-muted);
+    border-color:var(--tp-shell-line);
+    background:#fff;
+  }
+  body.tp-dashboard-mode .btn-icon:hover{color:var(--primary-dark);background:var(--primary-light);}
+  body.tp-dashboard-mode #app > .site-footer{display:none !important;}
 
-  /* stat tiles */
-  body.app-shell .stat-grid{ grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
-  body.app-shell .stat-card{ border-radius:var(--radius-md); padding:14px; }
-  body.app-shell .stat-card .stat-icon{ width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-  body.app-shell .stat-card .stat-label{ font-size:11.5px; letter-spacing:.02em; }
-  body.app-shell .stat-val{ font-size:26px; }
-
-  /* content cards */
-  body.app-shell .card{ border-radius:var(--radius-lg); }
-  body.app-shell .card-pad{ padding:16px; margin-bottom:14px; }
-  body.app-shell .section-title-row h3{ font-size:16px; }
-
+  /* Reference-style bottom tabs. Fixed so content scrolls behind it, not with it. */
+  .tp-bottom-tabs{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:940;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    min-height:76px;
+    padding:8px max(10px,env(safe-area-inset-left)) max(8px,env(safe-area-inset-bottom));
+    border-top:1px solid rgba(17,28,53,.10);
+    background:rgba(255,255,255,.96);
+    box-shadow:0 -10px 28px rgba(17,28,53,.10);
+    -webkit-backdrop-filter:blur(18px) saturate(150%);
+    backdrop-filter:blur(18px) saturate(150%);
+  }
+  .tp-bottom-tab{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:5px;
+    min-width:0;
+    padding:4px 3px 2px;
+    border:0;
+    border-radius:14px;
+    color:#58647b;
+    background:transparent;
+    font:600 10.5px/1.1 'Inter',sans-serif;
+    letter-spacing:.01em;
+    cursor:pointer;
+    transition:color .25s var(--ease),background .25s var(--ease),transform .25s var(--ease);
+  }
+  .tp-bottom-tab svg{width:21px;height:21px;stroke-width:1.8;}
+  .tp-bottom-tab:hover{color:var(--tp-shell-navy);background:#f4f6fb;}
+  .tp-bottom-tab:active{transform:scale(.95);}
+  .tp-bottom-tab.active{color:var(--primary-dark);}
+  .tp-bottom-tab.active::before{
+    content:'';
+    position:absolute;
+    top:-8px;
+    width:30px;
+    height:3px;
+    border-radius:0 0 5px 5px;
+    background:var(--primary);
+    box-shadow:0 2px 10px var(--primary-glow);
+  }
+  .tp-bottom-tab.active svg{stroke-width:2.2;}
+  @media (max-width:760px){
+    body.tp-dashboard-mode #app > .wrap{padding-left:14px;padding-right:14px;}
+    body.tp-dashboard-mode .page-head{padding:24px 20px 22px;border-radius:22px;}
+    body.tp-dashboard-mode .creation-cta-grid{grid-template-columns:1fr;gap:10px;}
+    body.tp-dashboard-mode .creation-cta{min-height:96px;padding:16px;}
+    body.tp-dashboard-mode .creation-cta .cta-icon{width:40px;height:40px;border-radius:13px;}
+    body.tp-dashboard-mode .stat-grid{grid-template-columns:1fr 1fr;gap:10px;}
+    body.tp-dashboard-mode .stat-card{padding:15px;}
+  }
   @media (min-width:861px){
-    body.app-shell .wrap{ padding:0 24px; }
-    body.app-shell .creation-cta-grid{ grid-template-columns:repeat(3,1fr); padding:20px; gap:16px; }
-    body.app-shell .stat-grid{ grid-template-columns:repeat(4,1fr); }
-    body.app-shell .creation-cta .cta-title{ font-size:13px; }
+    .tp-bottom-tabs{left:50%;right:auto;width:min(720px,calc(100% - 36px));transform:translateX(-50%);border:1px solid rgba(17,28,53,.10);border-bottom:0;border-radius:22px 22px 0 0;}
   }
+  @media (prefers-reduced-motion:reduce){
+    .tp-bottom-tab{transition:none;}
+  }
+
+  /* High-contrast pass: keep the airy reference look without sacrificing legibility. */
+  body.tp-dashboard-mode{
+    --tp-shell-muted:#344054;
+    --tp-shell-line:#bdc8d8;
+  }
+  body.tp-dashboard-mode .card,
+  body.tp-dashboard-mode .creation-cta,
+  body.tp-dashboard-mode .stat-card,
+  body.tp-dashboard-mode .ship-card,
+  body.tp-dashboard-mode .record-history-item{
+    border:1px solid var(--tp-shell-line) !important;
+  }
+  body.tp-dashboard-mode .card,
+  body.tp-dashboard-mode .creation-cta,
+  body.tp-dashboard-mode .stat-card{
+    box-shadow:0 8px 22px rgba(17,28,53,.09), 0 1px 0 rgba(17,28,53,.04);
+  }
+  body.tp-dashboard-mode .creation-cta .cta-kicker,
+  body.tp-dashboard-mode .stat-card .stat-label,
+  body.tp-dashboard-mode .record-history-item-meta,
+  body.tp-dashboard-mode .record-history-empty,
+  body.tp-dashboard-mode .ship-card .rows,
+  body.tp-dashboard-mode .ship-card .tn,
+  body.tp-dashboard-mode .shipment-table th{
+    color:var(--tp-shell-muted) !important;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-title,
+  body.tp-dashboard-mode .section-title-row h3,
+  body.tp-dashboard-mode .stat-card .stat-val,
+  body.tp-dashboard-mode .ship-card .rows b,
+  body.tp-dashboard-mode .record-history-item-title,
+  body.tp-dashboard-mode .shipment-table td{
+    color:var(--tp-shell-ink) !important;
+  }
+  body.tp-dashboard-mode .stat-card .stat-val{
+    background:none !important;
+    -webkit-text-fill-color:var(--tp-shell-ink) !important;
+  }
+  body.tp-dashboard-mode .page-head .greet{
+    color:rgba(255,255,255,.88) !important;
+  }
+  body.tp-dashboard-mode .btn-accent{
+    border:1px solid #9b741e !important;
+    box-shadow:0 6px 16px rgba(151,112,25,.22);
+  }
+  body.tp-dashboard-mode .btn-ghost,
+  body.tp-dashboard-mode .btn-primary{
+    border:1px solid #aeb9c8 !important;
+  }
+  body.tp-dashboard-mode .btn-ghost{color:#253047 !important;}
+  body.tp-dashboard-mode .badge{
+    border-color:currentColor !important;
+  }
+  body.tp-dashboard-mode .tp-bottom-tabs{
+    border-top:1px solid #bdc8d8;
+  }
+
+  /* Dark accent restoration: return signed-in screens to TrackPort's original
+     charcoal/navy surfaces while keeping the contrast and border improvements. */
+  body.tp-dashboard-mode{
+    --tp-shell-ink:#F3F1EA;
+    --tp-shell-muted:#B4BBCB;
+    --tp-shell-paper:#0A0B12;
+    --tp-shell-card:#161923;
+    --tp-shell-navy:#11131D;
+    --tp-shell-navy-2:#1D2945;
+    --tp-shell-line:rgba(255,255,255,.16);
+    background:
+      radial-gradient(900px 620px at 2% -4%, rgba(212,175,90,.15), transparent 64%),
+      radial-gradient(820px 640px at 100% 4%, rgba(102,92,225,.12), transparent 62%),
+      linear-gradient(135deg,#080A12 0%,#101322 48%,#090B13 100%);
+  }
+  body.tp-dashboard-mode .navbar{
+    background:rgba(10,11,18,.94);
+    color:var(--tp-shell-ink);
+    border-bottom:1px solid rgba(255,255,255,.12);
+    box-shadow:0 8px 24px rgba(0,0,0,.30);
+  }
+  body.tp-dashboard-mode .navbar .brand{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .navbar .nav-toggle{
+    border-color:rgba(255,255,255,.18);
+    background:rgba(255,255,255,.06);
+  }
+  body.tp-dashboard-mode .navbar .nav-toggle span{background:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .navbar .nav-link{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .navbar .nav-link:hover,
+  body.tp-dashboard-mode .navbar .nav-link.active{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .navbar .nav-mobile{
+    background:rgba(16,19,34,.98);
+    border-color:var(--tp-shell-line);
+  }
+  body.tp-dashboard-mode .navbar .nav-mobile .nav-link{border-color:var(--tp-shell-line);}
+
+  body.tp-dashboard-mode .creation-cta,
+  body.tp-dashboard-mode .stat-card,
+  body.tp-dashboard-mode .card{
+    background:rgba(22,25,35,.88);
+    color:var(--tp-shell-ink);
+    border-color:var(--tp-shell-line) !important;
+    box-shadow:0 10px 28px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.025) inset;
+  }
+  body.tp-dashboard-mode .creation-cta:hover{
+    border-color:rgba(212,175,90,.68) !important;
+    box-shadow:0 16px 32px rgba(0,0,0,.36),0 0 0 1px rgba(212,175,90,.08) inset;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-kicker,
+  body.tp-dashboard-mode .stat-card .stat-label,
+  body.tp-dashboard-mode .record-history-item-meta,
+  body.tp-dashboard-mode .record-history-empty,
+  body.tp-dashboard-mode .ship-card .rows,
+  body.tp-dashboard-mode .ship-card .tn,
+  body.tp-dashboard-mode .shipment-table th,
+  body.tp-dashboard-mode .empty-state{
+    color:var(--tp-shell-muted) !important;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-title,
+  body.tp-dashboard-mode .section-title-row h3,
+  body.tp-dashboard-mode .stat-card .stat-val,
+  body.tp-dashboard-mode .ship-card .rows b,
+  body.tp-dashboard-mode .record-history-item-title,
+  body.tp-dashboard-mode .ship-card h4,
+  body.tp-dashboard-mode .shipment-table td,
+  body.tp-dashboard-mode .empty-state h4{
+    color:var(--tp-shell-ink) !important;
+  }
+  body.tp-dashboard-mode .stat-card .stat-val{
+    background:none !important;
+    -webkit-text-fill-color:var(--tp-shell-ink) !important;
+  }
+  body.tp-dashboard-mode .record-history-item,
+  body.tp-dashboard-mode .shipment-table th,
+  body.tp-dashboard-mode .shipment-table td{
+    border-color:var(--tp-shell-line);
+  }
+  body.tp-dashboard-mode .shipment-table tbody tr:hover{background:rgba(255,255,255,.045);}
+  body.tp-dashboard-mode .btn-icon{
+    color:var(--tp-shell-muted);
+    border-color:var(--tp-shell-line);
+    background:rgba(255,255,255,.05);
+  }
+  body.tp-dashboard-mode .btn-icon:hover{
+    color:var(--primary);
+    background:rgba(212,175,90,.12);
+  }
+  body.tp-dashboard-mode .btn-primary{
+    color:var(--tp-shell-ink);
+    background:linear-gradient(145deg,#252A3A,#1A1E2B);
+    border:1px solid rgba(255,255,255,.18) !important;
+  }
+  body.tp-dashboard-mode .btn-ghost{
+    color:var(--tp-shell-ink) !important;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.20) !important;
+  }
+  body.tp-dashboard-mode .btn-ghost:hover{background:rgba(212,175,90,.10);}
+  body.tp-dashboard-mode .btn-accent{
+    color:#1a1204;
+    border-color:rgba(212,175,90,.82) !important;
+  }
+  body.tp-dashboard-mode .tp-bottom-tabs{
+    border-top:1px solid rgba(255,255,255,.14);
+    background:rgba(10,11,18,.96);
+    box-shadow:0 -10px 28px rgba(0,0,0,.35);
+  }
+  body.tp-dashboard-mode .tp-bottom-tab{color:#AAB2C4;}
+  body.tp-dashboard-mode .tp-bottom-tab:hover{
+    color:var(--tp-shell-ink);
+    background:rgba(255,255,255,.06);
+  }
+  body.tp-dashboard-mode .tp-bottom-tab.active{color:var(--primary);}
+
+  /* ==========================================================
+     GLASS DASHBOARD UPDATE (v1.2.1)
+     1) All dashboard cards -> frosted glass with rounded edges
+     2) Fixed header shifted down by 5px
+     3) Bottom tab bar shifted down by 5px
+     ========================================================== */
+  body.tp-dashboard-mode .card,
+  body.tp-dashboard-mode .stat-card,
+  body.tp-dashboard-mode .ship-card,
+  body.tp-dashboard-mode .creation-cta,
+  body.tp-dashboard-mode .record-history-item,
+  body.tp-dashboard-mode .page-head{
+    border-radius:22px !important;
+    overflow:hidden;
+  }
+  body.tp-dashboard-mode .card,
+  body.tp-dashboard-mode .stat-card,
+  body.tp-dashboard-mode .ship-card,
+  body.tp-dashboard-mode .creation-cta,
+  body.tp-dashboard-mode .record-history-item{
+    background:linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.04)) !important;
+    border:1px solid rgba(255,255,255,.18) !important;
+    -webkit-backdrop-filter:blur(22px) saturate(170%);
+    backdrop-filter:blur(22px) saturate(170%);
+    box-shadow:0 12px 32px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.14) !important;
+  }
+  body.tp-dashboard-mode .page-head{
+    background:
+      radial-gradient(420px 170px at 88% 0%, rgba(212,175,90,.28), transparent 70%),
+      linear-gradient(160deg, rgba(29,41,69,.62), rgba(17,19,29,.55)) !important;
+    border:1px solid rgba(255,255,255,.16) !important;
+    -webkit-backdrop-filter:blur(22px) saturate(170%);
+    backdrop-filter:blur(22px) saturate(170%);
+    box-shadow:0 14px 36px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.14) !important;
+  }
+  body.tp-dashboard-mode .creation-cta:hover{
+    border-color:rgba(212,175,90,.62) !important;
+  }
+
+  /* Header: 5px lower. Page content follows so nothing hides under it. */
+  body.tp-dashboard-mode .navbar{top:5px;}
+  body.tp-dashboard-mode #app > .wrap{padding-top:89px;}
+
+  /* Bottom tabs: 5px lower (content padding adjusted to match). */
+  .tp-bottom-tabs{bottom:-5px;}
+  body.tp-dashboard-mode .tp-bottom-tabs{bottom:-5px;}
+  body.tp-dashboard-mode #app{padding-bottom:87px;}
 </style>
+<script id="trackport-dashboard-shell-script">
+(function(){
+  'use strict';
+  const APP_ROUTES = new Set([
+    'dashboard','flight-history','shipment-history','license-history',
+    'create','create-flight','create-license','license-output','edit','admin'
+  ]);
+  const routeName = () => (location.hash.replace(/^#/,'').split('/').filter(Boolean)[0] || '');
+  const isAppScreen = () => typeof currentUser !== 'undefined' && !!currentUser && APP_ROUTES.has(routeName());
+  const activeTab = () => {
+    const route = routeName();
+    if(route === 'flight-history') return 'pages';
+    if(route === 'create' || route === 'create-flight' || route === 'create-license') return 'elements';
+    return 'home';
+  };
+  function tabsMarkup(){
+    const active = activeTab();
+    return `<nav class="tp-bottom-tabs" aria-label="TrackPort app navigation">
+      <a class="tp-bottom-tab ${active==='home'?'active':''}" href="#/dashboard" ${active==='home'?'aria-current="page"':''}>${icon('home')}<span>Home</span></a>
+      <a class="tp-bottom-tab ${active==='pages'?'active':''}" href="#/flight-history" ${active==='pages'?'aria-current="page"':''}>${icon('file')}<span>Pages</span></a>
+      <a class="tp-bottom-tab ${active==='elements'?'active':''}" href="#/create" ${active==='elements'?'aria-current="page"':''}>${icon('grid')}<span>Elements</span></a>
+      <button type="button" class="tp-bottom-tab" aria-label="Open TrackPort menu" onclick="toggleMobileNav();showToast('Use the top-right menu for account settings and more')">${icon('settings')}<span>Settings</span></button>
+    </nav>`;
+  }
+  function sync(){
+    const enabled = isAppScreen();
+    document.body.classList.toggle('tp-dashboard-mode', enabled);
+    const existing = document.querySelector('.tp-bottom-tabs');
+    if(enabled && !existing){
+      document.body.insertAdjacentHTML('beforeend', tabsMarkup());
+      if(typeof renderIcons === 'function') renderIcons();
+    }else if(enabled && existing){
+      const current = existing.querySelector('.active');
+      const desired = activeTab();
+      const currentKey = current?.getAttribute('href') || '';
+      if((desired==='pages' && !currentKey.includes('flight-history')) ||
+         (desired==='elements' && !currentKey.includes('/create')) ||
+         (desired==='home' && !currentKey.includes('dashboard'))){
+        existing.outerHTML = tabsMarkup();
+        if(typeof renderIcons === 'function') renderIcons();
+      }
+    }else if(!enabled && existing){
+      existing.remove();
+    }
+  }
+  let queued = false;
+  const schedule = () => {
+    if(queued) return;
+    queued = true;
+    requestAnimationFrame(() => { queued=false; sync(); });
+  };
+  window.addEventListener('hashchange', schedule, {passive:true});
+  document.addEventListener('DOMContentLoaded', () => {
+    schedule();
+    const app = document.getElementById('app');
+    if(app) new MutationObserver(schedule).observe(app, {childList:true, subtree:true});
+    // The main app loads persisted user data asynchronously before routing.
+    // These small follow-up checks ensure the shell appears after that render.
+    setTimeout(schedule, 250);
+    setTimeout(schedule, 1000);
+  }, {once:true});
+  if(document.body) schedule();
+})();
+</script>
+
 </body>
 </html>
