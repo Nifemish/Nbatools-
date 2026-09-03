@@ -3,7 +3,7 @@
  * Navigations use the network first so a newly uploaded HTML file is picked
  * up without asking users to clear browser or app data.
  */
-const TRACKPORT_CACHE = 'trackport-runtime-v2';
+const TRACKPORT_CACHE = 'trackport-runtime-v3';
 
 self.addEventListener('install', event => {
   self.skipWaiting();
