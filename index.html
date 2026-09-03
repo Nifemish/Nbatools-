@@ -18,7 +18,7 @@
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
 <meta name="theme-color" content="#0A0B12">
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
@@ -2707,7 +2707,26 @@ function trackingStandaloneFooter(){
     </div>
   </footer>`;
 }
+function isAppShellRoute(route){
+  return /^#\/(dashboard|create-flight|create|create-license|flight-history|shipment-history|license-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
+}
+function bottomTabs(){
+  const h = location.hash || '#/';
+  const on = (re)=> re.test(h) ? 'active' : '';
+  const tabs = [
+    { href:'#/dashboard', label:'Home',    ico:'home',   on:on(/^#\/dashboard/) },
+    { href:'#/create',    label:'Create',  ico:'plus',   on:on(/^#\/(create|create-flight|create-license|edit)/) },
+    { href:'#/track',     label:'Track',   ico:'search', on:on(/^#\/track/) },
+    { href:'#/shipment-history', label:'History', ico:'list', on:on(/^#\/(shipment-history|flight-history|license-history|license-output|confirmation)/) }
+  ];
+  return `<nav class="tp-tabbar" aria-label="Primary">
+    <div class="tp-tabbar-inner">
+      ${tabs.map(t=>`<a class="tp-tab ${t.on}" href="${t.href}"><span class="tp-tab-ico">${icon(t.ico)}</span><span class="tp-tab-label">${t.label}</span></a>`).join('')}
+    </div>
+  </nav>`;
+}
 function footer(){
+  if(isAppShellRoute(location.hash||'#/')) return bottomTabs();
   return `
   <footer class="site-footer">
     <div class="wrap footer-grid">
@@ -3167,17 +3186,17 @@ function pageDashboard(){
     <div class="creation-cta-grid">
       <a href="#/create-flight" class="creation-cta flight-cta">
         <span class="cta-icon">${icon('plane')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Travel tools</span><span class="cta-title">CREATE A TRACKABLE FLIGHT TICKET</span></span>
+        <span class="cta-copy"><span class="cta-kicker">Travel tools</span><span class="cta-title">Flight Ticket</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
       <a href="#/create" class="creation-cta shipping-cta">
         <span class="cta-icon">${icon('package')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Delivery tools</span><span class="cta-title">CREATE A TRACKABLE SHIPPING PRODUCT</span></span>
+        <span class="cta-copy"><span class="cta-kicker">Delivery tools</span><span class="cta-title">Shipping Product</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
       <a href="#/create-license" class="creation-cta license-cta">
         <span class="cta-icon">${icon('credit-card')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Identity mockups</span><span class="cta-title">CREATE DRIVER'S LICENSE</span></span>
+        <span class="cta-copy"><span class="cta-kicker">Identity mockups</span><span class="cta-title">Driver's License</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
     </div>
@@ -5350,6 +5369,9 @@ async function router(){
 
   if(html===null) return; // redirect happened
   app.innerHTML = html;
+  app.classList.toggle('has-fixed-nav', !!app.querySelector('.navbar') && !!app.querySelector('.tp-tabbar'));
+  app.classList.toggle('has-tabbar', !!app.querySelector('.tp-tabbar'));
+  document.body.classList.toggle('app-shell', !!app.querySelector('.tp-tabbar'));
   renderIcons();
   wirePageEvents(parts);
   window.scrollTo(0,0);
@@ -7120,5 +7142,123 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 })();
 </script>
 
+
+<style id="tp-ui-refresh">
+  /* ===== Typography: reference-template geometric sans ===== */
+  :root{ --tp-font:'Plus Jakarta Sans','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+         --tp-nav-h:60px; --tp-tabbar-h:64px; }
+  body.app-shell, body.app-shell button, body.app-shell input, body.app-shell select,
+  body.app-shell textarea, body.app-shell .nav-link{ font-family:var(--tp-font); }
+  body.app-shell h1, body.app-shell h2, body.app-shell h3, body.app-shell h4, body.app-shell h5,
+  body.app-shell .brand, body.app-shell .brand-word, body.app-shell .stat-val,
+  body.app-shell .section-title-row h3, body.app-shell .empty-state h4{
+    font-family:var(--tp-font) !important; font-weight:800; letter-spacing:-.022em;
+  }
+  /* keep printed artefacts (tickets / licenses) exactly as designed */
+  body.app-shell .ticket-brand-name, body.app-shell .ticket-warning, body.app-shell .stub-route,
+  body.app-shell .stub-footer .member{ font-family:Arial,sans-serif !important; }
+  body.app-shell .ticket-class{ font-family:Georgia,serif !important; }
+  body.app-shell .mono, body.app-shell .bp-city .code, body.app-shell .bp-tn,
+  body.app-shell .bp-mid .item .v.mono{ font-family:'IBM Plex Mono',monospace !important; }
+
+  /* ===== Fixed header (never scrolls with content) ===== */
+  body.app-shell .navbar{
+    position:fixed !important; top:0; left:0; right:0; width:100%;
+    z-index:900;
+    padding-top:env(safe-area-inset-top,0px);
+    background:rgba(10,11,18,0.86);
+    -webkit-backdrop-filter:blur(22px) saturate(160%);
+    backdrop-filter:blur(22px) saturate(160%);
+    box-shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  body.app-shell .nav-inner{ height:var(--tp-nav-h); }
+  body.app-shell .navbar .brand-word, body.app-shell .navbar .brand{ font-size:20px; }
+  body.app-shell .nav-mobile{ max-height:0; }
+  body.app-shell .nav-toggle{ width:40px; height:40px; border-radius:12px; background:rgba(255,255,255,.05); }
+  body.app-shell .nav-toggle span{ width:18px; }
+  body.app-shell #app.has-fixed-nav{
+    padding-top:calc(var(--tp-nav-h) + env(safe-area-inset-top,0px)) !important;
+  }
+  #app.has-tabbar{ padding-bottom:calc(var(--tp-tabbar-h) + env(safe-area-inset-bottom,0px) + 12px); }
+
+  /* ===== Bottom tab bar ===== */
+  .tp-tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:950;
+    background:rgba(12,14,22,0.92);
+    -webkit-backdrop-filter:blur(22px) saturate(160%);
+    backdrop-filter:blur(22px) saturate(160%);
+    border-top:1px solid var(--glass-border);
+    box-shadow:0 -8px 30px rgba(0,0,0,.42);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .tp-tabbar-inner{
+    max-width:640px; margin:0 auto; height:var(--tp-tabbar-h);
+    display:grid; grid-template-columns:repeat(4,1fr); align-items:center;
+  }
+  .tp-tab{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    height:100%; color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.01em;
+    transition:color .18s var(--ease), transform .18s var(--ease);
+  }
+  .tp-tab-ico{ display:flex; align-items:center; justify-content:center; width:34px; height:30px; border-radius:12px; transition:background .18s, color .18s; }
+  .tp-tab svg{ width:20px; height:20px; }
+  .tp-tab:hover{ color:var(--ink); }
+  .tp-tab.active{ color:var(--primary); }
+  .tp-tab.active .tp-tab-ico{ background:rgba(212,175,90,.14); }
+  .tp-tab.active{ transform:translateY(-1px); }
+
+  /* ===== Dashboard / app layout in the reference style ===== */
+  body.app-shell .wrap{ padding:0 16px; }
+  body.app-shell .page-head{
+    margin:18px 0 16px; padding:18px 18px 20px; border-radius:var(--radius-lg);
+    background:var(--glass); border:1px solid var(--glass-border); box-shadow:var(--shadow);
+  }
+  body.app-shell .page-head h1{ font-size:24px; line-height:1.2; }
+  body.app-shell .page-head .greet{ margin-top:6px; font-size:13.5px; color:var(--muted); }
+
+  /* quick-action tiles: circular icon over a short label, like the reference grid */
+  body.app-shell .creation-cta-grid{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+    padding:16px 12px; margin-bottom:16px;
+    background:var(--glass); border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg); box-shadow:var(--shadow);
+  }
+  body.app-shell .creation-cta{
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:10px;
+    text-align:center; padding:10px 6px; background:transparent; border:0; box-shadow:none; min-height:0;
+  }
+  body.app-shell .creation-cta::before, body.app-shell .creation-cta::after{ display:none; }
+  body.app-shell .creation-cta .cta-icon{
+    width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(212,175,90,.13); color:var(--primary); border:1px solid rgba(212,175,90,.22);
+    transition:transform .2s var(--ease), background .2s;
+  }
+  body.app-shell .creation-cta .cta-icon svg{ width:24px; height:24px; }
+  body.app-shell .creation-cta:hover .cta-icon{ transform:translateY(-2px); background:rgba(212,175,90,.2); }
+  body.app-shell .creation-cta .cta-kicker{ display:none; }
+  body.app-shell .creation-cta .cta-title{
+    font-size:12px; font-weight:700; letter-spacing:0; line-height:1.3; text-transform:none; color:var(--ink);
+  }
+  body.app-shell .creation-cta .cta-arrow{ display:none; }
+
+  /* stat tiles */
+  body.app-shell .stat-grid{ grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+  body.app-shell .stat-card{ border-radius:var(--radius-md); padding:14px; }
+  body.app-shell .stat-card .stat-icon{ width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  body.app-shell .stat-card .stat-label{ font-size:11.5px; letter-spacing:.02em; }
+  body.app-shell .stat-val{ font-size:26px; }
+
+  /* content cards */
+  body.app-shell .card{ border-radius:var(--radius-lg); }
+  body.app-shell .card-pad{ padding:16px; margin-bottom:14px; }
+  body.app-shell .section-title-row h3{ font-size:16px; }
+
+  @media (min-width:861px){
+    body.app-shell .wrap{ padding:0 24px; }
+    body.app-shell .creation-cta-grid{ grid-template-columns:repeat(3,1fr); padding:20px; gap:16px; }
+    body.app-shell .stat-grid{ grid-template-columns:repeat(4,1fr); }
+    body.app-shell .creation-cta .cta-title{ font-size:13px; }
+  }
+</style>
 </body>
 </html>
