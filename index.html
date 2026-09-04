@@ -2490,17 +2490,7 @@ function generateTrackingNumber(){
   const tn = `SHP-${year}-${code}`;
   return shipmentsDB[tn] ? generateTrackingNumber() : tn;
 }
-/*
- * Read-only tracking is hosted separately from the creator app.
- * Replace this value once the standalone tracker has its real domain.
- * The creator app never embeds its own origin in a shared tracking URL.
- */
-const TRACKING_APP_URL = 'https://nifemish.github.io/TrackPort-Tracking/';
-function standaloneTrackingUrl(code){
-  const base = String(TRACKING_APP_URL || '').trim().replace(/\/+$/,'');
-  return `${base || location.origin}${base ? '/' : location.pathname}?tracking=${encodeURIComponent(code)}`;
-}
-function trackingUrl(tn){ return standaloneTrackingUrl(tn); }
+function trackingUrl(tn){ return `${location.origin}${location.pathname}#/track/${tn}`; }
 
 function generateFlightTrackingNumber(){
   const year = new Date().getFullYear();
@@ -2509,7 +2499,30 @@ function generateFlightTrackingNumber(){
   const code2 = `FLT-${year}-${code}`;
   return flightsDB[code2] ? generateFlightTrackingNumber() : code2;
 }
-function flightUrl(code){ return standaloneTrackingUrl(code); }
+function flightUrl(code){ return `${location.origin}${location.pathname}#/track/${code}`; }
+/* ---- Hosted read-only tracking page (nifemish.github.io/TrackPort-Tracking) ---- */
+const HOSTED_TRACKING_BASE = 'https://nifemish.github.io/TrackPort-Tracking/';
+function hostedTrackingUrl(code){
+  const normalized = String(code||'').trim().toUpperCase();
+  return normalized ? `${HOSTED_TRACKING_BASE}?tracking=${encodeURIComponent(normalized)}` : HOSTED_TRACKING_BASE;
+}
+function hostedTrackingRoute(code){
+  const normalized = String(code||'').trim().toUpperCase();
+  return normalized ? '#/live-track/'+encodeURIComponent(normalized) : '#/live-track';
+}
+function openHostedTracking(code){ location.replace(hostedTrackingUrl(code)); }
+function hostedTrackingLinkHtml(code, label, extraClass, style){
+  return `<a class="btn ${extraClass||'btn-ghost'}" ${style?`style="${style}"`:''} href="${hostedTrackingUrl(code)}" target="_blank" rel="noopener">${icon('external')||''}${esc(label||'Open hosted tracking page')}</a>`;
+}
+function pageHostedTrackingRedirect(code){
+  return `<div class="track-summary" style="padding-top:80px;text-align:center;">
+    <div class="card card-pad">
+      <h2>Opening the hosted tracking page…</h2>
+      <p style="color:var(--muted);margin:12px 0 18px;">You are being taken to the read-only TrackPort tracking page${code?` for <span class="mono">${esc(String(code).toUpperCase())}</span>`:''}.</p>
+      <a class="btn btn-accent" href="${hostedTrackingUrl(code)}">Continue</a>
+    </div>
+  </div>`;
+}
 function trackingRouteFor(value){
   const normalized = String(value||'').trim().toUpperCase();
   if(!normalized) return null;
@@ -2752,6 +2765,7 @@ function trackingStandaloneFooter(){
           <input id="standalone-track-input" class="mono" placeholder="SHP-2026-8F42K9 or FLT-2026-8F42K9" autocomplete="off">
           <button class="btn btn-accent" type="submit">${icon('search')} Track</button>
         </form>
+        <p style="margin:10px 0 0;font-size:12px;color:var(--muted);">Prefer the hosted read-only page? <a href="${HOSTED_TRACKING_BASE}" target="_blank" rel="noopener" style="color:var(--primary);font-weight:700;">Open TrackPort Tracking</a></p>
       </div>
     </div>
     <div class="tracking-standalone-footer-bottom">
@@ -4878,6 +4892,7 @@ function pageConfirmation(tn){
           </div>
           <div class="share-row">
             <a href="#/track/${tn}" class="btn btn-ghost" style="flex:1;justify-content:center;">${icon('eye')} View Tracking Page</a>
+            <a href="${hostedTrackingUrl(tn)}" target="_blank" rel="noopener" class="btn btn-ghost" style="flex:1;justify-content:center;">${icon('share')} Hosted Tracking Page</a>
           </div>
         </div>
       </div>
@@ -4903,6 +4918,7 @@ function pageConfirmation(tn){
         <div class="share-row" style="margin-top:14px;">
           <button type="button" class="btn btn-primary btn-sm" data-action="shipment-update" data-id="${esc(s.trackingNumber)}">${icon('check')} Update movement</button>
           <a href="#/track/${tn}" class="btn btn-ghost btn-sm">${icon('eye')} View read-only tracking</a>
+          <a href="${hostedTrackingUrl(tn)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">${icon('share')} Hosted tracking page</a>
         </div>
         ${automationCardHtml(s, 'shipment', 'shipment')}
       </div>
@@ -5605,18 +5621,16 @@ async function router(){
   }
   else if(parts[0]==='confirmation'){ html = currentUser ? pageConfirmation(parts[1]) : redirectTo('/login'); }
   else if(parts[0]==='edit'){ html = currentUser ? pageEditShipment(parts[1]) : redirectTo('/login'); }
+  else if(parts[0]==='live-track'){
+    const hostedCode = parts[1] ? decodeURIComponent(parts[1]) : '';
+    html = pageHostedTrackingRedirect(hostedCode);
+    setTimeout(()=>openHostedTracking(hostedCode), 400);
+  }
   else if(parts[0]==='track'){
     const trackingCode = parts[1] ? decodeURIComponent(parts[1]) : '';
-    if(trackingCode){
-      window.location.replace(standaloneTrackingUrl(trackingCode));
-      return;
-    }
-    html = currentUser ? pageTracking() : pageTrackSearch();
+    html = trackingCode.toUpperCase().startsWith('FLT-') ? pageFlightDetail(trackingCode) : (trackingCode ? pageTrackingDetail(trackingCode) : (currentUser ? pageTracking() : pageTrackSearch()));
   }
-  else if(parts[0]==='flight'){
-    if(parts[1]) window.location.replace(standaloneTrackingUrl(decodeURIComponent(parts[1])));
-    else html = redirectTo('/');
-  }
+  else if(parts[0]==='flight'){ html = parts[1] ? pageFlightDetail(decodeURIComponent(parts[1])) : redirectTo('/'); }
   else if(parts[0]==='admin'){ html = pageAdmin(); }
   else { html = pageLanding(); }
 
