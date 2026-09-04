@@ -2490,7 +2490,17 @@ function generateTrackingNumber(){
   const tn = `SHP-${year}-${code}`;
   return shipmentsDB[tn] ? generateTrackingNumber() : tn;
 }
-function trackingUrl(tn){ return `${location.origin}${location.pathname}#/track/${tn}`; }
+/*
+ * Read-only tracking is hosted separately from the creator app.
+ * Replace this value once the standalone tracker has its real domain.
+ * The creator app never embeds its own origin in a shared tracking URL.
+ */
+const TRACKING_APP_URL = 'https://YOUR-TRACKING-DOMAIN.example/';
+function standaloneTrackingUrl(code){
+  const base = String(TRACKING_APP_URL || '').trim().replace(/\/+$/,'');
+  return `${base || location.origin}${base ? '/' : location.pathname}?tracking=${encodeURIComponent(code)}`;
+}
+function trackingUrl(tn){ return standaloneTrackingUrl(tn); }
 
 function generateFlightTrackingNumber(){
   const year = new Date().getFullYear();
@@ -2499,7 +2509,7 @@ function generateFlightTrackingNumber(){
   const code2 = `FLT-${year}-${code}`;
   return flightsDB[code2] ? generateFlightTrackingNumber() : code2;
 }
-function flightUrl(code){ return `${location.origin}${location.pathname}#/track/${code}`; }
+function flightUrl(code){ return standaloneTrackingUrl(code); }
 function trackingRouteFor(value){
   const normalized = String(value||'').trim().toUpperCase();
   if(!normalized) return null;
@@ -5597,9 +5607,16 @@ async function router(){
   else if(parts[0]==='edit'){ html = currentUser ? pageEditShipment(parts[1]) : redirectTo('/login'); }
   else if(parts[0]==='track'){
     const trackingCode = parts[1] ? decodeURIComponent(parts[1]) : '';
-    html = trackingCode.toUpperCase().startsWith('FLT-') ? pageFlightDetail(trackingCode) : (trackingCode ? pageTrackingDetail(trackingCode) : (currentUser ? pageTracking() : pageTrackSearch()));
+    if(trackingCode){
+      window.location.replace(standaloneTrackingUrl(trackingCode));
+      return;
+    }
+    html = currentUser ? pageTracking() : pageTrackSearch();
   }
-  else if(parts[0]==='flight'){ html = parts[1] ? pageFlightDetail(decodeURIComponent(parts[1])) : redirectTo('/'); }
+  else if(parts[0]==='flight'){
+    if(parts[1]) window.location.replace(standaloneTrackingUrl(decodeURIComponent(parts[1])));
+    else html = redirectTo('/');
+  }
   else if(parts[0]==='admin'){ html = pageAdmin(); }
   else { html = pageLanding(); }
 
