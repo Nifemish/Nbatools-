@@ -2495,7 +2495,7 @@ function generateTrackingNumber(){
  * Replace this value once the standalone tracker has its real domain.
  * The creator app never embeds its own origin in a shared tracking URL.
  */
-const TRACKING_APP_URL = 'https://YOUR-TRACKING-DOMAIN.example/';
+const TRACKING_APP_URL = 'https://nifemish.github.io/TrackPort-Tracking/';
 function standaloneTrackingUrl(code){
   const base = String(TRACKING_APP_URL || '').trim().replace(/\/+$/,'');
   return `${base || location.origin}${base ? '/' : location.pathname}?tracking=${encodeURIComponent(code)}`;
