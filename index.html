@@ -3352,7 +3352,6 @@ function pageDashboard(){
      </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageFlightHistory(){
@@ -3372,7 +3371,6 @@ function pageFlightHistory(){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageShipmentHistory(){
@@ -3392,7 +3390,6 @@ function pageShipmentHistory(){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageCreateHub(){
@@ -3437,7 +3434,6 @@ function pageCreateHub(){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageIdCardCreationHub(){
@@ -3480,7 +3476,6 @@ function pageIdCardCreationHub(){
     <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageCreationPlaceholder(kind){
@@ -3506,7 +3501,6 @@ function pageCreationPlaceholder(kind){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageHistory(){
@@ -3537,7 +3531,6 @@ function pageHistory(){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 function pageTracking(prefill='', err=false){
@@ -3604,7 +3597,6 @@ function pageProfile(){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 /* ---- Create Flight Ticket ---- */
@@ -3676,7 +3668,6 @@ function pageCreateFlight(){
       </div>
     </div>
   </div>
-  ${footer()}`;
 }
 
 /* Draws each license card straight onto a <canvas> using the same offline
@@ -4595,7 +4586,6 @@ function pageCreateLicenseChooser(){
       <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
     </div>
   </div>
-  ${footer()}`;
 }
 
 /* ---- Generated Driver License History ---- */
@@ -4614,7 +4604,6 @@ function pageLicenseHistory(){
       <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
     </div>
   </div>
-  ${footer()}`;
 }
 
 /* ---- State-specific Driver License Generator ---- */
@@ -4742,7 +4731,6 @@ ${licenseCardMarkup(typeKey, cardData)}
       </div>
     </div>
   </div>
-  ${footer()}`;
 }
 
 /* ---- State-specific Driver License Generator: generated output page ---- */
@@ -4783,7 +4771,6 @@ ${licenseCardMarkup(typeKey, d)}
       </div>
     </div>
   </div>
-  ${footer()}`;
 }
 
 /* ---- Create Shipment Wizard ---- */
@@ -4959,7 +4946,6 @@ function pageCreateShipment(){
       </div>
     </div>
   </div>
-  ${footer()}`;
 }
 
 function shareChannelButtons(tn){
@@ -5039,7 +5025,6 @@ function pageConfirmation(tn){
       <a href="#/create-shipment" class="btn btn-primary" style="margin-top:28px;" data-action="reset-wizard">${icon('plus')} Create Another Shipment</a>
     </div>
   </div>
-  ${footer()}`;
 }
 
 function pageTrackSearch(prefill, err){
@@ -5474,7 +5459,7 @@ function pageFlightDetail(code){
     </div>
     ` : ''}
   </div>
-  ${isSharedTrackingView ? trackingStandaloneFooter() : footer()}`;
+  ${trackingStandaloneFooter()}`;
 }
 
 function updateModalHtml(tn){
@@ -5567,11 +5552,9 @@ function pageEditShipment(tn){
       </div>
     </div>
   </div>
-  ${footer()}`;
 }
 
 function pageForbidden(){
-  return `${navbar()}<div class="wrap"><div class="not-found">${icon('shield')}<h3>You don't have access to this page</h3><a href="#/dashboard" class="btn btn-primary" style="margin-top:16px;">Go to dashboard</a></div></div>${footer()}`;
 }
 
 /* ---- Admin ---- */
@@ -5642,7 +5625,6 @@ function pageAdmin(){
     ${body}
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
 }
 
 /* ================= ROUTER ================= */
