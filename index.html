@@ -370,7 +370,7 @@
     transition:max-height .5s cubic-bezier(.22,1,.36,1), opacity .35s ease .05s, padding .5s cubic-bezier(.22,1,.36,1), border-color .3s ease;
   }
   .nav-mobile.open{max-height:640px; opacity:1; padding:14px 24px 20px; border-top-color:var(--border);}
-  .nav-mobile .nav-link{margin:0; padding:12px 0; border-bottom:1px solid var(--border); text-align:left; opacity:0; transform:translateX(-18px); transition:opacity .4s ease, transform .4s ease, color .15s;}
+  .nav-mobile .nav-link{margin:0; padding:12px 0; border-bottom:1px solid var(--border); text-align:center; opacity:0; transform:translateX(-18px); transition:opacity .4s ease, transform .4s ease, color .15s;}
   .nav-mobile.open .nav-link{opacity:1; transform:none;}
   .nav-mobile.open .nav-link:nth-child(1){transition-delay:.06s;}
   .nav-mobile.open .nav-link:nth-child(2){transition-delay:.11s;}
@@ -1210,9 +1210,19 @@
   .f-link:hover svg{transform:translateX(4px);}
   .f-visual.card{padding:24px;}
   .f-visual .mockup-title{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:16px;}
-  .f-bars{display:flex; align-items:flex-end; gap:9px; height:110px;}
-  .f-bars .bar{flex:1; background:linear-gradient(180deg,var(--primary),var(--primary-dark)); border-radius:5px 5px 0 0; position:relative;}
-  .f-bars .bar span{position:absolute; top:-20px; left:0; right:0; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--muted);}
+  .f-mock-rail{padding-top:14px; margin-bottom:0;}
+  .f-mock-rail .tstep span.lbl{display:block !important; max-width:none;}
+  .f-mock-rail .tstep .dot{box-shadow:0 0 0 4px var(--success-light, rgba(46,204,113,.15));}
+  .f-progress-head{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:16px;}
+  .f-progress-pct{font-family:'IBM Plex Mono',monospace; font-size:32px; font-weight:700; color:var(--renev-lime,#C8FF2E); line-height:1;}
+  .f-progress-pct em{font-style:normal; font-size:16px; color:var(--muted); margin-left:2px;}
+  .f-progress-status{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--success); text-transform:uppercase; letter-spacing:.04em;}
+  .f-progress-status svg{width:14px; height:14px;}
+  .f-progress-track{display:flex; gap:5px; height:2px; margin-bottom:18px;}
+  .f-progress-seg{flex:1; border-radius:5px; background:#fff;}
+  .f-progress-chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .f-chip{display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:20px; background:var(--success-light,rgba(46,204,113,.12)); color:var(--success); font-size:11.5px; font-weight:600; font-family:'IBM Plex Mono',monospace;}
+  .f-chip svg{width:12px; height:12px;}
   .f-lb-row{display:flex; align-items:center; gap:12px; padding:10px 0; font-size:13px;}
   .f-lb-row + .f-lb-row{border-top:1px solid var(--border);}
   .f-lb-rank{width:20px; font-family:'Playfair Display',serif; font-weight:700; color:var(--muted); font-size:14px;}
@@ -3007,12 +3017,23 @@ function pageLanding(){
         </div>
         <div class="f-visual card card-pad reveal reveal-right">
           <div class="mockup-title">Transit Progress — Last 5 Checkpoints</div>
-          <div class="f-bars">
-            <div class="bar" style="height:20%;"><span>Pickup</span></div>
-            <div class="bar" style="height:45%;"><span>Transit</span></div>
-            <div class="bar" style="height:65%;"><span>Customs</span></div>
-            <div class="bar" style="height:85%;"><span>Out</span></div>
-            <div class="bar" style="height:100%;"><span>Delivered</span></div>
+          <div class="f-progress-head">
+            <span class="f-progress-pct">100<em>%</em></span>
+            <span class="f-progress-status">${icon('checkc')} Delivered</span>
+          </div>
+          <div class="f-progress-track">
+            <div class="f-progress-seg"></div>
+            <div class="f-progress-seg"></div>
+            <div class="f-progress-seg"></div>
+            <div class="f-progress-seg"></div>
+            <div class="f-progress-seg"></div>
+          </div>
+          <div class="f-progress-chips">
+            <span class="f-chip done">${icon('check')} Pickup</span>
+            <span class="f-chip done">${icon('check')} Transit</span>
+            <span class="f-chip done">${icon('check')} Customs</span>
+            <span class="f-chip done">${icon('check')} Out</span>
+            <span class="f-chip done">${icon('check')} Delivered</span>
           </div>
         </div>
       </div>
@@ -3352,6 +3373,7 @@ function pageDashboard(){
      </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageFlightHistory(){
@@ -3371,6 +3393,7 @@ function pageFlightHistory(){
     </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageShipmentHistory(){
@@ -3390,6 +3413,7 @@ function pageShipmentHistory(){
     </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageCreateHub(){
@@ -3434,6 +3458,7 @@ function pageCreateHub(){
     </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageIdCardCreationHub(){
@@ -3476,6 +3501,7 @@ function pageIdCardCreationHub(){
     <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageCreationPlaceholder(kind){
@@ -3501,6 +3527,7 @@ function pageCreationPlaceholder(kind){
     </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageHistory(){
@@ -3531,6 +3558,7 @@ function pageHistory(){
     </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 function pageTracking(prefill='', err=false){
@@ -3597,6 +3625,7 @@ function pageProfile(){
     </div>
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 /* ---- Create Flight Ticket ---- */
@@ -3668,6 +3697,7 @@ function pageCreateFlight(){
       </div>
     </div>
   </div>
+  `;
 }
 
 /* Draws each license card straight onto a <canvas> using the same offline
@@ -4586,6 +4616,7 @@ function pageCreateLicenseChooser(){
       <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
     </div>
   </div>
+  `;
 }
 
 /* ---- Generated Driver License History ---- */
@@ -4604,6 +4635,7 @@ function pageLicenseHistory(){
       <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
     </div>
   </div>
+  `;
 }
 
 /* ---- State-specific Driver License Generator ---- */
@@ -4731,6 +4763,7 @@ ${licenseCardMarkup(typeKey, cardData)}
       </div>
     </div>
   </div>
+  `;
 }
 
 /* ---- State-specific Driver License Generator: generated output page ---- */
@@ -4771,6 +4804,7 @@ ${licenseCardMarkup(typeKey, d)}
       </div>
     </div>
   </div>
+  `;
 }
 
 /* ---- Create Shipment Wizard ---- */
@@ -4946,6 +4980,7 @@ function pageCreateShipment(){
       </div>
     </div>
   </div>
+  `;
 }
 
 function shareChannelButtons(tn){
@@ -5025,6 +5060,7 @@ function pageConfirmation(tn){
       <a href="#/create-shipment" class="btn btn-primary" style="margin-top:28px;" data-action="reset-wizard">${icon('plus')} Create Another Shipment</a>
     </div>
   </div>
+  `;
 }
 
 function pageTrackSearch(prefill, err){
@@ -5552,6 +5588,7 @@ function pageEditShipment(tn){
       </div>
     </div>
   </div>
+  `;
 }
 
 function pageForbidden(){
@@ -5625,6 +5662,7 @@ function pageAdmin(){
     ${body}
   </div>
   <div style="height:60px;"></div>
+  `;
 }
 
 /* ================= ROUTER ================= */
@@ -9929,11 +9967,12 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       margin-top:24px !important;
     }
     body:not(.tp-dashboard-mode) .hero-ctas .btn{
-      width:100% !important;
-      max-width:none !important;
-      min-height:48px !important;
+      width:auto !important;
+      max-width:210px !important;
+      min-height:40px !important;
+      align-self:center;
       justify-content:center;
-      padding:0 18px !important;
+      padding:0 20px !important;
       font-size:11px !important;
       letter-spacing:.08em;
     }
