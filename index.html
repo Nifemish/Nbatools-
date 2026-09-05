@@ -1719,10 +1719,12 @@ function renderIcons(root){
 function initScrollReveal(){
   const els = document.querySelectorAll('.reveal:not(.in)');
   const typeEls = document.querySelectorAll('[data-typewriter]:not(.typed)');
-  if(!els.length && !typeEls.length) return;
+  const countEls = document.querySelectorAll('[data-countup]:not(.counted)');
+  if(!els.length && !typeEls.length && !countEls.length) return;
   if(!('IntersectionObserver' in window)){
     els.forEach(el=>el.classList.add('in'));
     typeEls.forEach(el=>runTypewriter(el));
+    countEls.forEach(el=>runCountUp(el));
     return;
   }
   if(window.__tpRevealObserver) window.__tpRevealObserver.disconnect();
@@ -1735,13 +1737,42 @@ function initScrollReveal(){
         if(entry.target.hasAttribute('data-typewriter')){
           runTypewriter(entry.target);
         }
+        if(entry.target.hasAttribute('data-countup')){
+          runCountUp(entry.target);
+        }
         observer.unobserve(entry.target);
       }
     });
   }, {threshold:0.15, rootMargin:'0px 0px -10% 0px'});
   els.forEach(el=>observer.observe(el));
   typeEls.forEach(el=>observer.observe(el));
+  countEls.forEach(el=>observer.observe(el));
   window.__tpRevealObserver = observer;
+}
+function runCountUp(el){
+  if(el.classList.contains('counted')) return;
+  el.classList.add('counted');
+  const target = parseFloat(el.getAttribute('data-countup'));
+  if(isNaN(target)){ return; }
+  const decimals = Number(el.getAttribute('data-countup-decimals')) || 0;
+  const suffix = el.getAttribute('data-countup-suffix') || '';
+  const prefix = el.getAttribute('data-countup-prefix') || '';
+  const duration = Number(el.getAttribute('data-countup-duration')) || 1400;
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion){ el.textContent = prefix + target.toFixed(decimals) + suffix; return; }
+  const start = performance.now();
+  function tick(now){
+    const p = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    const val = target * eased;
+    el.textContent = prefix + val.toFixed(decimals) + suffix;
+    if(p < 1){
+      requestAnimationFrame(tick);
+    } else {
+      el.textContent = prefix + target.toFixed(decimals) + suffix;
+    }
+  }
+  requestAnimationFrame(tick);
 }
 function runTypewriter(el){
   if(el.classList.contains('typed')) return;
@@ -3134,19 +3165,19 @@ function pageLanding(){
     <div class="wrap" style="margin-top:44px;">
       <div class="stat-grid">
         <div class="card stat-card reveal reveal-left">
-          <div class="stat-val">180K+</div>
+          <div class="stat-val" data-countup="180" data-countup-suffix="K+">0K+</div>
           <div class="stat-label">Tracking Events Logged</div>
         </div>
         <div class="card stat-card reveal reveal-right">
-          <div class="stat-val">4.8/5</div>
+          <div class="stat-val" data-countup="4.8" data-countup-decimals="1" data-countup-suffix="/5">0.0/5</div>
           <div class="stat-label">Average Rating</div>
         </div>
         <div class="card stat-card reveal reveal-left">
-          <div class="stat-val">200+</div>
+          <div class="stat-val" data-countup="200" data-countup-suffix="+">0+</div>
           <div class="stat-label">Countries &amp; Airports</div>
         </div>
         <div class="card stat-card reveal reveal-right">
-          <div class="stat-val">0.4s</div>
+          <div class="stat-val" data-countup="0.4" data-countup-decimals="1" data-countup-suffix="s">0.0s</div>
           <div class="stat-label">Avg Update Lag</div>
         </div>
       </div>
@@ -3583,7 +3614,7 @@ function pageTracking(prefill='', err=false){
     </div>
   </div>
   <div style="height:60px;"></div>
-  ${footer()}`;
+  `;
 }
 
 function pageProfile(){
@@ -8119,10 +8150,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     padding-top:101px;
   }
 
-  /* Bottom tabs: 5px lower (content padding adjusted to match). */
-  .tp-bottom-tabs{bottom:-5px;}
-  body.tp-dashboard-mode .tp-bottom-tabs{bottom:-5px;}
-  body.tp-dashboard-mode #app{padding-bottom:87px;}
+  /* Bottom tabs: flush with the viewport edge, no gap beneath. */
+  .tp-bottom-tabs{bottom:0;}
+  body.tp-dashboard-mode .tp-bottom-tabs{bottom:0;}
+  body.tp-dashboard-mode #app{padding-bottom:92px;}
 
   body.tp-dashboard-mode .tracking-app-card{
     max-width:760px;
