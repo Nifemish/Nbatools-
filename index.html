@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.4.0">
+<meta name="trackport-version" content="1.5.2">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1554,6 +1554,19 @@
   [data-typewriter].typing::after{content:''; display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-2px; background:var(--primary); animation:tpCaret .8s steps(1) infinite;}
   @keyframes tpCaret{ 0%,49%{opacity:1;} 50%,100%{opacity:0;} }
 </style>
+
+<style id="trackport-edge-to-edge">
+  /* v1.5.2 — remove side spacing app-wide (incl. tracking result page) */
+  .wrap{padding-left:0 !important; padding-right:0 !important;}
+  .container-narrow{padding-left:0 !important; padding-right:0 !important;}
+  .track-summary{padding-left:0 !important; padding-right:0 !important;}
+  .tracking-standalone-header{padding-left:0 !important; padding-right:0 !important;}
+  .tracking-standalone-footer{padding-left:0 !important; padding-right:0 !important;}
+  .nav-mobile.open{padding-left:0 !important; padding-right:0 !important;}
+  @media (max-width:760px){
+    .flight-ticket-stage{padding-left:0 !important; padding-right:0 !important;}
+  }
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -2892,8 +2905,8 @@ function pageLanding(){
       <h1 class="reveal reveal-left">Stop wondering.<br><span class="accent">Start tracking.</span></h1>
       <p class="sub reveal reveal-right">Create a shipment or flight record, publish it once, and let anyone follow the route, stopovers and status history from a single link — no calls, no chasing, no guesswork.</p>
       <div class="hero-ctas reveal reveal-left">
-        <a href="#/register" class="btn btn-accent">${icon('plus')} Get Started</a>
-        <a href="#/track" class="btn btn-outline-light">${icon('search')} Track Something</a>
+        <a href="#/register" class="btn btn-accent" onclick="event.preventDefault();navigate('#/register')">${icon('plus')} Get Started</a>
+        <a href="#/track" class="btn btn-outline-light" onclick="event.preventDefault();navigate('#/track')">${icon('search')} Track Something</a>
       </div>
     </div>
   </div>
@@ -8883,7 +8896,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   .creation-cta,.record-history-item,.page-head,.feature-row .card,
   .tracking-app-card,.tracking-map-card,.flight-history-card,
   .flight-overview-card,.flight-share-card,.flight-ticket-stage,
-  .license-card,.wizard-card,.auth-card,.track-box,.track-summary,
+  .wizard-card,.auth-card,.track-box,.track-summary,
   .tracking-map,.modal-box,.sheet,.box{
     background:linear-gradient(145deg,rgba(26,38,29,.9),rgba(9,15,11,.78)) !important;
     border:1px solid rgba(255,255,255,.15) !important;
@@ -9785,6 +9798,329 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       flex-direction:column;
       gap:9px;
     }
+  }
+</style>
+
+<!-- Final mobile corrections: restore the dashboard app bar and original
+     license-preview treatment without changing routes or data behavior. -->
+<style id="trackport-mobile-corrections">
+  /* Softer CTA green: keep the lime identity, remove the neon contrast. */
+  .btn-accent,
+  .btn-primary,
+  .license-generate-btn{
+    background:#A9D13A !important;
+    border-color:#A9D13A !important;
+    color:#11160B !important;
+  }
+  .btn-accent:hover,
+  .btn-primary:hover,
+  .license-generate-btn:hover{
+    background:#B8DF55 !important;
+    border-color:#B8DF55 !important;
+    box-shadow:0 10px 24px rgba(169,209,58,.18) !important;
+  }
+
+  /* Dashboard mobile header: same full-width Renev bar as the landing shell,
+     with the TrackPort mark anchored left and the menu control on the right. */
+  @media(max-width:760px){
+    body.tp-dashboard-mode .navbar{
+      position:fixed !important;
+      inset:0 0 auto 0 !important;
+      top:0 !important;
+      left:0 !important;
+      width:100% !important;
+      margin:0 !important;
+      transform:none !important;
+      border-width:0 0 1px !important;
+      border-radius:0 !important;
+      background:rgba(30,52,34,.92) !important;
+      box-shadow:0 10px 30px rgba(0,0,0,.28) !important;
+    }
+    body.tp-dashboard-mode .navbar .nav-inner{
+      min-height:90px !important;
+      padding:0 18px !important;
+    }
+    body.tp-dashboard-mode .navbar .brand{
+      margin-right:auto;
+    }
+    body.tp-dashboard-mode .navbar .brand-logo{
+      width:126px !important;
+      height:44px !important;
+    }
+    body.tp-dashboard-mode .navbar .nav-side{
+      margin-left:auto !important;
+    }
+    body.tp-dashboard-mode #app > .wrap,
+    body.tp-dashboard-mode #app > .license-choice-shell,
+    body.tp-dashboard-mode #app > .license-generator-shell,
+    body.tp-dashboard-mode #app > .track-hero{
+      padding-top:112px !important;
+    }
+
+    /* Keep the mobile landing hero within one intentional viewport rhythm. */
+    body:not(.tp-dashboard-mode) .hero{
+      min-height:0 !important;
+      padding:92px 18px 58px !important;
+    }
+    body:not(.tp-dashboard-mode) .hero-inner{
+      width:min(100%,390px);
+      margin:0 auto;
+    }
+    body:not(.tp-dashboard-mode) .hero h1{
+      max-width:360px;
+      margin:20px 0 16px !important;
+      font-size:clamp(41px,11.5vw,54px) !important;
+      line-height:.91 !important;
+      letter-spacing:-.075em !important;
+    }
+    body:not(.tp-dashboard-mode) .hero .sub{
+      max-width:360px;
+      font-size:15px !important;
+      line-height:1.55 !important;
+    }
+    body:not(.tp-dashboard-mode) .hero-ctas{
+      width:100%;
+      align-items:stretch !important;
+      flex-direction:column !important;
+      gap:10px !important;
+      margin-top:24px !important;
+    }
+    body:not(.tp-dashboard-mode) .hero-ctas .btn{
+      width:100% !important;
+      max-width:none !important;
+      min-height:48px !important;
+      justify-content:center;
+      padding:0 18px !important;
+      font-size:11px !important;
+      letter-spacing:.08em;
+    }
+    body:not(.tp-dashboard-mode) .hero-grid,
+    body:not(.tp-dashboard-mode) .hero:after{
+      pointer-events:none !important;
+    }
+    body:not(.tp-dashboard-mode) .hero:after{
+      right:-90px !important;
+      top:250px !important;
+      width:220px !important;
+      height:220px !important;
+      opacity:.34 !important;
+    }
+  }
+
+  @media(max-width:480px){
+    body:not(.tp-dashboard-mode) .hero{
+      padding-top:78px !important;
+      padding-bottom:48px !important;
+    }
+    body:not(.tp-dashboard-mode) .hero h1{
+      font-size:43px !important;
+    }
+    body:not(.tp-dashboard-mode) .hero .eyebrow-route{
+      max-width:300px;
+      font-size:10px !important;
+      line-height:1.55 !important;
+    }
+
+    /* Preserve the original warm tabletop/card composition on the license
+       generator; this also prevents the responsive preview from being
+       mistaken for a themed dashboard card. */
+    body.tp-dashboard-mode .license-generator-shell,
+    body.tp-dashboard-mode .license-choice-shell{
+      background:
+        radial-gradient(circle at 50% -18%,rgba(200,255,46,.10),transparent 46%),
+        radial-gradient(760px 520px at 104% 6%,rgba(14,72,49,.30),transparent 66%),
+        #050807 !important;
+    }
+    body.tp-dashboard-mode .license-tabletop{
+      background-color:#8b5a3c !important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 12px 28px rgba(55,32,18,.18) !important;
+    }
+    body.tp-dashboard-mode .license-card-wrapper{
+      background:#fff !important;
+      border:1px solid #cbd5e1 !important;
+      border-radius:28px !important;
+      box-shadow:0 22px 40px rgba(15,23,42,.23) !important;
+    }
+  }
+</style>
+
+<!-- Driver-license section restored from the attached reference app.
+     Only this scoped workspace returns to the original license visual system;
+     the redesigned public shell and dashboard remain unchanged. -->
+<style id="trackport-legacy-license">
+  /* Driver-license workspace — Renev green & black interface.
+     The tabletop and the white licence card keep their original look. */
+  .license-choice-shell,
+  .license-generator-shell{
+    --primary:#C8FF2E !important;
+    --primary-dark:#96C41C !important;
+    --primary-light:rgba(200,255,46,.14) !important;
+    --primary-glow:rgba(200,255,46,.30) !important;
+    --dark:#050807 !important;
+    --ink:#F5F7EF !important;
+    --bg:#050807 !important;
+    --card:rgba(18,28,21,.78) !important;
+    --glass:rgba(255,255,255,.055) !important;
+    --glass-strong:rgba(255,255,255,.09) !important;
+    --glass-border:rgba(255,255,255,.18) !important;
+    --border:rgba(255,255,255,.14) !important;
+    --muted:#AAB6A9 !important;
+    --radius-lg:22px !important;
+    --radius-md:16px !important;
+    --radius-sm:13px !important;
+    --radius-xl:28px !important;
+    --blur:22px !important;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 34px rgba(0,0,0,.38) !important;
+    --shadow-lift:0 10px 24px rgba(0,0,0,.45),0 30px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.05) inset !important;
+    background:
+      radial-gradient(circle at 50% -18%,rgba(200,255,46,.10),transparent 46%),
+      radial-gradient(760px 520px at 104% 6%,rgba(14,72,49,.30),transparent 66%),
+      var(--bg) !important;
+    color:var(--ink) !important;
+    font-family:Inter,Arial,sans-serif !important;
+  }
+  .license-choice-header h1,
+  .license-generator h1,
+  .license-generator h2{
+    font-family:Inter,Arial,sans-serif !important;
+    color:var(--ink) !important;
+    font-weight:800 !important;
+    letter-spacing:-.045em !important;
+  }
+  .license-choice-title{
+    font-family:Inter,Arial,sans-serif !important;
+    letter-spacing:-.04em !important;
+  }
+  .license-choice-kicker,
+  .license-choice-icon,
+  .license-history-item-icon,
+  .license-editor h2 svg{
+    color:var(--primary) !important;
+  }
+  .license-choice-header p,
+  .license-generator-header p,
+  .license-generate-hint{
+    color:var(--muted) !important;
+  }
+  .license-choice-card,
+  .license-editor{
+    background:var(--card) !important;
+    border-color:var(--glass-border) !important;
+    box-shadow:var(--shadow) !important;
+    -webkit-backdrop-filter:blur(var(--blur)) !important;
+    backdrop-filter:blur(var(--blur)) !important;
+  }
+  .license-choice-card:hover{
+    border-color:var(--primary) !important;
+    background:linear-gradient(135deg,rgba(200,255,46,.14),rgba(255,255,255,.04)) !important;
+  }
+  .license-choice-icon,
+  .license-history-item-icon,
+  .license-photo-input::file-selector-button{
+    background:var(--primary-light) !important;
+  }
+  .license-history-item{
+    background:rgba(255,255,255,.03) !important;
+    border-color:var(--border) !important;
+  }
+  .license-history-item:hover{
+    border-color:var(--primary) !important;
+    background:rgba(200,255,46,.08) !important;
+  }
+  .license-field input,
+  .license-field textarea{
+    background:rgba(255,255,255,.05) !important;
+    border-color:var(--glass-border) !important;
+    color:var(--ink) !important;
+    font-family:Inter,Arial,sans-serif !important;
+  }
+  .license-field input:focus,
+  .license-field textarea:focus{
+    border-color:var(--primary) !important;
+    box-shadow:0 0 0 3px rgba(200,255,46,.20) !important;
+  }
+  .license-photo-input{
+    background:transparent !important;
+    color:var(--muted) !important;
+  }
+  .license-photo-input::file-selector-button{
+    color:#0B120D !important;
+    background:var(--primary) !important;
+  }
+  .license-print,
+  .license-edit-again{
+    color:var(--ink) !important;
+  }
+  .license-print:hover{
+    border-color:var(--primary) !important;
+    background:rgba(200,255,46,.10) !important;
+  }
+  .license-download,
+  .license-generate-btn{
+    background:linear-gradient(145deg,var(--primary),var(--primary-dark)) !important;
+    border-color:transparent !important;
+    color:#0B120D !important;
+    box-shadow:0 8px 22px rgba(200,255,46,.30) !important;
+  }
+  .license-download:hover,
+  .license-generate-btn:hover{
+    box-shadow:0 12px 28px rgba(200,255,46,.42) !important;
+  }
+  .license-choice-back{
+    color:var(--muted) !important;
+  }
+
+  /* Untouched output: brown tabletop + white licence card. */
+  .license-tabletop{
+    background-color:#8b5a3c !important;
+    background-image:
+      repeating-linear-gradient(8deg,rgba(255,220,170,.12) 0,rgba(255,220,170,.12) 2px,transparent 2px,transparent 13px),
+      repeating-linear-gradient(92deg,rgba(57,25,12,.16) 0,rgba(57,25,12,.16) 1px,transparent 1px,transparent 29px),
+      radial-gradient(ellipse at 15% 20%,rgba(255,235,192,.24),transparent 34%),
+      radial-gradient(ellipse at 84% 75%,rgba(45,18,8,.24),transparent 38%) !important;
+  }
+  .license-card-wrapper{
+    background:#fff !important;
+    border:1px solid #cbd5e1 !important;
+    box-shadow:0 22px 40px rgba(15,23,42,.23) !important;
+  }
+  /* The licence card itself always keeps its white printed look. */
+  .license-card{
+    background:#fff !important;
+    color:#000 !important;
+    border:none !important;
+    border-radius:22px !important;
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.14) !important;
+    -webkit-backdrop-filter:none !important;
+    backdrop-filter:none !important;
+  }
+  .license-card.license-holo-bg{background:
+    linear-gradient(28deg,
+      #f6b9c6 0%,
+      #f9c6cf 6%,
+      #fbd9c0 11%,
+      #fdeeb6 17%,
+      #f7f4d8 22%,
+      #ffffff 26%,
+      #e7f3e4 31%,
+      #bfe4c9 37%,
+      #b8cbef 45%,
+      #dfe8fa 51%,
+      #f4f7ee 55%,
+      #fbeab3 61%,
+      #f9d8bd 66%,
+      #f7bfcb 72%,
+      #fadde0 78%,
+      #eef0f8 83%,
+      #c6dcf0 88%,
+      #cfe7d2 93%,
+      #f7c3cd 100%) !important;
+  }
+  .license-card.tx-card{background:
+      radial-gradient(ellipse at 95% 90%, rgba(244,114,182,.45) 0%, rgba(251,146,60,.15) 30%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(186,230,253,.5) 0%, transparent 50%),
+      linear-gradient(135deg,#ffffff 0%,#f8fafc 40%,#f1f5f9 100%) !important;
+      border:1px solid #cbd5e1 !important;
   }
 </style>
 
