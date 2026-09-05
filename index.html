@@ -1567,8 +1567,52 @@
     .flight-ticket-stage{padding-left:0 !important; padding-right:0 !important;}
   }
 </style>
+<style id="tp-loader-style">
+/* ===== TrackPort circular page loader ===== */
+#tp-loader{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+  background:transparent;pointer-events:none;transition:opacity .45s ease,visibility .45s ease}
+#tp-loader.tp-hide{opacity:0;visibility:hidden}
+#tp-loader .tp-spin{position:relative;width:132px;height:132px}
+#tp-loader .tp-spin svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#tp-loader .tp-arc-outer{animation:tp-rot 1.15s linear infinite;transform-origin:50% 50%}
+#tp-loader .tp-arc-middle{animation:tp-rot-rev 1.4s linear infinite;transform-origin:50% 50%}
+#tp-loader .tp-arc-inner{animation:tp-rot 1.6s linear infinite;transform-origin:50% 50%}
+#tp-loader circle{fill:none;stroke:#C6F24E;stroke-linecap:round;
+  filter:drop-shadow(0 0 6px rgba(198,242,78,.45))}
+#tp-loader .tp-arc-outer circle{stroke-width:5;stroke-dasharray:120 320}
+#tp-loader .tp-arc-middle circle{stroke-width:5;stroke-dasharray:105 270}
+#tp-loader .tp-arc-inner circle{stroke-width:5;stroke-dasharray:90 240}
+@keyframes tp-rot{to{transform:rotate(360deg)}}
+@keyframes tp-rot-rev{to{transform:rotate(-360deg)}}
+@media (prefers-reduced-motion:reduce){
+  #tp-loader .tp-arc-outer,#tp-loader .tp-arc-middle,#tp-loader .tp-arc-inner{animation-duration:3s}
+}
+</style>
 </head>
 <body>
+<!-- ===== TrackPort circular page loader ===== -->
+<div id="tp-loader" role="status" aria-live="polite" aria-label="Loading">
+  <div class="tp-spin">
+    <svg class="tp-arc-outer" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45"/></svg>
+    <svg class="tp-arc-middle" viewBox="0 0 100 100"><circle cx="50" cy="50" r="38"/></svg>
+    <svg class="tp-arc-inner" viewBox="0 0 100 100"><circle cx="50" cy="50" r="31"/></svg>
+  </div>
+</div>
+<script>
+(function(){
+  function hideLoader(){
+    var el=document.getElementById('tp-loader');
+    if(!el||el.classList.contains('tp-hide'))return;
+    el.classList.add('tp-hide');
+    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },600);
+  }
+  window.tpHideLoader=hideLoader;
+  window.addEventListener('load',function(){ setTimeout(hideLoader,350); });
+  // safety net: never trap the user behind the loader
+  setTimeout(hideLoader,8000);
+})();
+</script>
+
 <div id="app"></div>
 <div id="toast" class="toast"></div>
 
