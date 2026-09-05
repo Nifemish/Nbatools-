@@ -1568,29 +1568,23 @@
   }
 </style>
 <style id="tp-loader-style">
-/* ===== TrackPort circular page loader ===== */
-#tp-loader{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
-  background:transparent;pointer-events:none;transition:opacity .45s ease,visibility .45s ease}
-#tp-loader.tp-hide{opacity:0;visibility:hidden}
-#tp-loader .tp-spin{position:relative;width:132px;height:132px}
-#tp-loader .tp-spin svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-#tp-loader .tp-arc-outer{animation:tp-rot 1.15s linear infinite;transform-origin:50% 50%}
-#tp-loader .tp-arc-middle{animation:tp-rot-rev 1.4s linear infinite;transform-origin:50% 50%}
-#tp-loader .tp-arc-inner{animation:tp-rot 1.6s linear infinite;transform-origin:50% 50%}
-#tp-loader circle{fill:none;stroke:#C6F24E;stroke-linecap:round;
-  filter:drop-shadow(0 0 6px rgba(198,242,78,.45))}
-#tp-loader .tp-arc-outer circle{stroke-width:5;stroke-dasharray:120 320}
-#tp-loader .tp-arc-middle circle{stroke-width:5;stroke-dasharray:105 270}
-#tp-loader .tp-arc-inner circle{stroke-width:5;stroke-dasharray:90 240}
-@keyframes tp-rot{to{transform:rotate(360deg)}}
-@keyframes tp-rot-rev{to{transform:rotate(-360deg)}}
-@media (prefers-reduced-motion:reduce){
-  #tp-loader .tp-arc-outer,#tp-loader .tp-arc-middle,#tp-loader .tp-arc-inner{animation-duration:3s}
-}
+  #tp-loader{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:transparent;pointer-events:none;transition:opacity .35s ease,visibility .35s ease}
+  #tp-loader.tp-hide{opacity:0;visibility:hidden}
+  .tp-spin{position:relative;width:72px;height:72px}
+  .tp-spin svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .tp-arc-outer{animation:tp-rot 1.15s linear infinite;transform-origin:50% 50%}
+  .tp-arc-middle{animation:tp-rot-rev 1.4s linear infinite;transform-origin:50% 50%}
+  .tp-arc-inner{animation:tp-rot 1.6s linear infinite;transform-origin:50% 50%}
+  #tp-loader circle{fill:none;stroke:#C6F24E;stroke-linecap:round;stroke-width:5}
+  .tp-arc-outer circle{stroke-dasharray:120 320}
+  .tp-arc-middle circle{stroke-dasharray:105 270}
+  .tp-arc-inner circle{stroke-dasharray:90 240}
+  @keyframes tp-rot{to{transform:rotate(360deg)}}
+  @keyframes tp-rot-rev{to{transform:rotate(-360deg)}}
+  @media (prefers-reduced-motion:reduce){.tp-arc-outer,.tp-arc-middle,.tp-arc-inner{animation-duration:3s}}
 </style>
 </head>
 <body>
-<!-- ===== TrackPort circular page loader ===== -->
 <div id="tp-loader" role="status" aria-live="polite" aria-label="Loading">
   <div class="tp-spin">
     <svg class="tp-arc-outer" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45"/></svg>
@@ -1600,19 +1594,38 @@
 </div>
 <script>
 (function(){
-  function hideLoader(){
-    var el=document.getElementById('tp-loader');
-    if(!el||el.classList.contains('tp-hide'))return;
-    el.classList.add('tp-hide');
-    setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },600);
-  }
-  window.tpHideLoader=hideLoader;
-  window.addEventListener('load',function(){ setTimeout(hideLoader,350); });
-  // safety net: never trap the user behind the loader
-  setTimeout(hideLoader,8000);
+  var el = document.getElementById('tp-loader');
+  function showLoader(){ if(el) el.classList.remove('tp-hide'); }
+  function hideLoader(){ if(el) el.classList.add('tp-hide'); }
+  window.tpShowLoader = showLoader;
+  window.tpHideLoader = hideLoader;
+
+  // Hide after initial load
+  window.addEventListener('load', function(){ setTimeout(hideLoader, 250); });
+  setTimeout(hideLoader, 8000);
+
+  // Show on every navigation click
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a[href]');
+    if(a && !a.getAttribute('href').startsWith('#') && !a.getAttribute('href').startsWith('javascript:') && !a.target){
+      showLoader();
+    }
+    var btn = e.target.closest('button, .btn, [role="button"]');
+    if(btn){
+      var text = (btn.textContent || '').toLowerCase();
+      var cls = (btn.className || '').toLowerCase();
+      var isCTA = text.includes('track') || text.includes('ship') || text.includes('get quote') || text.includes('login') || text.includes('sign') || text.includes('submit') || cls.includes('cta') || cls.includes('primary') || cls.includes('btn') || btn.type === 'submit';
+      if(isCTA) showLoader();
+    }
+  }, true);
+
+  // Show on form submit
+  document.addEventListener('submit', function(){ showLoader(); }, true);
+
+  // Show on beforeunload for external/page navigation
+  window.addEventListener('beforeunload', function(){ showLoader(); });
 })();
 </script>
-
 <div id="app"></div>
 <div id="toast" class="toast"></div>
 
