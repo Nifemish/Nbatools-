@@ -812,6 +812,20 @@
   .creation-cta.shipping-cta{background:linear-gradient(125deg,rgba(76,174,125,.13),rgba(22,25,35,.7));}
   .creation-cta.document-cta{background:linear-gradient(125deg,rgba(92,130,226,.16),rgba(22,25,35,.7));}
   .creation-cta.receipt-cta{background:linear-gradient(125deg,rgba(188,116,210,.16),rgba(22,25,35,.7));}
+  .creation-cta.id-card-creation-cta{background:linear-gradient(125deg,rgba(210,116,174,.18),rgba(22,25,35,.7));}
+  .creation-cta.id-card-creation-cta .cta-icon{background:#c86ca7;}
+  .creation-cta .cta-meta{display:block; margin-top:8px; color:var(--muted); font-size:11.5px; line-height:1.45; font-weight:400;}
+  .history-cta-grid{grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:0;}
+  .history-cta{min-height:128px;}
+  .history-cta .cta-title{font-size:13px;}
+  .history-cta .cta-count{display:block; margin-top:8px; color:var(--primary); font:600 11px 'IBM Plex Mono',monospace; letter-spacing:.02em;}
+  .history-cta.flight-history-cta{background:linear-gradient(125deg,rgba(203,161,53,.16),rgba(22,25,35,.7));}
+  .history-cta.shipment-history-cta{background:linear-gradient(125deg,rgba(76,174,125,.13),rgba(22,25,35,.7));}
+  .history-cta.license-history-cta{background:linear-gradient(125deg,rgba(210,116,174,.18),rgba(22,25,35,.7));}
+  .grouped-history-panel{margin-bottom:24px;}
+  .grouped-history-intro{margin-top:5px; color:var(--muted); font-size:12px; line-height:1.5;}
+  @media (max-width:980px){ .history-cta-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:620px){ .history-cta-grid{grid-template-columns:1fr;} }
   .creation-section{margin:0 0 18px; padding:22px; border:1px solid var(--glass-border); border-radius:22px; background:rgba(255,255,255,.035);}
   .creation-section-header{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin-bottom:16px;}
   .creation-section-header h2{font-family:'Inter',sans-serif; font-size:18px; letter-spacing:-.02em;}
@@ -3160,6 +3174,22 @@ function flightHistoryMarkup(items){
   }).join('')}</div>`;
 }
 
+function historySummaryCta({href, iconName, kicker, title, count, singular, plural, latestAt, className}){
+  const savedText = count === 1 ? `1 ${singular}` : `${count} ${plural}`;
+  const detail = count
+    ? `${savedText} · Last saved ${fmtDate(latestAt)}`
+    : `No ${plural} yet · Open to get started`;
+  return `<a href="${href}" class="creation-cta history-cta ${className||''}">
+    <span class="cta-icon">${icon(iconName)}</span>
+    <span class="cta-copy">
+      <span class="cta-kicker">${kicker}</span>
+      <span class="cta-title">${title}</span>
+      <span class="cta-count">${detail}</span>
+    </span>
+    <span class="cta-arrow">${icon('arrow')}</span>
+  </a>`;
+}
+
 function shipmentHistoryMarkup(items){
   if(!items.length) return `<div class="record-history-empty">No shipping products yet. Create your first shipment to start a separate shipping history.</div>`;
   return `<div class="record-history-list">${items.map(s=>{
@@ -3182,48 +3212,6 @@ function pageDashboard(){
   const mine = Object.values(shipmentsDB).filter(s=>s.userId===currentUser.email).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const flightsMine = Object.values(flightsDB).filter(f=>f.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
   const stats = computeStats(mine);
-  const recent = mine.slice(0,8);
-  const recentFlights = flightsMine.slice(0,5);
-
-  const rowsDesktop = recent.map(s=>`
-    <tr>
-      <td><div class="prod-cell">${thumb(s.imageUrl)}<div><div style="font-weight:600;">${esc(s.productName)}</div><div style="font-size:12px;color:var(--muted);">${esc(s.category||'')}</div></div></div></td>
-      <td class="mono" style="font-size:12.5px;">${esc(s.trackingNumber)}</td>
-      <td>${esc(s.recipient.fullName)}</td>
-      <td>${esc(s.recipient.city)}, ${esc(s.recipient.country)}</td>
-      <td>${badge(s.status)}</td>
-      <td style="color:var(--muted);">${fmtDate(s.createdAt)}</td>
-      <td>
-        <div class="row-actions">
-          <button class="btn-icon" data-action="view-tracking" data-id="${s.trackingNumber}" title="View tracking">${icon('eye')}</button>
-          <button class="btn-icon" data-action="open-update" data-id="${s.trackingNumber}" title="Update tracking">${icon('clock')}</button>
-          <button class="btn-icon" data-action="edit-shipment" data-id="${s.trackingNumber}" title="Edit">${icon('edit')}</button>
-          <button class="btn-icon" data-action="delete-shipment" data-id="${s.trackingNumber}" title="Delete">${icon('trash')}</button>
-        </div>
-      </td>
-    </tr>`).join('');
-
-  const cardsMobile = recent.map(s=>`
-    <div class="ship-card">
-      <div class="top">${thumb(s.imageUrl,48)}
-        <div class="meta"><h4>${esc(s.productName)}</h4><div class="tn mono">${esc(s.trackingNumber)}</div></div>
-        ${badge(s.status)}
-      </div>
-      <div class="rows">
-        <div>Recipient<b>${esc(s.recipient.fullName)}</b></div>
-        <div>Destination<b>${esc(s.recipient.city)}, ${esc(s.recipient.country)}</b></div>
-      </div>
-      <div class="row-actions">
-        <button class="btn-icon" data-action="view-tracking" data-id="${s.trackingNumber}">${icon('eye')}</button>
-        <button class="btn-icon" data-action="open-update" data-id="${s.trackingNumber}">${icon('clock')}</button>
-        <button class="btn-icon" data-action="edit-shipment" data-id="${s.trackingNumber}">${icon('edit')}</button>
-        <button class="btn-icon" data-action="delete-shipment" data-id="${s.trackingNumber}">${icon('trash')}</button>
-      </div>
-    </div>`).join('');
-
-  const empty = `<div class="empty-state">${icon('package')}<h4>No shipments yet</h4><p>Create your first shipment to generate a tracking link.</p>
-    <a href="#/create-shipment" class="btn btn-accent">${icon('plus')} Create New Shipment</a></div>`;
-
   return `
   ${navbar('dashboard')}
   <div class="wrap">
@@ -3238,30 +3226,18 @@ function pageDashboard(){
       <div class="card stat-card"><div class="top"><span class="stat-label">Delivered</span><span class="stat-icon" style="background:var(--success-light);color:var(--success);">${icon('checkc')}</span></div><span class="stat-val">${stats.delivered}</span></div>
     </div>
 
-    <div class="card card-pad flight-history-panel">
-      <div class="section-title-row">
-        <h3>Recent flight tickets</h3>
-        ${flightsMine.length ? `<a href="#/history" style="font-size:13px;color:var(--primary);font-weight:600;">View flight history</a>` : ''}
-      </div>
-      ${recentFlights.length ? flightHistoryMarkup(recentFlights) : `<div class="record-history-empty">No flight tickets yet. <a href="#/create-flight" style="color:var(--primary);font-weight:600;">Create a trackable flight ticket</a> to see it here.</div>`}
-    </div>
-
-    <div class="card card-pad">
-      <div class="section-title-row"><h3>Recent shipments</h3>${mine.length ? `<a href="#/history" style="font-size:13px;color:var(--primary);font-weight:600;">View shipping history</a>` : ''}</div>
-      ${recent.length===0 ? empty : `
-        <table class="shipment-table">
-          <thead><tr><th>Product</th><th>Tracking #</th><th>Recipient</th><th>Destination</th><th>Status</th><th>Created</th><th></th></tr></thead>
-          <tbody>${rowsDesktop}</tbody>
-        </table>
-        <div class="cards-mobile">${cardsMobile}</div>
-      `}
-    </div>
-     <div class="card card-pad license-history-panel">
+     <div class="card card-pad grouped-history-panel">
        <div class="section-title-row">
-         <h3>Driver's license history</h3>
-         ${licenseHistoryDB.length ? `<a href="#/history" style="font-size:13px;color:var(--primary);font-weight:600;">View all</a>` : ''}
+         <div>
+           <h3>Recent creations</h3>
+           <p class="grouped-history-intro">Open a category to see every saved creation. Your dashboard stays focused on the latest overview.</p>
+         </div>
        </div>
-       ${licenseHistoryMarkup(licenseHistoryDB.slice(0,5))}
+       <div class="creation-cta-grid history-cta-grid">
+         ${historySummaryCta({href:'#/flight-history',iconName:'plane',kicker:'Travel records',title:'RECENT FLIGHT TICKETS',count:flightsMine.length,singular:'flight ticket',plural:'flight tickets',latestAt:flightsMine[0]?.updatedAt||flightsMine[0]?.createdAt,className:'flight-history-cta'})}
+         ${historySummaryCta({href:'#/shipment-history',iconName:'package',kicker:'Delivery records',title:'RECENT SHIPMENTS',count:mine.length,singular:'shipment',plural:'shipments',latestAt:mine[0]?.updatedAt||mine[0]?.createdAt,className:'shipment-history-cta'})}
+         ${historySummaryCta({href:'#/license-history',iconName:'credit-card',kicker:'Identity records',title:'ID CARD CREATIONS',count:licenseHistoryDB.length,singular:'ID card',plural:'ID cards',latestAt:licenseHistoryDB[0]?.createdAt,className:'license-history-cta'})}
+       </div>
      </div>
   </div>
   <div style="height:60px;"></div>
@@ -3326,11 +3302,45 @@ function pageCreateHub(){
         <span class="cta-copy"><span class="cta-kicker">Delivery tools</span><span class="cta-title">CREATE A TRACKABLE SHIPPING PRODUCT</span></span>
         <span class="cta-arrow">${icon('arrow')}</span>
       </a>
-     <section class="creation-cta id-card-creation-cta" aria-labelledby="id-card-creation-title">
+      <a href="#/create-id-card" class="creation-cta id-card-creation-cta">
+        <span class="cta-icon">${icon('credit-card')}</span>
+        <span class="cta-copy">
+          <span class="cta-kicker">Identity tools</span>
+          <span class="cta-title">ID CARD CREATION</span>
+          <span class="cta-meta">Open to choose a driver's license, military ID, citizenship ID, or SSN mockup.</span>
+        </span>
+        <span class="cta-arrow">${icon('arrow')}</span>
+      </a>
+    </div>
+    <div class="creation-cta-grid creation-secondary-grid">
+      <a href="#/create-document" class="creation-cta document-cta">
+        <span class="cta-icon">${icon('file')}</span>
+        <span class="cta-copy"><span class="cta-kicker">Paperwork tools</span><span class="cta-title">DOCUMENT CREATION</span></span>
+        <span class="cta-arrow">${icon('arrow')}</span>
+      </a>
+      <a href="#/create-receipt" class="creation-cta receipt-cta">
+        <span class="cta-icon">${icon('dollar')}</span>
+        <span class="cta-copy"><span class="cta-kicker">Records tools</span><span class="cta-title">RECEIPT CREATION</span></span>
+        <span class="cta-arrow">${icon('arrow')}</span>
+      </a>
+    </div>
+  </div>
+  <div style="height:60px;"></div>
+  ${footer()}`;
+}
+
+function pageIdCardCreationHub(){
+  return `
+  ${navbar('dashboard')}
+  <div class="wrap">
+    <div class="page-head">
+      <div><h1>ID Card Creation</h1><div class="greet">Choose an identity-card workspace</div></div>
+    </div>
+    <section class="creation-section" aria-labelledby="id-card-creation-title">
       <div class="creation-section-header">
         <div>
-          <h2 id="id-card-creation-title">ID CARD CREATION</h2>
-          <p>Choose an identity-card mockup workspace. Driver’s License opens the existing generator; the other options are prepared as clearly labeled mockup flows.</p>
+          <h2 id="id-card-creation-title">Choose an ID card type</h2>
+          <p>Open a creation workspace below. Driver’s License opens the existing generator; the other options are clearly labeled mockup flows.</p>
         </div>
       </div>
       <div class="id-card-cta-grid">
@@ -3355,20 +3365,8 @@ function pageCreateHub(){
           <span class="cta-arrow">${icon('arrow')}</span>
         </a>
       </div>
-     </section>
-    </div>
-    <div class="creation-cta-grid creation-secondary-grid">
-      <a href="#/create-document" class="creation-cta document-cta">
-        <span class="cta-icon">${icon('file')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Paperwork tools</span><span class="cta-title">DOCUMENT CREATION</span></span>
-        <span class="cta-arrow">${icon('arrow')}</span>
-      </a>
-      <a href="#/create-receipt" class="creation-cta receipt-cta">
-        <span class="cta-icon">${icon('dollar')}</span>
-        <span class="cta-copy"><span class="cta-kicker">Records tools</span><span class="cta-title">RECEIPT CREATION</span></span>
-        <span class="cta-arrow">${icon('arrow')}</span>
-      </a>
-    </div>
+    </section>
+    <a href="#/create" class="license-choice-back">${icon('arrow')} Back to Create</a>
   </div>
   <div style="height:60px;"></div>
   ${footer()}`;
@@ -3413,17 +3411,18 @@ function pageHistory(){
     <div class="page-head">
       <div><h1>History</h1><div class="greet">All your flight tickets, shipping products and driver's licenses in one place.</div></div>
     </div>
-    <div class="card card-pad flight-history-panel">
-      <div class="section-title-row"><h3>Flight ticket history</h3><a href="#/create-flight" style="font-size:13px;color:var(--primary);font-weight:600;">Create flight ticket</a></div>
-      ${flightHistoryMarkup(flights)}
-    </div>
-    <div class="card card-pad flight-history-panel">
-      <div class="section-title-row"><h3>Shipping product history</h3><a href="#/create-shipment" style="font-size:13px;color:var(--primary);font-weight:600;">Create shipping product</a></div>
-      ${shipmentHistoryMarkup(shipments)}
-    </div>
-    <div class="card card-pad license-history-panel">
-      <div class="section-title-row"><h3>Driver's license history</h3><a href="#/create-license" style="font-size:13px;color:var(--primary);font-weight:600;">Create driver's license</a></div>
-      ${licenseHistoryMarkup(licenseHistoryDB)}
+    <div class="card card-pad grouped-history-panel">
+      <div class="section-title-row">
+        <div>
+          <h3>Saved creations</h3>
+          <p class="grouped-history-intro">Choose a category to open its complete history. This keeps the History page organized and easy to scan.</p>
+        </div>
+      </div>
+      <div class="creation-cta-grid history-cta-grid">
+        ${historySummaryCta({href:'#/flight-history',iconName:'plane',kicker:'Travel records',title:'FLIGHT TICKET HISTORY',count:flights.length,singular:'flight ticket',plural:'flight tickets',latestAt:flights[0]?.updatedAt||flights[0]?.createdAt,className:'flight-history-cta'})}
+        ${historySummaryCta({href:'#/shipment-history',iconName:'package',kicker:'Delivery records',title:'SHIPPING PRODUCT HISTORY',count:shipments.length,singular:'shipping product',plural:'shipping products',latestAt:shipments[0]?.updatedAt||shipments[0]?.createdAt,className:'shipment-history-cta'})}
+        ${historySummaryCta({href:'#/license-history',iconName:'credit-card',kicker:'Identity records',title:"DRIVER'S LICENSE HISTORY",count:licenseHistoryDB.length,singular:'driver license',plural:'driver licenses',latestAt:licenseHistoryDB[0]?.createdAt,className:'license-history-cta'})}
+      </div>
     </div>
   </div>
   <div style="height:60px;"></div>
@@ -5574,7 +5573,7 @@ async function router(){
   }
   else if(parts[0]==='create-id-card'){
     if(!currentUser){ html = redirectTo('/login'); }
-    else { html = pageCreationPlaceholder(parts[1] || 'military'); }
+    else { html = parts[1] ? pageCreationPlaceholder(parts[1]) : pageIdCardCreationHub(); }
   }
   else if(parts[0]==='create-document'){
     if(!currentUser){ html = redirectTo('/login'); }
