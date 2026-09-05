@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.3.0">
+<meta name="trackport-version" content="1.4.0">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3446,7 +3446,8 @@ function pageTracking(prefill='', err=false){
         <input id="search-track-input" class="mono" placeholder="SHP-2026-8F42K9 or FLT-2026-8F42K9" value="${esc(prefill)}" autocomplete="off">
         <button class="btn btn-accent" type="submit">${icon('search')}<span>Track</span></button>
       </form>
-      ${err ? `<p class="tracking-search-error">${icon('alert')} We couldn't find a shipment or flight ticket with that tracking number.</p>` : ''}
+      ${err ? `<p class="tracking-search-error">${icon('alert')} We couldn't find a shipment or flight ticket with that tracking number. You can still try the universal carrier tracker below.</p>` : ''}
+      ${window.universalCarrierTrackerMarkup ? window.universalCarrierTrackerMarkup() : ''}
     </div>
   </div>
   <div style="height:60px;"></div>
@@ -4941,7 +4942,8 @@ function pageTrackSearch(prefill, err){
          <input id="search-track-input" class="mono" placeholder="SHP-2026-8F42K9 or FLT-2026-8F42K9" value="${esc(prefill||'')}" autocomplete="off">
         <button class="btn btn-accent" type="submit">${icon('search')}<span class="text-hide">Track</span></button>
       </form>
-       ${err ? `<p style="color:#FCA5A5;margin-top:14px;font-size:14px;">${icon('alert')} We couldn't find a shipment or flight ticket with that tracking number.</p>` : ''}
+        ${err ? `<p style="color:#FCA5A5;margin-top:14px;font-size:14px;">${icon('alert')} We couldn't find a shipment or flight ticket with that tracking number. You can still try the universal carrier tracker below.</p>` : ''}
+        ${window.universalCarrierTrackerMarkup ? window.universalCarrierTrackerMarkup() : ''}
     </div>
   </div>
   ${trackingStandaloneFooter()}`;
@@ -8147,6 +8149,423 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     setTimeout(schedule, 1000);
   }, {once:true});
   if(document.body) schedule();
+})();
+</script>
+
+<style id="trackport-universal-carrier-tracking">
+  .uct-card{
+    margin-top:24px; padding:22px; border:1px solid rgba(212,175,90,.28);
+    border-radius:18px; background:linear-gradient(145deg,rgba(212,175,90,.10),rgba(255,255,255,.035));
+    box-shadow:0 16px 42px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.07);
+  }
+  .uct-card h3{margin:5px 0 7px; font-size:20px; letter-spacing:-.02em;}
+  .uct-card p{color:var(--muted); font-size:13px; line-height:1.6; margin:0;}
+  .uct-kicker{display:inline-block; color:var(--primary); font:600 10px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.12em;}
+  .uct-form{display:grid; grid-template-columns:minmax(150px,.75fr) minmax(220px,1.4fr) auto; gap:10px; align-items:end; margin-top:18px;}
+  .uct-form .field{margin:0;}
+  .uct-form label,.uct-details label{display:block; margin-bottom:7px; color:var(--ink); font-size:12px; font-weight:700;}
+  .uct-form input,.uct-form select,.uct-details input{width:100%; min-height:43px; box-sizing:border-box;}
+  .uct-form button{min-height:43px; white-space:nowrap;}
+  .uct-meta{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:11px; color:var(--muted); font-size:11.5px;}
+  .uct-meta strong{color:var(--ink);}
+  .uct-details{margin-top:18px; padding-top:15px; border-top:1px solid var(--border);}
+  .uct-details summary{cursor:pointer; color:var(--ink); font-size:12px; font-weight:700; list-style:none;}
+  .uct-details summary::-webkit-details-marker{display:none;}
+  .uct-details summary::before{content:'+'; display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:7px; border:1px solid var(--border); border-radius:50%; color:var(--primary);}
+  .uct-details[open] summary::before{content:'−';}
+  .uct-bridge-row{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; margin-top:14px;}
+  .uct-details small{display:block; margin-top:8px; color:var(--muted); font-size:11px; line-height:1.55;}
+  .uct-details code{font-family:'IBM Plex Mono',monospace; color:var(--primary);}
+  .uct-result{margin-top:18px; padding:16px; border:1px solid var(--border); border-radius:14px; background:rgba(0,0,0,.12);}
+  .uct-result[hidden]{display:none;}
+  .uct-result-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .uct-result-title{display:flex; align-items:center; gap:10px; min-width:0;}
+  .uct-carrier-mark{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; flex:0 0 34px; border-radius:10px; color:#15120b; background:var(--primary); font:800 12px 'IBM Plex Mono',monospace;}
+  .uct-result h4{margin:0 0 3px; font-size:15px;}
+  .uct-result .uct-number{color:var(--primary); font:600 12px 'IBM Plex Mono',monospace; overflow-wrap:anywhere;}
+  .uct-status{display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:999px; background:rgba(212,175,90,.13); color:var(--primary); font-size:11px; font-weight:700; white-space:nowrap;}
+  .uct-status.live{background:rgba(76,174,125,.14); color:#7FE0B8;}
+  .uct-status.error{background:rgba(221,93,93,.14); color:#FCA5A5;}
+  .uct-result-grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:15px;}
+  .uct-result-grid > div{padding:10px 11px; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.025);}
+  .uct-result-grid span{display:block; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.07em; margin-bottom:4px;}
+  .uct-result-grid strong{display:block; color:var(--ink); font-size:12px; line-height:1.4; overflow-wrap:anywhere;}
+  .uct-result-note{margin-top:12px!important; padding:10px 11px; border-radius:10px; background:rgba(255,255,255,.035); font-size:12px!important;}
+  .uct-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
+  .uct-actions .btn{font-size:12px;}
+  .uct-watchlist{margin-top:18px; display:grid; gap:8px;}
+  .uct-watchlist:empty{display:none;}
+  .uct-watchlist-title{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:2px; color:var(--muted); font:600 10px 'IBM Plex Mono',monospace; text-transform:uppercase; letter-spacing:.1em;}
+  .uct-watch-row{display:flex; align-items:center; gap:10px; padding:11px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.025);}
+  .uct-watch-row > div:first-child{min-width:0; flex:1;}
+  .uct-watch-row strong{display:block; color:var(--ink); font-size:12px; overflow-wrap:anywhere;}
+  .uct-watch-row span{display:block; margin-top:3px; color:var(--muted); font-size:11px;}
+  .uct-watch-actions{display:flex; gap:4px; flex:0 0 auto;}
+  .uct-watch-actions button{border:0; background:transparent; color:var(--muted); cursor:pointer; padding:6px; font-size:11px;}
+  .uct-watch-actions button:hover{color:var(--primary);}
+  .uct-empty-note{color:var(--muted); font-size:12px; padding:4px 0;}
+  @media (max-width:700px){
+    .uct-form{grid-template-columns:1fr;}
+    .uct-form button{width:100%;}
+    .uct-result-head{flex-direction:column;}
+    .uct-result-grid{grid-template-columns:1fr;}
+    .uct-bridge-row{grid-template-columns:1fr;}
+    .uct-bridge-row button{width:100%;}
+  }
+</style>
+
+<script id="trackport-universal-carrier-tracking">
+(() => {
+  'use strict';
+
+  const WATCHLIST_KEY = 'trackport:universal-carrier-watchlist';
+  const BRIDGE_KEY = 'trackport:universal-carrier-bridge';
+  const REFRESH_MS = 5 * 60 * 1000;
+
+  const CARRIERS = [
+    {id:'auto', name:'Auto-detect carrier', mark:'AUTO'},
+    {id:'fedex', name:'FedEx', mark:'FX', pattern:/^\d{12,15}$/i, url:n=>`https://www.fedex.com/fedextrack/?trknbr=${encodeURIComponent(n)}`},
+    {id:'ups', name:'UPS', mark:'UPS', pattern:/^1Z[0-9A-Z]{16}$/i, url:n=>`https://www.ups.com/track?loc=en_US&tracknum=${encodeURIComponent(n)}`},
+    {id:'usps', name:'USPS', mark:'US', pattern:/^(?:94|93|92|94|70|14)\d{18,22}$/i, url:n=>`https://tools.usps.com/go/TrackConfirmAction?tRef=fullpage&tLc=2&tLabels=${encodeURIComponent(n)}`},
+    {id:'dhl', name:'DHL', mark:'DHL', pattern:/^(?:\d{10}|JJD[A-Z0-9]{10,})$/i, url:n=>`https://www.dhl.com/global-en/home/tracking.html?tracking-id=${encodeURIComponent(n)}`},
+    {id:'royal-mail', name:'Royal Mail', mark:'RM', pattern:/^[A-Z]{2}\d{9}GB$/i, url:n=>`https://www.royalmail.com/track-your-item#/tracking-results/${encodeURIComponent(n)}`},
+    {id:'canada-post', name:'Canada Post', mark:'CA', pattern:/^(?:\d{16}|[A-Z]{2}\d{9}CA)$/i, url:n=>`https://www.canadapost-postescanada.ca/track-reperage/en#/details/${encodeURIComponent(n)}`},
+    {id:'australia-post', name:'Australia Post', mark:'AU', pattern:/^(?:\d{13}|[A-Z]{2}\d{9}AU)$/i, url:n=>`https://auspost.com.au/mypost/track/#/search/${encodeURIComponent(n)}`},
+    {id:'aramex', name:'Aramex', mark:'AR', pattern:/^\d{9,12}$/i, url:n=>`https://www.aramex.com/track/results?ShipmentNumber=${encodeURIComponent(n)}`},
+    {id:'gls', name:'GLS', mark:'GLS', pattern:/^\d{8,14}$/i, url:n=>`https://gls-group.com/GROUP/en/parcel-tracking?match=${encodeURIComponent(n)}`},
+    {id:'evri', name:'Evri', mark:'EV', pattern:/^\d{16}$/i, url:n=>`https://www.evri.com/track-a-parcel?parcel=${encodeURIComponent(n)}`},
+    {id:'ontrac', name:'OnTrac', mark:'OT', pattern:/^\d{10,14}$/i, url:n=>`https://www.ontrac.com/tracking/?number=${encodeURIComponent(n)}`},
+    {id:'delhivery', name:'Delhivery', mark:'DL', pattern:/^[A-Z0-9]{10,20}$/i, url:n=>`https://www.delhivery.com/track/package/${encodeURIComponent(n)}`},
+    {id:'blue-dart', name:'Blue Dart', mark:'BD', pattern:/^\d{8,12}$/i, url:n=>`https://www.bluedart.com/tracking?trackFor=0&trackNo=${encodeURIComponent(n)}`},
+    {id:'cainiao', name:'Cainiao', mark:'CN', pattern:/^[A-Z0-9]{10,25}$/i, url:n=>`https://global.cainiao.com/detail.htm?mailNoList=${encodeURIComponent(n)}`},
+    {id:'sf-express', name:'SF Express', mark:'SF', pattern:/^\d{10,15}$/i, url:n=>`https://www.sf-express.com/chn/en/dynamic_functions/waybill/#search/bill-number/${encodeURIComponent(n)}`},
+    {id:'other', name:'Other / universal lookup', mark:'?', url:n=>`https://www.17track.net/en?nums=${encodeURIComponent(n)}`}
+  ];
+
+  const escText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const normalizeNumber = value => String(value || '').trim().replace(/\s+/g,'').toUpperCase();
+  const carrierById = id => CARRIERS.find(carrier => carrier.id === id) || CARRIERS[CARRIERS.length - 1];
+  const carrierOptions = () => CARRIERS.map(carrier => `<option value="${carrier.id}">${escText(carrier.name)}</option>`).join('');
+
+  function readStorage(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    }catch(_error){ return fallback; }
+  }
+  function writeStorage(key, value){
+    try{ localStorage.setItem(key, JSON.stringify(value)); }catch(_error){}
+  }
+  function getWatchlist(){
+    const value = readStorage(WATCHLIST_KEY, []);
+    return Array.isArray(value) ? value.filter(item => item && item.number) : [];
+  }
+  function getBridge(){
+    try{ return localStorage.getItem(BRIDGE_KEY) || String(window.TRACKPORT_LIVE_TRACKING_ENDPOINT || '').trim(); }
+    catch(_error){ return String(window.TRACKPORT_LIVE_TRACKING_ENDPOINT || '').trim(); }
+  }
+  function detectCarrier(number, selectedId){
+    if(selectedId && selectedId !== 'auto') return carrierById(selectedId);
+    const match = CARRIERS.find(carrier => carrier.pattern && carrier.pattern.test(number));
+    return match || carrierById('other');
+  }
+  function displayDate(value){
+    if(!value) return 'Not provided';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString([], {dateStyle:'medium', timeStyle:'short'});
+  }
+  function rootFor(element){
+    return element?.closest?.('[data-uct-root]') ||
+      Array.from(document.querySelectorAll('[data-uct-root]')).find(root => root.offsetParent !== null) ||
+      document.querySelector('[data-uct-root]');
+  }
+  function ensureRoot(form){
+    const existing = rootFor(form);
+    if(existing) return existing;
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = window.universalCarrierTrackerMarkup();
+    const root = wrapper.firstElementChild;
+    form.insertAdjacentElement('afterend', root);
+    return root;
+  }
+
+  function universalCarrierTrackerMarkup(){
+    return `<section class="uct-card" data-uct-root>
+      <span class="uct-kicker">Carrier network</span>
+      <h3>Track from any shipping company</h3>
+      <p>Use the carrier that shipped your product, or let TrackPort identify it from the tracking number. Official carrier tracking opens in a new tab; optional API bridging can show live status here.</p>
+      <form class="uct-form" data-uct-form>
+        <div class="field">
+          <label for="uct-carrier">Carrier</label>
+          <select id="uct-carrier" data-uct-carrier>${carrierOptions()}</select>
+        </div>
+        <div class="field">
+          <label for="uct-number">Tracking number</label>
+          <input id="uct-number" data-uct-number class="mono" autocomplete="off" placeholder="1Z999AA10123456784 or 9400111899223856928491" required>
+        </div>
+        <button class="btn btn-accent" type="submit">Track shipment</button>
+      </form>
+      <div class="uct-meta"><span>Supported shortcuts include FedEx, UPS, USPS, DHL, Royal Mail, Canada Post, Australia Post, Aramex, GLS, Evri, OnTrac, Delhivery and more.</span><span data-uct-bridge-state></span></div>
+      <details class="uct-details">
+        <summary>Enable live in-app status refresh</summary>
+        <div class="uct-bridge-row">
+          <div><label for="uct-endpoint">Carrier API bridge URL</label><input id="uct-endpoint" data-uct-endpoint placeholder="https://your-domain.example/track?tracking_number={trackingNumber}&amp;carrier={carrier}"></div>
+          <button type="button" class="btn btn-ghost" data-uct-action="save-endpoint">Save bridge</button>
+        </div>
+        <small>Your bridge should accept <code>tracking_number</code> and <code>carrier</code>, return JSON, and allow browser requests. Placeholders <code>{trackingNumber}</code> and <code>{carrier}</code> are replaced automatically. Do not paste API keys into this HTML file.</small>
+      </details>
+      <div class="uct-result" data-uct-result hidden></div>
+      <div class="uct-watchlist" data-uct-watchlist></div>
+    </section>`;
+  }
+  window.universalCarrierTrackerMarkup = universalCarrierTrackerMarkup;
+
+  function entryFor(number, selectedId){
+    const carrier = detectCarrier(number, selectedId);
+    return {
+      number,
+      carrierId: carrier.id,
+      carrierName: carrier.name,
+      mark: carrier.mark,
+      officialUrl: carrier.url(number),
+      addedAt: new Date().toISOString(),
+      checkedAt: null,
+      liveStatus: '',
+      location: '',
+      eta: '',
+      lastError: '',
+      events: []
+    };
+  }
+  function saveEntry(entry){
+    const list = getWatchlist().filter(item => item.number !== entry.number);
+    list.unshift(entry);
+    writeStorage(WATCHLIST_KEY, list.slice(0, 12));
+  }
+  function updateEntry(entry){
+    const list = getWatchlist().map(item => item.number === entry.number ? {...item, ...entry} : item);
+    writeStorage(WATCHLIST_KEY, list);
+  }
+  function resultClass(entry){
+    if(entry.lastError) return 'uct-status error';
+    if(entry.liveStatus && entry.liveStatus !== 'Open carrier tracking') return 'uct-status live';
+    return 'uct-status';
+  }
+  function resultMarkup(entry){
+    const status = entry.lastError ? 'Live refresh unavailable' : (entry.liveStatus || 'Open carrier tracking');
+    const note = entry.lastError
+      ? `${entry.lastError} The official carrier link is still available below.`
+      : (entry.liveStatus ? 'Status received from the configured live API bridge.' : 'This standalone HTML cannot read carrier systems directly without an authorized bridge. Use the official link below for the current carrier status.');
+    const eventRows = (entry.events || []).slice(0,4).map(event => `<div><strong>${escText(event.status || event.description || 'Update')}</strong><span>${escText(event.location || 'Carrier update')} · ${escText(displayDate(event.timestamp || event.time))}</span></div>`).join('');
+    return `<div class="uct-result-head">
+      <div class="uct-result-title"><span class="uct-carrier-mark">${escText(entry.mark)}</span><div><h4>${escText(entry.carrierName)}</h4><div class="uct-number">${escText(entry.number)}</div></div></div>
+      <span class="${resultClass(entry)}">${escText(status)}</span>
+    </div>
+    <div class="uct-result-grid">
+      <div><span>Last checked</span><strong>${escText(entry.checkedAt ? displayDate(entry.checkedAt) : 'Not checked')}</strong></div>
+      <div><span>Current location</span><strong>${escText(entry.location || 'Not provided')}</strong></div>
+      <div><span>Estimated delivery</span><strong>${escText(entry.eta ? displayDate(entry.eta) : 'Not provided')}</strong></div>
+    </div>
+    <p class="uct-result-note">${escText(note)}</p>
+    ${eventRows ? `<div class="uct-watchlist" style="margin-top:12px;">${eventRows}</div>` : ''}
+    <div class="uct-actions">
+      <button type="button" class="btn btn-accent" data-uct-action="open" data-uct-number="${escText(entry.number)}">Open official tracking</button>
+      <button type="button" class="btn btn-ghost" data-uct-action="refresh" data-uct-number="${escText(entry.number)}">Refresh status</button>
+      <button type="button" class="btn btn-ghost" data-uct-action="copy" data-uct-number="${escText(entry.number)}">Copy number</button>
+    </div>`;
+  }
+  function renderBridgeState(root){
+    const bridge = getBridge();
+    const label = root.querySelector('[data-uct-bridge-state]');
+    const input = root.querySelector('[data-uct-endpoint]');
+    if(input && input.value !== bridge) input.value = bridge;
+    if(label) label.textContent = bridge ? 'Live bridge configured' : 'Official links ready';
+  }
+  function renderWatchlist(root){
+    const target = root.querySelector('[data-uct-watchlist]');
+    if(!target) return;
+    const list = getWatchlist();
+    if(!list.length){ target.innerHTML = ''; return; }
+    target.innerHTML = `<div class="uct-watchlist-title"><span>Saved tracking numbers</span><span>${list.length}/12</span></div>` +
+      list.map(item => `<div class="uct-watch-row">
+        <div><strong>${escText(item.number)}</strong><span>${escText(item.carrierName)} · ${escText(item.liveStatus || 'Official tracking available')}</span></div>
+        <div class="uct-watch-actions">
+          <button type="button" data-uct-action="load" data-uct-number="${escText(item.number)}">View</button>
+          <button type="button" data-uct-action="remove" data-uct-number="${escText(item.number)}">Remove</button>
+        </div>
+      </div>`).join('');
+  }
+  function renderEntry(root, entry){
+    const target = root.querySelector('[data-uct-result]');
+    if(target){ target.hidden = false; target.innerHTML = resultMarkup(entry); }
+    renderBridgeState(root);
+    renderWatchlist(root);
+  }
+  function buildBridgeUrl(template, entry){
+    let url = String(template || '').trim()
+      .replace(/\{trackingNumber\}/g, encodeURIComponent(entry.number))
+      .replace(/\{carrier\}/g, encodeURIComponent(entry.carrierId));
+    if(!/[?&](?:tracking_number|trackingNumber|tracking|number)=/i.test(url)){
+      url += `${url.includes('?') ? '&' : '?'}tracking_number=${encodeURIComponent(entry.number)}&carrier=${encodeURIComponent(entry.carrierId)}`;
+    }
+    return url;
+  }
+  function pickValue(object, keys){
+    for(const key of keys){
+      const value = object?.[key];
+      if(value !== undefined && value !== null && String(value).trim() !== '') return value;
+    }
+    return '';
+  }
+  function normalizeLivePayload(raw){
+    const data = raw?.data || raw?.tracking || raw?.result || raw || {};
+    const rawEvents = data.events || data.checkpoints || data.history || [];
+    const events = Array.isArray(rawEvents) ? rawEvents.map(event => ({
+      status: pickValue(event, ['status','tag','description','message']),
+      location: typeof event.location === 'object' ? pickValue(event.location, ['city','name','country']) : pickValue(event, ['location','city']),
+      timestamp: pickValue(event, ['timestamp','time','datetime','created_at'])
+    })).filter(event => event.status || event.location) : [];
+    return {
+      liveStatus: String(pickValue(data, ['status','current_status','status_description','tracking_status','state']) || '').trim(),
+      location: typeof data.location === 'object' ? pickValue(data.location, ['city','name','country']) : String(pickValue(data, ['location','current_location','last_location']) || '').trim(),
+      eta: pickValue(data, ['eta','estimated_delivery','estimatedDelivery','delivery_date']),
+      events
+    };
+  }
+  async function fetchLive(entry){
+    const bridge = getBridge();
+    entry.checkedAt = new Date().toISOString();
+    entry.lastError = '';
+    if(!bridge){
+      entry.liveStatus = '';
+      entry.events = [];
+      return entry;
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    try{
+      const response = await fetch(buildBridgeUrl(bridge, entry), {method:'GET', headers:{Accept:'application/json'}, signal:controller.signal, cache:'no-store'});
+      if(!response.ok) throw new Error(`Bridge returned HTTP ${response.status}`);
+      const payload = normalizeLivePayload(await response.json());
+      if(!payload.liveStatus && !payload.location && !payload.eta && !payload.events.length) throw new Error('Bridge returned no tracking fields');
+      Object.assign(entry, payload);
+    }catch(error){
+      entry.liveStatus = '';
+      entry.events = [];
+      entry.lastError = error?.name === 'AbortError' ? 'The live status request timed out.' : (error?.message || 'The live status request failed.');
+    }finally{
+      clearTimeout(timer);
+    }
+    return entry;
+  }
+  async function track(number, selectedId, root){
+    const normalized = normalizeNumber(number);
+    if(!normalized) return;
+    const entry = entryFor(normalized, selectedId || 'auto');
+    saveEntry(entry);
+    renderEntry(root, entry);
+    const button = root.querySelector('[data-uct-form] button[type="submit"]');
+    if(button){ button.disabled = true; button.textContent = 'Checking…'; }
+    await fetchLive(entry);
+    updateEntry(entry);
+    renderEntry(root, entry);
+    if(button){ button.disabled = false; button.textContent = 'Track shipment'; }
+  }
+  function findEntry(number){
+    return getWatchlist().find(item => item.number === normalizeNumber(number));
+  }
+  async function loadEntry(number, root){
+    const entry = findEntry(number);
+    if(!entry) return;
+    const carrier = root.querySelector('[data-uct-carrier]');
+    const input = root.querySelector('[data-uct-number]');
+    if(carrier) carrier.value = entry.carrierId;
+    if(input) input.value = entry.number;
+    renderEntry(root, entry);
+  }
+  async function refresh(number, root){
+    const entry = findEntry(number);
+    if(!entry) return;
+    renderEntry(root, entry);
+    await fetchLive(entry);
+    updateEntry(entry);
+    renderEntry(root, entry);
+  }
+  function openOfficial(number){
+    const entry = findEntry(number);
+    if(entry?.officialUrl) window.open(entry.officialUrl, '_blank', 'noopener,noreferrer');
+  }
+  async function copyNumber(number){
+    try{
+      await navigator.clipboard.writeText(number);
+      if(typeof window.showToast === 'function') window.showToast('Tracking number copied');
+    }catch(_error){
+      window.prompt('Copy tracking number', number);
+    }
+  }
+  function initRoot(root){
+    if(!root || root.dataset.uctReady) return;
+    root.dataset.uctReady = '1';
+    renderBridgeState(root);
+    renderWatchlist(root);
+  }
+
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if(form.matches?.('[data-uct-form]')){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const root = rootFor(form);
+      track(root.querySelector('[data-uct-number]')?.value, root.querySelector('[data-uct-carrier]')?.value, root);
+      return;
+    }
+    if(!form.matches?.('#search-track-form, #standalone-track-form')) return;
+    const input = form.querySelector('input');
+    const value = input?.value?.trim();
+    if(!value || (typeof window.trackingRouteFor === 'function' && window.trackingRouteFor(value))) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const root = ensureRoot(form);
+    const numberInput = root.querySelector('[data-uct-number]');
+    if(numberInput) numberInput.value = value;
+    track(value, 'auto', root);
+  }, true);
+
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-uct-action]');
+    if(!button) return;
+    const action = button.dataset.uctAction;
+    const root = rootFor(button);
+    const number = normalizeNumber(button.dataset.uctNumber || root?.querySelector('[data-uct-number]')?.value);
+    if(action === 'save-endpoint'){
+      const value = root?.querySelector('[data-uct-endpoint]')?.value.trim() || '';
+      if(value && !/^https?:\/\//i.test(value)){ if(typeof window.showToast === 'function') window.showToast('Use an http or https bridge URL', true); return; }
+      try{ if(value) localStorage.setItem(BRIDGE_KEY, value); else localStorage.removeItem(BRIDGE_KEY); }catch(_error){}
+      renderBridgeState(root);
+      if(typeof window.showToast === 'function') window.showToast(value ? 'Live carrier bridge saved' : 'Live carrier bridge cleared');
+      return;
+    }
+    if(action === 'open'){ openOfficial(number); return; }
+    if(action === 'copy'){ copyNumber(number); return; }
+    if(action === 'remove'){
+      writeStorage(WATCHLIST_KEY, getWatchlist().filter(item => item.number !== number));
+      renderWatchlist(root);
+      return;
+    }
+    if(action === 'load'){ loadEntry(number, root); return; }
+    if(action === 'refresh'){ refresh(number, root); return; }
+  });
+
+  const observer = new MutationObserver(() => document.querySelectorAll('[data-uct-root]').forEach(initRoot));
+  observer.observe(document.body, {childList:true, subtree:true});
+  document.querySelectorAll('[data-uct-root]').forEach(initRoot);
+
+  window.setInterval(() => {
+    if(document.hidden || !getBridge()) return;
+    const root = Array.from(document.querySelectorAll('[data-uct-root]')).find(item => item.offsetParent !== null);
+    const current = root?.querySelector('[data-uct-result] .uct-number')?.textContent;
+    if(root && current) refresh(current, root);
+  }, REFRESH_MS);
 })();
 </script>
 
