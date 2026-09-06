@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.5.2">
+<meta name="trackport-version" content="1.5.5">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,8 +237,8 @@
     --primary-light:rgba(212,175,90,0.16);
     --primary-glow:rgba(212,175,90,0.35);
     --dark:#050609;
-    --ink:#F3F1EA;
-    --bg:#0A0B12;
+    --ink:#E7E4DA;
+    --bg:#0E1018;
     --success:#57C08D;
     --success-light:rgba(87,192,141,0.14);
     --warning:#E3A548;
@@ -246,12 +246,12 @@
     --error:#E2636B;
     --error-light:rgba(226,99,107,0.14);
     --card:rgba(24,26,38,0.62);
-    --card-solid:#161923;
+    --card-solid:#1A1D29;
     --glass:rgba(255,255,255,0.055);
     --glass-strong:rgba(255,255,255,0.09);
     --glass-border:rgba(255,255,255,0.14);
     --border:rgba(255,255,255,0.10);
-    --muted:#9AA1B4;
+    --muted:#969DAE;
     --radius-lg:22px;
     --radius-md:16px;
     --radius-sm:13px;
@@ -272,7 +272,7 @@
       radial-gradient(900px 620px at 2% -4%, rgba(212,175,90,0.20), transparent 64%),
       radial-gradient(820px 640px at 100% 4%, rgba(102,92,225,0.18), transparent 62%),
       radial-gradient(900px 700px at 48% 108%, rgba(36,174,168,0.13), transparent 64%),
-      linear-gradient(135deg,#080A12 0%,#101322 48%,#090B13 100%);
+      linear-gradient(135deg,#0C0E18 0%,#141828 48%,#0D0F19 100%);
     background-attachment:fixed;
     position:relative;
     isolation:isolate;
@@ -407,14 +407,43 @@
   }
   .btn:hover::after{animation:shimmerSweep .9s ease;}
   .btn svg{width:15px; height:15px;}
-  .btn-primary{background:linear-gradient(145deg,#fff,#EDEFF6); color:var(--dark); box-shadow:0 6px 18px rgba(0,0,0,0.25);}
-  .btn-primary:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,0.35);}
-  .btn-accent{background:linear-gradient(145deg,var(--primary),var(--primary-dark)); color:#1a1204; border:1.5px solid transparent; box-shadow:0 6px 20px rgba(212,175,90,0.28);}
-  .btn-accent:hover{transform:translateY(-2px); box-shadow:0 12px 30px rgba(212,175,90,0.4);}
-  .btn-ghost{background:rgba(255,255,255,0.04); color:var(--ink); border:1.5px solid var(--glass-border); backdrop-filter:blur(8px);}
-  .btn-ghost:hover{border-color:var(--primary); background:rgba(212,175,90,0.08); transform:translateY(-1px);}
-  .btn-outline-light{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,0.35);}
-  .btn-outline-light:hover{background:rgba(255,255,255,0.1); border-color:#fff; transform:translateY(-1px);}
+  /* Premium CTA system: green-lined glass by default, white for featured actions. */
+  .btn-primary,
+  .btn-accent,
+  .btn-ghost,
+  .btn-outline-light{
+    background:linear-gradient(135deg,rgba(16,28,22,0.64),rgba(7,12,11,0.78));
+    color:#F8FFF9;
+    border:2px solid rgba(174,255,47,0.92);
+    -webkit-backdrop-filter:blur(16px) saturate(155%);
+    backdrop-filter:blur(16px) saturate(155%);
+    box-shadow:0 10px 28px rgba(0,0,0,0.34),0 0 0 1px rgba(174,255,47,0.10) inset,inset 0 1px 0 rgba(255,255,255,0.12),0 0 18px rgba(174,255,47,0.08);
+  }
+  .btn-primary:hover,
+  .btn-accent:hover,
+  .btn-ghost:hover,
+  .btn-outline-light:hover{
+    transform:translateY(-2px);
+    background:linear-gradient(135deg,rgba(28,48,35,0.78),rgba(9,17,14,0.90));
+    color:#FFFFFF;
+    border-color:#B6FF36;
+    box-shadow:0 16px 38px rgba(0,0,0,0.42),0 0 0 1px rgba(182,255,54,0.18) inset,inset 0 1px 0 rgba(255,255,255,0.18),0 0 24px rgba(174,255,47,0.20);
+  }
+  .btn-featured{
+    background:linear-gradient(135deg,rgba(22,27,24,0.66),rgba(6,10,9,0.86));
+    color:#EFF6EE;
+    border:2px solid rgba(255,255,255,0.26);
+    -webkit-backdrop-filter:blur(20px) saturate(170%);
+    backdrop-filter:blur(20px) saturate(170%);
+    box-shadow:0 12px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.20),inset 0 -1px 0 rgba(0,0,0,0.30),0 0 20px rgba(255,255,255,0.05);
+  }
+  .btn-featured:hover{
+    transform:translateY(-2px);
+    background:linear-gradient(135deg,rgba(34,41,36,0.80),rgba(9,14,12,0.92));
+    color:#FFFFFF;
+    border-color:rgba(255,255,255,0.46);
+    box-shadow:0 18px 42px rgba(0,0,0,0.52),inset 0 1px 0 rgba(255,255,255,0.28),inset 0 -1px 0 rgba(0,0,0,0.34),0 0 26px rgba(255,255,255,0.10);
+  }
   .btn-danger{background:var(--error-light); color:var(--error); border-radius:999px;}
   .btn-danger:hover{background:rgba(226,99,107,0.24); transform:translateY(-1px);}
   .btn-sm{padding:9px 16px; font-size:11px;}
@@ -451,7 +480,7 @@
   .hero h1 .accent{color:#E7CE93; font-style:italic;}
   .hero p.sub{font-family:'Inter',sans-serif; font-size:17px; color:#B8BFCF; max-width:520px; margin:0 auto 36px; line-height:1.65; font-weight:300;}
   .hero-ctas{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:56px;}
-  .hero-ctas .btn{padding:14px 28px; font-size:13.5px;}
+  .hero-ctas .btn{padding:10px 20px; font-size:11.5px;}
 
   .track-box{
     max-width:520px; margin:0 auto; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16);
@@ -823,6 +852,10 @@
   .history-cta.shipment-history-cta{background:linear-gradient(125deg,rgba(76,174,125,.13),rgba(22,25,35,.7));}
   .history-cta.license-history-cta{background:linear-gradient(125deg,rgba(210,116,174,.18),rgba(22,25,35,.7));}
   .grouped-history-panel{margin-bottom:24px;}
+  .grouped-history-panel.dash-stacked-panel{margin-bottom:24px;}
+  .creation-cta.dash-tracking-cta{background:linear-gradient(125deg,rgba(36,174,168,.16),rgba(22,25,35,.7)); min-height:128px;}
+  .creation-cta.dash-tracking-cta .cta-icon{background:linear-gradient(145deg,#2FB7AB,#1E8A81); box-shadow:0 6px 16px rgba(36,174,168,0.3); color:#062522;}
+  body.tp-dashboard-mode .creation-cta.dash-tracking-cta{background:rgba(36,174,168,0.10);}
   .grouped-history-intro{margin-top:5px; color:var(--muted); font-size:12px; line-height:1.5;}
   @media (max-width:980px){ .history-cta-grid{grid-template-columns:1fr 1fr;} }
   @media (max-width:620px){ .history-cta-grid{grid-template-columns:1fr;} }
@@ -1567,6 +1600,99 @@
     .flight-ticket-stage{padding-left:0 !important; padding-right:0 !important;}
   }
 </style>
+
+<style id="trackport-overview-panel">
+  /* Dashboard overview panel — dark spotlight card with lime accents */
+  .ov-panel{
+    position:relative; overflow:hidden; display:block;
+    margin-bottom:26px; padding:34px 26px 30px;
+    border-radius:26px;
+    background:#0A0D0A;
+    border:1px solid rgba(255,255,255,.08);
+    box-shadow:0 26px 70px rgba(0,0,0,.45);
+  }
+  .ov-panel:before{
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+      radial-gradient(120% 90% at 118% 42%,rgba(200,255,46,.30),transparent 62%),
+      radial-gradient(90% 70% at -10% 100%,rgba(200,255,46,.08),transparent 65%);
+  }
+  .ov-panel > *{position:relative;}
+  .ov-kicker{
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    font:800 13px/1.2 'Inter',sans-serif; letter-spacing:.02em; text-transform:uppercase;
+    color:#C8FF2E; text-align:center;
+  }
+  .ov-kicker svg{width:17px; height:17px;}
+  .ov-title{
+    margin:14px 0 0; text-align:center;
+    font-family:'Inter',sans-serif; font-weight:900;
+    font-size:clamp(30px,6.4vw,46px); line-height:1.02; letter-spacing:-.015em;
+    text-transform:uppercase; color:#FFFFFF;
+  }
+  .ov-title em{font-style:normal; color:#C8FF2E; text-shadow:0 0 30px rgba(200,255,46,.30);}
+  .ov-sub{
+    margin:12px auto 0; max-width:440px; text-align:center;
+    font:500 13.5px/1.6 'Inter',sans-serif; color:rgba(240,245,237,.62);
+  }
+  .ov-rows{display:flex; flex-direction:column; gap:16px; margin-top:28px;}
+  .ov-row{
+    display:flex; align-items:center; gap:18px;
+    padding:18px 20px; border-radius:20px;
+    background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.07);
+    transition:background .3s ease, transform .3s ease, border-color .3s ease;
+  }
+  .ov-row:hover{background:rgba(255,255,255,.08); border-color:rgba(200,255,46,.28); transform:translateY(-2px);}
+  .ov-ic{
+    width:56px; height:56px; flex-shrink:0; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:#C8FF2E; color:#0A0D0A;
+    box-shadow:0 0 0 6px rgba(200,255,46,.08);
+  }
+  .ov-ic svg{width:24px; height:24px;}
+  .ov-row-body{display:flex; flex-direction:column; gap:4px; min-width:0;}
+  .ov-row-label{
+    font:800 15px/1.2 'Inter',sans-serif; letter-spacing:.01em; text-transform:uppercase; color:#FFFFFF;
+  }
+  .ov-row-val{
+    font:500 14px/1.3 'Inter',sans-serif; color:rgba(240,245,237,.70);
+  }
+  .ov-row-val b{font-weight:800; color:#C8FF2E;}
+  @media (max-width:760px){
+    .ov-panel{padding:28px 16px 24px; border-radius:22px;}
+    .ov-kicker{font-size:12px;}
+    .ov-row{padding:16px; gap:14px; border-radius:18px;}
+    .ov-ic{width:50px; height:50px;}
+    .ov-ic svg{width:21px; height:21px;}
+  }
+
+  /* ---- Auto-sliding overview carousel (shipments <-> flights) ---- */
+  .ov-carousel{position:relative; margin-bottom:8px;}
+  .ov-viewport{overflow:hidden; border-radius:26px;}
+  .ov-track{display:flex; width:100%; transition:transform .7s cubic-bezier(.65,.05,.2,1);}
+  .ov-slide{flex:0 0 100%; min-width:100%;}
+  .ov-slide .ov-panel{margin-bottom:0; height:100%;}
+  .ov-panel.ov-panel-flight:before{background:radial-gradient(circle at 82% 8%, rgba(120,190,255,.22), transparent 60%);}
+  .ov-panel-flight .ov-title em{color:#7FD4FF; text-shadow:0 0 30px rgba(127,212,255,.30);}
+  .ov-panel-flight .ov-row-val b{color:#7FD4FF;}
+  .ov-panel-flight .ov-kicker{color:#7FD4FF;}
+  .ov-panel-flight .ov-ic{background:#7FD4FF; color:#04121B; box-shadow:0 0 0 6px rgba(127,212,255,.08);}
+  .ov-panel-flight .ov-row:hover{border-color:rgba(127,212,255,.30);}
+  .ov-nav{display:flex; align-items:center; justify-content:center; gap:14px; margin:14px 0 26px;}
+  .ov-dots{display:flex; gap:8px;}
+  .ov-dot{width:9px; height:9px; padding:0; border:0; border-radius:99px; cursor:pointer; background:rgba(255,255,255,.22); transition:all .35s var(--ease);}
+  .ov-dot[aria-selected="true"]{width:26px; background:#C8FF2E;}
+  .ov-dot[aria-selected="true"].is-flight{background:#7FD4FF;}
+  .ov-progress{width:74px; height:3px; border-radius:99px; background:rgba(255,255,255,.14); overflow:hidden;}
+  .ov-progress span{display:block; height:100%; width:0; border-radius:99px; background:rgba(255,255,255,.55);}
+  .ov-carousel.is-paused .ov-progress span{background:rgba(255,255,255,.25);}
+  @media (prefers-reduced-motion: reduce){
+    .ov-track{transition:none;}
+    .ov-progress{display:none;}
+  }
+</style>
+
 </head>
 <body>
 <div id="app"></div>
@@ -2741,7 +2867,7 @@ function navbar(active){
       <a href="#/register" class="nav-link ${active==='register'?'active':''}" onclick="closeMobileNav()">Sign Up</a>
     `}
     <a href="#about" class="nav-link" onclick="goToAbout(event)">About</a>
-    <button type="button" class="nav-link install-app-btn" data-action="install-app" onclick="closeMobileNav()" aria-label="Install TrackPort app" title="Install TrackPort app">Install App</button>
+    <button type="button" class="nav-link btn btn-primary install-app-btn" data-action="install-app" onclick="closeMobileNav()" aria-label="Install TrackPort app" title="Install TrackPort app">Install App</button>
   `;
   return `
   <div class="navbar">
@@ -2752,8 +2878,27 @@ function navbar(active){
         <button class="nav-toggle" aria-label="Menu" onclick="toggleMobileNav()"><span></span><span></span><span></span></button>
       </div>
     </div>
-    <div class="nav-mobile" id="nav-mobile">${links}
-    </div>
+     <div class="nav-mobile" id="nav-mobile">
+       <div class="nav-mobile-head">
+         <a href="#/" class="nav-mobile-brand" onclick="closeMobileNav()" aria-label="TrackPort home">
+           <span class="nav-mobile-brand-mark" aria-hidden="true">◒</span><span>TrackPort</span>
+         </a>
+         <button type="button" class="nav-mobile-close" onclick="closeMobileNav()" aria-label="Close menu" title="Close menu">×</button>
+       </div>
+       <div class="nav-mobile-links">${links}</div>
+       <div class="nav-mobile-contact">
+         <h3>Contact Us</h3>
+         <a href="mailto:hello@trackport.app">${icon('mail')} hello@trackport.app</a>
+         <a href="tel:+2348000000000">${icon('phone')} +234 800 000 0000</a>
+         <span>${icon('globe')} Remote-first · Worldwide</span>
+         <h3 class="nav-mobile-follow-title">Follow Us</h3>
+         <div class="nav-mobile-social" aria-label="Social links">
+           <a href="#" aria-label="Facebook">${icon('facebook')}</a>
+           <a href="#" aria-label="LinkedIn">${icon('linkedin')}</a>
+           <a href="#" aria-label="Instagram">${icon('instagram')}</a>
+         </div>
+       </div>
+     </div>
   </div>`;
 }
 function goToAbout(event){
@@ -2905,7 +3050,7 @@ function pageLanding(){
       <h1 class="reveal reveal-left">Stop wondering.<br><span class="accent">Start tracking.</span></h1>
       <p class="sub reveal reveal-right">Create a shipment or flight record, publish it once, and let anyone follow the route, stopovers and status history from a single link — no calls, no chasing, no guesswork.</p>
       <div class="hero-ctas reveal reveal-left">
-        <a href="#/register" class="btn btn-accent" onclick="event.preventDefault();navigate('#/register')">${icon('plus')} Get Started</a>
+        <a href="#/register" class="btn btn-accent btn-featured" onclick="event.preventDefault();navigate('#/register')">${icon('plus')} Get Started</a>
         <a href="#/track" class="btn btn-outline-light" onclick="event.preventDefault();navigate('#/track')">${icon('search')} Track Something</a>
       </div>
     </div>
@@ -3078,7 +3223,7 @@ function pageLanding(){
       <p class="reveal reveal-right">Create a free account and publish your first shipment or flight record in under a minute.</p>
       <form id="landing-signup-form" class="signup-box reveal reveal-left">
         <input type="email" placeholder="you@email.com" required>
-        <button class="btn btn-accent" type="submit">Get Started</button>
+        <button class="btn btn-accent btn-featured" type="submit">Get Started</button>
       </form>
       <p class="fine-print reveal reveal-right">Free plan available. No credit card required.</p>
     </div>
@@ -3102,7 +3247,7 @@ function pageLanding(){
           </div>
           <div class="field"><label>Email</label><input type="email" placeholder="you@email.com"></div>
           <div class="field"><label>Message</label><textarea placeholder="Tell us what you need..."></textarea></div>
-          <button class="btn btn-accent btn-block" type="submit">Send Message</button>
+          <button class="btn btn-accent btn-featured btn-block" type="submit">Send Message</button>
         </form>
       </div>
     </div>
@@ -3131,7 +3276,7 @@ function pageRegister(){
           <div class="field"><label>Password</label><input name="password" type="password" required minlength="6" placeholder="At least 6 characters"></div>
           <div class="field"><label>Confirm password</label><input name="confirmPassword" type="password" required></div>
         </div>
-        <button class="btn btn-primary btn-block" type="submit" style="margin-top:6px;">Create account</button>
+        <button class="btn btn-primary btn-featured btn-block" type="submit" style="margin-top:6px;">Create account</button>
       </form>
       <div class="auth-foot">Already have an account? <a href="#/login">Log in</a></div>
     </div>
@@ -3178,7 +3323,22 @@ function pageLogin(){
   ${footer()}`;
 }
 
+/* Flight equivalent of computeStats(): buckets every saved ticket into
+   upcoming (booked/checked in), airborne (boarding/departed/in flight)
+   and landed. */
+function computeFlightStats(flights){
+  const s = { total:flights.length, upcoming:0, airborne:0, landed:0 };
+  flights.forEach(f=>{
+    const st = f.status || 'Ticket Booked';
+    if(st==='Landed') s.landed++;
+    else if(['Boarding','Departed','In Flight'].includes(st)) s.airborne++;
+    else s.upcoming++;
+  });
+  return s;
+}
+
 function computeStats(shipments){
+
   const s = { total:shipments.length, pending:0, transit:0, delivered:0 };
   shipments.forEach(sh=>{
     if(sh.status==='Delivered') s.delivered++;
@@ -3262,6 +3422,7 @@ function pageDashboard(){
   const mine = Object.values(shipmentsDB).filter(s=>s.userId===currentUser.email).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const flightsMine = Object.values(flightsDB).filter(f=>f.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
   const stats = computeStats(mine);
+  const fstats = computeFlightStats(flightsMine);
   return `
   ${navbar('dashboard')}
   <div class="wrap">
@@ -3269,12 +3430,80 @@ function pageDashboard(){
       <div><h1>Dashboard</h1><div class="greet">Welcome back, ${esc(currentUser.fullName.split(' ')[0])}</div></div>
     </div>
 
-    <div class="stat-grid">
-      <div class="card stat-card"><div class="top"><span class="stat-label">Total shipments</span><span class="stat-icon" style="background:var(--primary-light);color:var(--primary);">${icon('package')}</span></div><span class="stat-val">${stats.total}</span></div>
-      <div class="card stat-card"><div class="top"><span class="stat-label">Pending</span><span class="stat-icon" style="background:rgba(255,255,255,0.06);color:var(--muted);">${icon('clock')}</span></div><span class="stat-val">${stats.pending}</span></div>
-      <div class="card stat-card"><div class="top"><span class="stat-label">In transit</span><span class="stat-icon" style="background:var(--warning-light);color:var(--warning);">${icon('truck')}</span></div><span class="stat-val">${stats.transit}</span></div>
-      <div class="card stat-card"><div class="top"><span class="stat-label">Delivered</span><span class="stat-icon" style="background:var(--success-light);color:var(--success);">${icon('checkc')}</span></div><span class="stat-val">${stats.delivered}</span></div>
+    <div class="ov-carousel reveal" id="ov-carousel" data-autoplay="7000" aria-roledescription="carousel" aria-label="Shipment and flight overview">
+      <div class="ov-viewport">
+        <div class="ov-track" id="ov-track">
+          <div class="ov-slide" role="group" aria-roledescription="slide" aria-label="Shipments overview">
+            <section class="ov-panel" aria-label="Shipments overview">
+              <span class="ov-kicker">${icon('package')} Your fleet at a glance</span>
+              <h2 class="ov-title">TRACKING <em>${stats.total}</em> SHIPMENTS TODAY</h2>
+              <p class="ov-sub">${stats.total?Math.round(stats.delivered/stats.total*100):0}% of everything you have created has already been delivered.</p>
+              <div class="ov-rows">
+                <div class="ov-row">
+                  <span class="ov-ic">${icon('clock')}</span>
+                  <span class="ov-row-body">
+                    <span class="ov-row-label">Pending</span>
+                    <span class="ov-row-val"><b>${stats.pending}</b> waiting to depart</span>
+                  </span>
+                </div>
+                <div class="ov-row">
+                  <span class="ov-ic">${icon('truck')}</span>
+                  <span class="ov-row-body">
+                    <span class="ov-row-label">In transit</span>
+                    <span class="ov-row-val"><b>${stats.transit}</b> moving right now</span>
+                  </span>
+                </div>
+                <div class="ov-row">
+                  <span class="ov-ic">${icon('checkc')}</span>
+                  <span class="ov-row-body">
+                    <span class="ov-row-label">Delivered</span>
+                    <span class="ov-row-val"><b>${stats.delivered}</b> completed journeys</span>
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="ov-slide" role="group" aria-roledescription="slide" aria-label="Flights overview">
+            <section class="ov-panel ov-panel-flight" aria-label="Flights overview">
+              <span class="ov-kicker">${icon('plane')} Your flights at a glance</span>
+              <h2 class="ov-title">TRACKING <em>${fstats.total}</em> FLIGHTS TODAY</h2>
+              <p class="ov-sub">${fstats.total?Math.round(fstats.landed/fstats.total*100):0}% of every ticket you have created has already landed.</p>
+              <div class="ov-rows">
+                <div class="ov-row">
+                  <span class="ov-ic">${icon('clock')}</span>
+                  <span class="ov-row-body">
+                    <span class="ov-row-label">Upcoming</span>
+                    <span class="ov-row-val"><b>${fstats.upcoming}</b> booked or checked in</span>
+                  </span>
+                </div>
+                <div class="ov-row">
+                  <span class="ov-ic">${icon('plane')}</span>
+                  <span class="ov-row-body">
+                    <span class="ov-row-label">In the air</span>
+                    <span class="ov-row-val"><b>${fstats.airborne}</b> flying right now</span>
+                  </span>
+                </div>
+                <div class="ov-row">
+                  <span class="ov-ic">${icon('checkc')}</span>
+                  <span class="ov-row-body">
+                    <span class="ov-row-label">Landed</span>
+                    <span class="ov-row-val"><b>${fstats.landed}</b> completed journeys</span>
+                  </span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div class="ov-nav">
+        <div class="ov-dots" role="tablist" aria-label="Choose overview">
+          <button type="button" class="ov-dot" data-ov-dot="0" role="tab" aria-selected="true" aria-label="Shipments overview"></button>
+          <button type="button" class="ov-dot is-flight" data-ov-dot="1" role="tab" aria-selected="false" aria-label="Flights overview"></button>
+        </div>
+        <div class="ov-progress" aria-hidden="true"><span id="ov-progress-bar"></span></div>
+      </div>
     </div>
+
 
      <div class="card card-pad grouped-history-panel">
        <div class="section-title-row">
@@ -3287,6 +3516,62 @@ function pageDashboard(){
          ${historySummaryCta({href:'#/flight-history',iconName:'plane',kicker:'Travel records',title:'RECENT FLIGHT TICKETS',count:flightsMine.length,singular:'flight ticket',plural:'flight tickets',latestAt:flightsMine[0]?.updatedAt||flightsMine[0]?.createdAt,className:'flight-history-cta'})}
          ${historySummaryCta({href:'#/shipment-history',iconName:'package',kicker:'Delivery records',title:'RECENT SHIPMENTS',count:mine.length,singular:'shipment',plural:'shipments',latestAt:mine[0]?.updatedAt||mine[0]?.createdAt,className:'shipment-history-cta'})}
          ${historySummaryCta({href:'#/license-history',iconName:'credit-card',kicker:'Identity records',title:'ID CARD CREATIONS',count:licenseHistoryDB.length,singular:'ID card',plural:'ID cards',latestAt:licenseHistoryDB[0]?.createdAt,className:'license-history-cta'})}
+       </div>
+     </div>
+
+     <div class="card card-pad grouped-history-panel dash-stacked-panel">
+       <div class="section-title-row">
+         <div>
+           <h3>Track a shipment or flight</h3>
+           <p class="grouped-history-intro">Have a tracking number? Follow any shipment or flight live, with its full route, stopovers and status history.</p>
+         </div>
+       </div>
+       <a href="#/tracking" class="creation-cta history-cta dash-tracking-cta">
+         <span class="cta-icon">${icon('search')}</span>
+         <span class="cta-copy">
+           <span class="cta-kicker">Live tracking</span>
+           <span class="cta-title">OPEN THE TRACKING PAGE</span>
+           <span class="cta-meta">Enter a tracking number from a confirmation or shared link to see the journey in real time.</span>
+         </span>
+         <span class="cta-arrow">${icon('arrow')}</span>
+       </a>
+     </div>
+
+     <div class="card card-pad grouped-history-panel dash-stacked-panel">
+       <div class="section-title-row">
+         <div>
+           <h3>More tools &amp; documents</h3>
+           <p class="grouped-history-intro">Everything else you can create on TrackPort — documents, receipts and ID card mockups, all kept with your records.</p>
+         </div>
+       </div>
+       <div class="creation-cta-grid history-cta-grid">
+         <a href="#/create-document" class="creation-cta history-cta document-cta">
+           <span class="cta-icon">${icon('file')}</span>
+           <span class="cta-copy">
+             <span class="cta-kicker">Paperwork tools</span>
+             <span class="cta-title">DOCUMENT CREATION</span>
+             <span class="cta-meta">Prepare clearly labeled documents and internal records.</span>
+           </span>
+           <span class="cta-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-receipt" class="creation-cta history-cta receipt-cta">
+           <span class="cta-icon">${icon('dollar')}</span>
+           <span class="cta-copy">
+             <span class="cta-kicker">Records tools</span>
+             <span class="cta-title">RECEIPT CREATION</span>
+             <span class="cta-meta">Generate receipts for your records and transactions.</span>
+           </span>
+           <span class="cta-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-id-card" class="creation-cta history-cta id-card-creation-cta">
+           <span class="cta-icon">${icon('credit-card')}</span>
+           <span class="cta-copy">
+             <span class="cta-kicker">Identity tools</span>
+             <span class="cta-title">ID CARD CREATION</span>
+             <span class="cta-meta">Driver's license, military ID, citizenship ID and SSN mockups.</span>
+           </span>
+           <span class="cta-arrow">${icon('arrow')}</span>
+         </a>
        </div>
      </div>
   </div>
@@ -3537,7 +3822,7 @@ function pageProfile(){
         <p class="profile-settings-copy">Your account is ready to create, save and share tracking records. Use the navigation below to return to your dashboard or explore your history.</p>
         <div class="profile-actions">
           <a href="#/dashboard" class="btn btn-ghost">${icon('home')} Dashboard</a>
-          <button type="button" class="btn btn-primary" data-action="logout">${icon('logout')} Log out</button>
+          <button type="button" class="btn btn-primary btn-featured" data-action="logout">${icon('logout')} Log out</button>
         </div>
       </div>
     </div>
@@ -5802,7 +6087,74 @@ function wireLicenseGenerator(){
   });
 }
 window.addEventListener('resize', ()=>{ fitLicensePreviews(); fitBoardingPassPreview(); });
+/* Auto-sliding dashboard overview: alternates between the shipment stats
+   panel and the flight stats panel. Pauses on hover/focus/tab-hidden and
+   supports dots, swipe and arrow keys. */
+let ovCarouselTimer = null;
+let ovCarouselRaf = null;
+function wireOverviewCarousel(){
+  if(ovCarouselTimer){ clearInterval(ovCarouselTimer); ovCarouselTimer = null; }
+  if(ovCarouselRaf){ cancelAnimationFrame(ovCarouselRaf); ovCarouselRaf = null; }
+  const root = document.getElementById('ov-carousel');
+  const track = document.getElementById('ov-track');
+  if(!root || !track) return;
+  const slides = Array.from(track.children);
+  const dots = Array.from(root.querySelectorAll('[data-ov-dot]'));
+  const bar = document.getElementById('ov-progress-bar');
+  const delay = Number(root.dataset.autoplay) || 7000;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let index = 0, paused = false, startedAt = Date.now();
+
+  function go(i, userDriven){
+    index = (i + slides.length) % slides.length;
+    track.style.transform = `translateX(-${index*100}%)`;
+    dots.forEach((d,di)=>d.setAttribute('aria-selected', di===index ? 'true' : 'false'));
+    slides.forEach((s,si)=>s.setAttribute('aria-hidden', si===index ? 'false' : 'true'));
+    startedAt = Date.now();
+    if(userDriven && bar) bar.style.width = '0%';
+  }
+  function tick(){ if(!paused) go(index+1); }
+
+  dots.forEach(d=>d.addEventListener('click', ()=>go(Number(d.dataset.ovDot), true)));
+  root.addEventListener('mouseenter', ()=>{ paused = true; root.classList.add('is-paused'); });
+  root.addEventListener('mouseleave', ()=>{ paused = false; startedAt = Date.now(); root.classList.remove('is-paused'); });
+  root.addEventListener('focusin', ()=>{ paused = true; root.classList.add('is-paused'); });
+  root.addEventListener('focusout', ()=>{ paused = false; startedAt = Date.now(); root.classList.remove('is-paused'); });
+  root.addEventListener('keydown', e=>{
+    if(e.key==='ArrowRight') go(index+1, true);
+    if(e.key==='ArrowLeft') go(index-1, true);
+  });
+
+  // swipe
+  let x0 = null;
+  root.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; paused = true; }, {passive:true});
+  root.addEventListener('touchend', e=>{
+    if(x0!==null){
+      const dx = e.changedTouches[0].clientX - x0;
+      if(Math.abs(dx) > 40) go(index + (dx<0 ? 1 : -1), true);
+    }
+    x0 = null; paused = false; startedAt = Date.now();
+  }, {passive:true});
+
+  document.addEventListener('visibilitychange', ()=>{ startedAt = Date.now(); });
+
+  go(0, true);
+  if(reduce) return;
+  ovCarouselTimer = setInterval(()=>{ if(!document.hidden) tick(); }, delay);
+  if(bar){
+    const paint = ()=>{
+      const pct = paused || document.hidden ? null : Math.min(100, ((Date.now()-startedAt)/delay)*100);
+      if(pct!==null) bar.style.width = pct + '%';
+      else startedAt = Date.now();
+      ovCarouselRaf = requestAnimationFrame(paint);
+    };
+    ovCarouselRaf = requestAnimationFrame(paint);
+  }
+}
+
 function wirePageEvents(parts){
+  wireOverviewCarousel();
+
   // hero / search track forms
   const heroForm = $('#hero-track-form');
   if(heroForm) heroForm.addEventListener('submit', e=>{ e.preventDefault(); const v=$('#hero-track-input').value.trim(); if(v) navigate(trackingRouteFor(v) || '#/track/'+encodeURIComponent(v)); });
@@ -7498,10 +7850,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
      ========================================================== -->
 <style id="trackport-dashboard-shell">
   :root{
-    --tp-shell-ink:#111827;
-    --tp-shell-muted:#657089;
-    --tp-shell-paper:#f2f5fa;
-    --tp-shell-card:#ffffff;
+    --tp-shell-ink:#28324A;
+    --tp-shell-muted:#6E7890;
+    --tp-shell-paper:#EEF1F6;
+    --tp-shell-card:#FBFCFE;
     --tp-shell-navy:#111c35;
     --tp-shell-navy-2:#19294a;
     --tp-shell-line:#e3e8f0;
@@ -7857,14 +8209,17 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     color:rgba(255,255,255,.88) !important;
   }
   body.tp-dashboard-mode .btn-accent{
-    border:1px solid #9b741e !important;
-    box-shadow:0 6px 16px rgba(151,112,25,.22);
+    background:rgba(12,13,20,0.82); color:#FFFFFF; border:1px solid rgba(255,255,255,0.24) !important;
+    box-shadow:0 8px 24px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10);
+    backdrop-filter:blur(12px) saturate(145%);
   }
   body.tp-dashboard-mode .btn-ghost,
   body.tp-dashboard-mode .btn-primary{
-    border:1px solid #aeb9c8 !important;
+    background:rgba(255,255,255,0.05); color:#FFFFFF; border:1px solid rgba(255,255,255,0.20) !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);
+    backdrop-filter:blur(10px) saturate(130%);
   }
-  body.tp-dashboard-mode .btn-ghost{color:#253047 !important;}
+  body.tp-dashboard-mode .btn-ghost{color:#FFFFFF !important;}
   body.tp-dashboard-mode .badge{
     border-color:currentColor !important;
   }
@@ -7885,7 +8240,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     background:
       radial-gradient(900px 620px at 2% -4%, rgba(212,175,90,.15), transparent 64%),
       radial-gradient(820px 640px at 100% 4%, rgba(102,92,225,.12), transparent 62%),
-      linear-gradient(135deg,#080A12 0%,#101322 48%,#090B13 100%);
+      linear-gradient(135deg,#0C0E18 0%,#141828 48%,#0D0F19 100%);
   }
   body.tp-dashboard-mode .navbar{
     background:rgba(10,11,18,.94);
@@ -7960,19 +8315,25 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     background:rgba(212,175,90,.12);
   }
   body.tp-dashboard-mode .btn-primary{
-    color:var(--tp-shell-ink);
-    background:linear-gradient(145deg,#252A3A,#1A1E2B);
-    border:1px solid rgba(255,255,255,.18) !important;
+    color:#FFFFFF;
+    background:rgba(12,13,20,0.78);
+    border:1px solid rgba(255,255,255,0.22) !important;
+    box-shadow:0 8px 22px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.08);
+    backdrop-filter:blur(12px) saturate(140%);
   }
   body.tp-dashboard-mode .btn-ghost{
-    color:var(--tp-shell-ink) !important;
-    background:rgba(255,255,255,.045);
-    border:1px solid rgba(255,255,255,.20) !important;
+    color:#FFFFFF !important;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.20) !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);
+    backdrop-filter:blur(10px) saturate(130%);
   }
-  body.tp-dashboard-mode .btn-ghost:hover{background:rgba(212,175,90,.10);}
+  body.tp-dashboard-mode .btn-ghost:hover{background:rgba(255,255,255,0.10); border-color:rgba(255,255,255,0.34); color:#FFFFFF !important;}
   body.tp-dashboard-mode .btn-accent{
-    color:#1a1204;
-    border-color:rgba(212,175,90,.82) !important;
+    color:#FFFFFF;
+    background:rgba(12,13,20,0.82);
+    border-color:rgba(255,255,255,0.24) !important;
+    box-shadow:0 8px 24px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10);
   }
   body.tp-dashboard-mode .tp-bottom-tabs{
     border-top:1px solid rgba(255,255,255,.14);
@@ -8038,10 +8399,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     padding-top:101px;
   }
 
-  /* Bottom tabs: 5px lower (content padding adjusted to match). */
-  .tp-bottom-tabs{bottom:-5px;}
-  body.tp-dashboard-mode .tp-bottom-tabs{bottom:-5px;}
-  body.tp-dashboard-mode #app{padding-bottom:87px;}
+  /* Bottom tabs: flush with the viewport bottom so no gap shows beneath it. */
+  .tp-bottom-tabs{bottom:0;}
+  body.tp-dashboard-mode .tp-bottom-tabs{bottom:0;}
+  body.tp-dashboard-mode #app{padding-bottom:76px;}
 
   body.tp-dashboard-mode .tracking-app-card{
     max-width:760px;
@@ -8628,11 +8989,11 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   :root{
     --renev-lime:#C8FF2E;
     --renev-lime-soft:rgba(200,255,46,.14);
-    --renev-night:#050807;
-    --renev-night-2:#0B120D;
+    --renev-night:#0A0F0B;
+    --renev-night-2:#101811;
     --renev-panel:rgba(18,28,21,.78);
     --renev-panel-strong:rgba(23,35,26,.94);
-    --renev-cream:#F5F7EF;
+    --renev-cream:#EAEDE2;
     --renev-muted:#AAB6A9;
     --primary:var(--renev-lime);
     --primary-light:var(--renev-lime-soft);
@@ -8864,7 +9225,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   .hero-ctas{gap:13px;margin-top:30px}
   .hero-ctas .btn,.btn{
     border-radius:999px;
-    min-height:50px;
+    min-height:42px;
     transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease,background .3s ease;
   }
   .hero-ctas .btn:hover,.btn:hover{transform:translateY(-3px)}
@@ -8911,24 +9272,30 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     box-shadow:0 30px 72px rgba(0,0,0,.42),0 0 28px rgba(200,255,46,.07),inset 0 1px 0 rgba(255,255,255,.12) !important;
   }
   .btn-accent,.btn-primary{
-    background:var(--renev-lime) !important;
-    border-color:var(--renev-lime) !important;
-    color:#11160B !important;
+    background:rgba(12,13,20,0.82) !important;
+    border-color:rgba(255,255,255,0.24) !important;
+    color:#FFFFFF !important;
+    box-shadow:0 8px 24px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10) !important;
+    backdrop-filter:blur(12px) saturate(145%) !important;
   }
   .btn-accent:hover,.btn-primary:hover{
-    background:#D8FF67 !important;
-    color:#11160B !important;
-    box-shadow:0 12px 28px rgba(200,255,46,.2);
+    background:rgba(24,26,38,0.92) !important;
+    color:#FFFFFF !important;
+    border-color:rgba(255,255,255,0.38) !important;
+    box-shadow:0 16px 36px rgba(0,0,0,0.42), 0 0 22px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.14) !important;
   }
   .btn-outline-light,.btn-ghost{
-    background:rgba(255,255,255,.045) !important;
-    border-color:rgba(255,255,255,.2) !important;
-    color:#EEF2EA !important;
+    background:rgba(255,255,255,0.05) !important;
+    border-color:rgba(255,255,255,0.20) !important;
+    color:#FFFFFF !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06) !important;
+    backdrop-filter:blur(10px) saturate(130%) !important;
   }
   .btn-outline-light:hover,.btn-ghost:hover{
-    background:rgba(200,255,46,.1) !important;
-    border-color:rgba(200,255,46,.52) !important;
-    color:var(--renev-lime) !important;
+    background:rgba(255,255,255,0.10) !important;
+    border-color:rgba(255,255,255,0.34) !important;
+    color:#FFFFFF !important;
+    box-shadow:0 10px 26px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.10) !important;
   }
   input,select,textarea{
     background:rgba(2,7,4,.62) !important;
@@ -9286,22 +9653,22 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
   body.tp-dashboard-mode .btn-accent,
   body.tp-dashboard-mode .btn-primary{
-    background:var(--renev-lime) !important;
-    border-color:var(--renev-lime) !important;
-    color:#10150A !important;
-    box-shadow:0 10px 24px rgba(200,255,46,.15) !important;
+    background:rgba(12,13,20,0.82) !important;
+    border-color:rgba(255,255,255,0.24) !important;
+    color:#FFFFFF !important;
+    box-shadow:0 8px 24px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.10) !important;
   }
   body.tp-dashboard-mode .btn-ghost,
   body.tp-dashboard-mode .btn-icon{
-    color:#EAF1E7 !important;
-    background:rgba(255,255,255,.05) !important;
-    border-color:rgba(255,255,255,.18) !important;
+    color:#FFFFFF !important;
+    background:rgba(255,255,255,0.05) !important;
+    border-color:rgba(255,255,255,0.20) !important;
   }
   body.tp-dashboard-mode .btn-ghost:hover,
   body.tp-dashboard-mode .btn-icon:hover{
-    color:var(--renev-lime) !important;
-    border-color:rgba(200,255,46,.5) !important;
-    background:rgba(200,255,46,.08) !important;
+    color:#FFFFFF !important;
+    border-color:rgba(255,255,255,0.34) !important;
+    background:rgba(255,255,255,0.10) !important;
   }
   body.tp-dashboard-mode .profile-avatar{
     color:#10150A !important;
@@ -9313,14 +9680,14 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   body.tp-dashboard-mode .tp-bottom-tabs{
     left:50%;
     right:auto;
-    bottom:16px !important;
+    bottom:0 !important;
     width:min(590px,calc(100% - 34px));
     min-height:72px;
     padding:8px 10px max(8px,env(safe-area-inset-bottom));
     transform:translateX(-50%);
     grid-template-columns:repeat(5,1fr);
     border:1px solid rgba(255,255,255,.16) !important;
-    border-radius:20px !important;
+    border-radius:20px 20px 0 0 !important;
     background:rgba(9,17,11,.9) !important;
     box-shadow:0 18px 55px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,255,255,.1) !important;
     -webkit-backdrop-filter:blur(24px) saturate(150%);
@@ -9362,7 +9729,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     background:var(--renev-lime) !important;
     box-shadow:0 12px 26px rgba(200,255,46,.22),inset 0 1px 0 rgba(255,255,255,.42) !important;
   }
-  body.tp-dashboard-mode #app{padding-bottom:116px !important}
+  body.tp-dashboard-mode #app{padding-bottom:92px !important}
 
   @media(max-width:760px){
     body.tp-dashboard-mode #app > .wrap{
@@ -9377,9 +9744,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     body.tp-dashboard-mode .page-head h1{font-size:clamp(32px,10vw,52px) !important}
     body.tp-dashboard-mode .page-head:after{right:-30px;bottom:-95px}
     body.tp-dashboard-mode .tp-bottom-tabs{
-      bottom:10px !important;
+      bottom:0 !important;
       width:calc(100% - 20px);
-      border-radius:18px !important;
+      border-radius:18px 18px 0 0 !important;
     }
     body.tp-dashboard-mode .tp-bottom-create{transform:translateY(-14px)}
   }
@@ -9888,10 +10255,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     body:not(.tp-dashboard-mode) .hero-ctas .btn{
       width:100% !important;
       max-width:none !important;
-      min-height:48px !important;
+      min-height:42px !important;
       justify-content:center;
-      padding:0 18px !important;
-      font-size:11px !important;
+      padding:0 16px !important;
+      font-size:10.5px !important;
       letter-spacing:.08em;
     }
     body:not(.tp-dashboard-mode) .hero-grid,
@@ -10124,5 +10491,373 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
 </style>
 
+
+<!-- Premium CTA restyle — final override intentionally wins over earlier theme layers. -->
+<style id="trackport-cta-premium-override">
+  .btn.btn-primary,
+  .btn.btn-accent,
+  .btn.btn-ghost,
+  .btn.btn-outline-light,
+  .license-generate-btn,
+  body.tp-dashboard-mode .btn.btn-primary,
+  body.tp-dashboard-mode .btn.btn-accent,
+  body.tp-dashboard-mode .btn.btn-ghost{
+    background:linear-gradient(135deg,rgba(16,28,22,.64),rgba(7,12,11,.82)) !important;
+    border:2px solid rgba(174,255,47,.92) !important;
+    color:#F8FFF9 !important;
+    -webkit-backdrop-filter:blur(16px) saturate(155%) !important;
+    backdrop-filter:blur(16px) saturate(155%) !important;
+    box-shadow:0 10px 28px rgba(0,0,0,.34),0 0 0 1px rgba(174,255,47,.10) inset,inset 0 1px 0 rgba(255,255,255,.12),0 0 18px rgba(174,255,47,.08) !important;
+  }
+  .btn.btn-primary:hover,
+  .btn.btn-accent:hover,
+  .btn.btn-ghost:hover,
+  .btn.btn-outline-light:hover,
+  .license-generate-btn:hover,
+  body.tp-dashboard-mode .btn.btn-primary:hover,
+  body.tp-dashboard-mode .btn.btn-accent:hover,
+  body.tp-dashboard-mode .btn.btn-ghost:hover{
+    background:linear-gradient(135deg,rgba(28,48,35,.78),rgba(9,17,14,.92)) !important;
+    border-color:#B6FF36 !important;
+    color:#FFFFFF !important;
+    box-shadow:0 16px 38px rgba(0,0,0,.42),0 0 0 1px rgba(182,255,54,.18) inset,inset 0 1px 0 rgba(255,255,255,.18),0 0 24px rgba(174,255,47,.20) !important;
+  }
+  .btn.btn-featured,
+  body.tp-dashboard-mode .btn.btn-featured{
+    background:linear-gradient(135deg,rgba(22,27,24,.66),rgba(6,10,9,.86)) !important;
+    border:2px solid rgba(255,255,255,.26) !important;
+    color:#EFF6EE !important;
+    -webkit-backdrop-filter:blur(20px) saturate(170%) !important;
+    backdrop-filter:blur(20px) saturate(170%) !important;
+    box-shadow:0 12px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.20),inset 0 -1px 0 rgba(0,0,0,.30),0 0 20px rgba(255,255,255,.05) !important;
+  }
+  .btn.btn-featured:hover,
+  body.tp-dashboard-mode .btn.btn-featured:hover{
+    background:linear-gradient(135deg,rgba(34,41,36,.80),rgba(9,14,12,.92)) !important;
+    border-color:rgba(255,255,255,.46) !important;
+    color:#FFFFFF !important;
+    box-shadow:0 18px 42px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.34),0 0 26px rgba(255,255,255,.10) !important;
+  }
+
+  /* Smarter, more compact CTA sizing across the public landing pages */
+  body:not(.tp-dashboard-mode) .btn{
+    padding:10px 18px !important;
+    font-size:11.5px !important;
+    min-height:42px !important;
+    letter-spacing:.085em;
+  }
+  body:not(.tp-dashboard-mode) .btn svg{width:13px; height:13px;}
+  body:not(.tp-dashboard-mode) .btn.btn-sm{padding:7px 14px !important; font-size:10.5px !important; min-height:34px !important;}
+
+  /* ===== Unified premium glass CTA system (applies app-wide) ===== */
+  .btn,
+  .btn.btn-primary,
+  .btn.btn-accent,
+  .btn.btn-ghost,
+  .btn.btn-outline-light,
+  .btn.btn-featured,
+  .btn.btn-danger,
+  .license-generate-btn,
+  .social-btn,
+  .addr-gen-btn,
+  body.tp-dashboard-mode .btn,
+  body.tp-dashboard-mode .btn.btn-primary,
+  body.tp-dashboard-mode .btn.btn-accent,
+  body.tp-dashboard-mode .btn.btn-ghost,
+  body.tp-dashboard-mode .btn.btn-featured,
+  body.tp-dashboard-mode .license-generate-btn{
+    background:linear-gradient(135deg,rgba(22,27,24,.66),rgba(6,10,9,.86)) !important;
+    border:2px solid rgba(255,255,255,.26) !important;
+    color:#EFF6EE !important;
+    border-radius:999px !important;
+    -webkit-backdrop-filter:blur(20px) saturate(170%) !important;
+    backdrop-filter:blur(20px) saturate(170%) !important;
+    box-shadow:0 12px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.20),inset 0 -1px 0 rgba(0,0,0,.30),0 0 20px rgba(255,255,255,.05) !important;
+  }
+  .btn:hover,
+  .btn.btn-primary:hover,
+  .btn.btn-accent:hover,
+  .btn.btn-ghost:hover,
+  .btn.btn-outline-light:hover,
+  .btn.btn-featured:hover,
+  .btn.btn-danger:hover,
+  .license-generate-btn:hover,
+  .social-btn:hover,
+  .addr-gen-btn:hover,
+  body.tp-dashboard-mode .btn:hover,
+  body.tp-dashboard-mode .btn.btn-primary:hover,
+  body.tp-dashboard-mode .btn.btn-accent:hover,
+  body.tp-dashboard-mode .btn.btn-ghost:hover,
+  body.tp-dashboard-mode .btn.btn-featured:hover,
+  body.tp-dashboard-mode .license-generate-btn:hover{
+    background:linear-gradient(135deg,rgba(34,41,36,.80),rgba(9,14,12,.92)) !important;
+    border-color:rgba(255,255,255,.46) !important;
+    color:#FFFFFF !important;
+    box-shadow:0 18px 42px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.34),0 0 26px rgba(255,255,255,.10) !important;
+  }
+  /* Destructive action keeps a subtle warning tint inside the same glass shell */
+  .btn.btn-danger{color:#F3B4B7 !important; border-color:rgba(243,180,183,.42) !important;}
+  .btn.btn-danger:hover{color:#FFD9DB !important; border-color:rgba(243,180,183,.66) !important;}
+  /* Icon-only buttons: same glass language, square-ish footprint */
+  .btn-icon,
+  body.tp-dashboard-mode .btn-icon{
+    background:linear-gradient(135deg,rgba(22,27,24,.62),rgba(6,10,9,.84)) !important;
+    border:2px solid rgba(255,255,255,.24) !important;
+    color:#EFF6EE !important;
+    border-radius:14px !important;
+    -webkit-backdrop-filter:blur(18px) saturate(165%) !important;
+    backdrop-filter:blur(18px) saturate(165%) !important;
+    box-shadow:0 8px 22px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.18) !important;
+  }
+  .btn-icon:hover,
+  body.tp-dashboard-mode .btn-icon:hover{
+    border-color:rgba(255,255,255,.44) !important;
+    color:#FFFFFF !important;
+    transform:translateY(-1px);
+  }
+  .license-generate-btn{font:700 13px 'Inter',sans-serif !important; padding:11px 20px !important;}
+  .social-btn{padding:10px 16px !important;}
+</style>
 </body>
 </html>
+
+
+<!-- Final navigation update: mobile menu matches the supplied reference composition,
+     while Install App uses the shared TrackPort CTA treatment. -->
+<style id="trackport-nav-reference-update">
+  /* Install App is intentionally a real CTA, not an underlined text link. */
+  .navbar .nav-center .install-app-btn,
+  .navbar .nav-mobile .install-app-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:42px;
+    padding:0 18px;
+    border-radius:999px;
+    background:linear-gradient(135deg,rgba(22,27,24,.66),rgba(6,10,9,.86)) !important;
+    border:2px solid rgba(255,255,255,.26) !important;
+    color:#EFF6EE !important;
+    box-shadow:0 12px 32px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.20),inset 0 -1px 0 rgba(0,0,0,.30),0 0 20px rgba(255,255,255,.05) !important;
+    -webkit-backdrop-filter:blur(20px) saturate(170%);
+    backdrop-filter:blur(20px) saturate(170%);
+    text-transform:uppercase;
+    letter-spacing:.085em;
+    font-size:11.5px;
+    font-weight:700;
+  }
+  .navbar .nav-center .install-app-btn:after,
+  .navbar .nav-mobile .install-app-btn:after{display:none !important;}
+  .navbar .nav-center .install-app-btn:hover,
+  .navbar .nav-mobile .install-app-btn:hover{
+    background:linear-gradient(135deg,rgba(34,41,36,.80),rgba(9,14,12,.92)) !important;
+    border-color:rgba(255,255,255,.46) !important;
+    color:#FFFFFF !important;
+    transform:translateY(-2px);
+    box-shadow:0 18px 42px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(0,0,0,.34),0 0 26px rgba(255,255,255,.10) !important;
+  }
+
+  @media(max-width:860px){
+    .navbar{
+      z-index:1200;
+    }
+    .navbar .nav-inner{
+      min-height:72px;
+    }
+    .navbar .nav-mobile{
+      position:fixed;
+      inset:0;
+      z-index:1300;
+      display:flex;
+      flex-direction:column;
+      width:100vw;
+      height:100dvh;
+      max-height:none;
+      padding:0;
+      overflow-y:auto;
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      border:0;
+      border-radius:0;
+      background:rgba(9,12,10,.98) !important;
+      box-shadow:none;
+      transition:opacity .28s ease,visibility .28s ease;
+    }
+    .navbar .nav-mobile.open{
+      max-height:none;
+      padding:0;
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      border:0 !important;
+    }
+    .nav-mobile-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      min-height:104px;
+      padding:22px 28px 18px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      background:rgba(11,16,12,.72);
+    }
+    .nav-mobile-brand{
+      display:inline-flex;
+      align-items:center;
+      gap:11px;
+      color:#F7FAF5;
+      font-size:25px;
+      font-weight:800;
+      letter-spacing:-.045em;
+    }
+    .nav-mobile-brand-mark{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:38px;
+      height:38px;
+      border-radius:50%;
+      color:#0B120D;
+      background:#F7FAF5;
+      font-size:25px;
+      line-height:1;
+      transform:rotate(-28deg);
+    }
+    .nav-mobile-close{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:48px;
+      height:48px;
+      padding:0;
+      border:1px solid rgba(255,255,255,.75);
+      border-radius:8px;
+      background:transparent;
+      color:#F7FAF5;
+      font-size:39px;
+      font-weight:300;
+      line-height:1;
+      transition:background .2s ease,color .2s ease,transform .2s ease;
+    }
+    .nav-mobile-close:hover{
+      background:#F7FAF5;
+      color:#0B120D;
+      transform:rotate(90deg);
+    }
+    .nav-mobile-links{
+      display:flex;
+      flex-direction:column;
+      gap:0;
+      padding:18px 28px 0;
+    }
+    .navbar .nav-mobile-links .nav-link{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      width:100%;
+      min-height:68px;
+      margin:0;
+      padding:10px 0;
+      border-bottom:0 !important;
+      color:#F7FAF5 !important;
+      font-size:28px;
+      font-weight:400;
+      letter-spacing:-.035em;
+      text-transform:none;
+      opacity:1;
+      transform:none;
+    }
+    .navbar .nav-mobile-links .nav-link:after{display:none;}
+    .navbar .nav-mobile-links .nav-link:not(.install-app-btn):before{
+      content:'›';
+      order:2;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:54px;
+      height:54px;
+      border:1px solid rgba(255,255,255,.82);
+      border-radius:8px;
+      color:#F7FAF5;
+      font-size:41px;
+      font-weight:300;
+      line-height:1;
+      transition:background .2s ease,color .2s ease,transform .2s ease;
+    }
+    .navbar .nav-mobile-links .nav-link:not(.install-app-btn):hover:before{
+      background:#F7FAF5;
+      color:#0B120D;
+      transform:translateX(3px);
+    }
+    .navbar .nav-mobile-links .nav-link.nav-logout svg{
+      display:none;
+    }
+    .navbar .nav-mobile-links .nav-link.install-app-btn{
+      width:max-content;
+      min-height:46px;
+      margin:13px 0 6px;
+      padding:0 18px;
+      font-size:11px;
+      letter-spacing:.085em;
+    }
+    .nav-mobile-contact{
+      margin:26px 28px 0;
+      padding:28px 0 42px;
+      border-top:1px solid rgba(255,255,255,.10);
+    }
+    .nav-mobile-contact h3{
+      margin:0 0 18px;
+      color:#F7FAF5;
+      font-size:28px;
+      font-weight:400;
+      letter-spacing:-.035em;
+    }
+    .nav-mobile-contact a,
+    .nav-mobile-contact span{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-height:39px;
+      color:#F0F4EE;
+      font-size:16px;
+      line-height:1.5;
+    }
+    .nav-mobile-contact a svg,
+    .nav-mobile-contact span svg{
+      width:21px;
+      height:21px;
+      flex:0 0 21px;
+      color:#F7FAF5;
+    }
+    .nav-mobile-follow-title{
+      margin-top:28px !important;
+    }
+    .nav-mobile-social{
+      display:flex;
+      gap:10px;
+    }
+    .nav-mobile-social a{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:58px;
+      height:58px;
+      min-height:0;
+      border:1px solid rgba(255,255,255,.82);
+      border-radius:50%;
+      color:#F7FAF5;
+    }
+    .nav-mobile-social a svg{
+      width:21px;
+      height:21px;
+    }
+    .nav-mobile-social a:hover{
+      background:#F7FAF5;
+      color:#0B120D;
+    }
+  }
+
+  @media(min-width:861px){
+    .nav-mobile-head,
+    .nav-mobile-contact{display:none;}
+  }
+</style>
