@@ -1906,8 +1906,11 @@
   .mil-photo img{width:100%; height:100%; object-fit:cover; object-position:top;}
   .mil-sealcol{flex:1; display:flex; flex-direction:column; align-items:center; padding-left:8px; padding-top:2px; min-width:0;}
   .mil-dept{margin:0; text-align:center; font-size:13px; line-height:1.15; font-weight:700; letter-spacing:-.01em; color:#000;}
-  .mil-seal{width:105px; height:105px; margin:4px 0; display:flex; align-items:center; justify-content:center;}
-  .mil-seal img{max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
+  .mil-seal{position:relative; width:105px; height:105px; margin:4px 0; display:flex; align-items:center; justify-content:center;}
+  .mil-seal-fallback{position:absolute; inset:0; z-index:1; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:50%; color:#f3d77b; font-size:7px; font-weight:900; line-height:1; letter-spacing:.02em; text-align:center; text-transform:uppercase; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
+  .mil-seal-fallback svg{position:absolute; inset:0; width:100%; height:100%;}
+  .mil-seal-fallback span{position:relative; z-index:2; max-width:54px; margin-top:68px; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.7);}
+  .mil-seal img{position:relative; z-index:2; width:100%; height:100%; max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
   .mil-branch{margin:0; text-align:center; font-size:18px; line-height:1.15; font-weight:700; color:#000;}
   .mil-unit{margin:2px 0 0; text-align:center; font-size:16px; line-height:1.15; font-weight:700; color:#000;}
   .mil-duty{margin:2px 0 0; text-align:center; font-size:21px; line-height:1.15; font-weight:700; color:#000;}
@@ -4383,7 +4386,17 @@ function militaryPreviewMarkup(){
                 <div class="mil-photo"><img id="mil-photo" src="${MILITARY_DEFAULT_PHOTO}" alt="Member portrait"></div>
                 <div class="mil-sealcol">
                   <h3 class="mil-dept">Armed Forces OF The<br>United States</h3>
-                  <div class="mil-seal"><img id="mil-seal" src="" alt="Branch seal" crossorigin="anonymous"></div>
+                  <div class="mil-seal">
+                    <div class="mil-seal-fallback" id="mil-seal-fallback" aria-hidden="true">
+                      <svg viewBox="0 0 100 100" focusable="false">
+                        <circle cx="50" cy="50" r="45" fill="#17324d" stroke="#b99a42" stroke-width="4"></circle>
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="#f3d77b" stroke-width="2"></circle>
+                        <path d="M50 18 56 39 78 39 60 52 67 74 50 61 33 74 40 52 22 39 44 39Z" fill="#f3d77b"></path>
+                      </svg>
+                      <span id="mil-seal-fallback-label">BRANCH SEAL</span>
+                    </div>
+                    <img id="mil-seal" src="" alt="Branch seal" crossorigin="anonymous">
+                  </div>
                   <p class="mil-branch" id="mil-out-branch"></p>
                   <p class="mil-unit" id="mil-out-unit"></p>
                   <p class="mil-duty" id="mil-out-duty"></p>
@@ -4591,6 +4604,8 @@ function renderMilitaryIdPreview(){
   setText('mil-out-exp', d.expDate);
   const sealEl = document.getElementById('mil-seal');
   if(sealEl && sealEl.getAttribute('src') !== branch.seal) sealEl.src = branch.seal;
+  const sealFallbackLabel = document.getElementById('mil-seal-fallback-label');
+  if(sealFallbackLabel) sealFallbackLabel.textContent = `${branch.name} SEAL`.toUpperCase();
   const photoEl = document.getElementById('mil-photo');
   if(photoEl && photoEl.getAttribute('src') !== militaryIdPhoto) photoEl.src = militaryIdPhoto;
   const stage = document.getElementById('mil-stage');
@@ -4665,7 +4680,16 @@ async function downloadMilitaryIdScene(){
       useCORS:true,
       allowTaint:false,
       backgroundColor:null,
-      logging:false
+      logging:false,
+      onclone: clonedDocument=>{
+        /* Remote branch-seal hosts can omit CORS headers. Keep the live
+           preview intact, but force the built-in branch badge into the
+           downloaded clone so the export never loses this required element. */
+        const clonedSeal = clonedDocument.getElementById('mil-seal');
+        const clonedFallback = clonedDocument.getElementById('mil-seal-fallback');
+        if(clonedSeal) clonedSeal.style.display = 'none';
+        if(clonedFallback) clonedFallback.style.display = 'flex';
+      }
     });
     const link = document.createElement('a');
     link.download = `${String(militaryIdState.fullName||'military_id').trim().replace(/\s+/g,'_')}_military_id.png`;
