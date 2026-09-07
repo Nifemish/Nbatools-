@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.5.4">
+<meta name="trackport-version" content="1.6.9">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -910,6 +910,33 @@
   .grouped-history-intro{margin-top:5px; color:var(--muted); font-size:12px; line-height:1.5;}
   @media (max-width:980px){ .history-cta-grid{grid-template-columns:1fr 1fr;} }
   @media (max-width:620px){ .history-cta-grid{grid-template-columns:1fr;} }
+  .service-showcase-panel{margin-bottom:24px;}
+  .service-showcase-heading{align-items:flex-start;margin-bottom:16px;}
+  .service-showcase-view-all{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;color:var(--primary);font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
+  .service-showcase-view-all svg{width:14px;height:14px;}
+  .service-showcase-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+  .service-showcase-card{display:flex;align-items:flex-start;gap:12px;min-width:0;min-height:132px;padding:16px;border:1px solid var(--glass-border);border-radius:17px;color:var(--ink);background:rgba(255,255,255,.035);transition:transform .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease),box-shadow .25s var(--ease);}
+  .service-showcase-card:hover{transform:translateY(-3px);border-color:rgba(212,175,90,.62);background:rgba(212,175,90,.08);box-shadow:0 12px 24px rgba(0,0,0,.12);}
+  .service-showcase-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:12px;color:#1a1204;background:linear-gradient(145deg,var(--primary),var(--primary-dark));}
+  .service-showcase-icon svg{width:19px;height:19px;}
+  .service-showcase-copy{display:grid;align-content:start;gap:5px;min-width:0;}
+  .service-showcase-kicker{color:var(--muted);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+  .service-showcase-copy strong{font:800 12px/1.35 Inter,Arial,sans-serif;letter-spacing:.01em;}
+  .service-showcase-copy small{color:var(--muted);font-size:11px;line-height:1.45;}
+  .service-showcase-arrow{margin-left:auto;color:var(--primary);flex:0 0 auto;}
+  .service-showcase-arrow svg{width:16px;height:16px;}
+  .service-showcase-tracking .service-showcase-icon{background:#dfe8ff;color:#3157a6;}
+  .service-showcase-flight .service-showcase-icon{background:#f7e8be;color:#806018;}
+  .service-showcase-shipment .service-showcase-icon{background:#d9f1e1;color:#267345;}
+  .service-showcase-identity .service-showcase-icon{background:#f2d8e8;color:#93446f;}
+  .service-showcase-document .service-showcase-icon{background:#dce5ff;color:#3959a4;}
+  .service-showcase-receipt .service-showcase-icon{background:#ecdaf1;color:#844b98;}
+  @media (max-width:980px){ .service-showcase-grid{grid-template-columns:1fr 1fr;} }
+  @media (max-width:620px){
+    .service-showcase-heading{display:block;}
+    .service-showcase-view-all{margin-top:12px;}
+    .service-showcase-grid{grid-template-columns:1fr;}
+  }
   .creation-section{margin:0 0 18px; padding:22px; border:1px solid var(--glass-border); border-radius:22px; background:rgba(255,255,255,.035);}
   .creation-section-header{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin-bottom:16px;}
   .creation-section-header h2{font-family:'Inter',sans-serif; font-size:18px; letter-spacing:-.02em;}
@@ -1945,6 +1972,7 @@ let usersDB = {};
 let shipmentsDB = {};
 let flightsDB = {};
 let licenseHistoryDB = [];
+let receiptsDB = {};
 let currentUser = null; // {email, fullName, phone, isAdmin}
 const AUTH_SESSION_KEY = 'trackport-auth-session-v1';
 const LAST_ROUTE_KEY = 'trackport-last-route-v1';
@@ -1957,6 +1985,7 @@ let routerGeneration = 0;
 let automationRunActive = false;
 let trackingLiveUnsubscribe = null;
 let trackingLiveNumber = null;
+let receiptDraft = null;
 
 const STATUS_FLOW = ['Order Created','Shipment Confirmed','Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
 const ALL_STATUSES = [...STATUS_FLOW, 'Delivery Exception'];
@@ -2622,14 +2651,16 @@ async function loadDB(){
       return value && value.value ? JSON.parse(value.value) : {};
     }catch(e){ return {}; }
   };
-  const [users, shipments, flights] = await Promise.all([
+  const [users, shipments, flights, receipts] = await Promise.all([
     readJson('nbatools-users'),
     readJson('nbatools-shipments'),
-    readJson('nbatools-flights')
+    readJson('nbatools-flights'),
+    readJson('nbatools-receipts')
   ]);
   usersDB = users;
   shipmentsDB = shipments;
   flightsDB = flights;
+  receiptsDB = receipts;
   if(!usersDB['admin@trackport.io']){
     usersDB['admin@trackport.io'] = { fullName:'Admin', email:'admin@trackport.io', phone:'', password:'admin123', isAdmin:true, createdAt:new Date().toISOString() };
     await saveUsers();
@@ -2712,10 +2743,10 @@ function clearAuthSession(){
   }
 }
 function isRestorableRoute(route){
-  return /^#\/(dashboard|history|tracking|profile|flight-history|shipment-history|license-history|admin)\/?$/.test(String(route||''));
+  return /^#\/(dashboard|history|tracking|profile|flight-history|shipment-history|license-history|receipt-history|admin)\/?$/.test(String(route||''));
 }
 function isProtectedRoute(route){
-  return /^#\/(dashboard|history|tracking|profile|create-flight|create-shipment|create|create-license|create-id-card|create-document|create-receipt|flight-history|shipment-history|license-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
+  return /^#\/(dashboard|history|tracking|profile|create-flight|create-shipment|create|create-license|create-id-card|create-document|create-receipt|receipt-result|flight-history|shipment-history|license-history|receipt-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
 }
 function rememberCurrentRoute(){
   const route = location.hash || '#/';
@@ -2740,14 +2771,11 @@ function seedInitialRouteHistory(){
   let route = requestedRoute || (currentUser ? restoredRoute() : '#/');
   if(!currentUser && isProtectedRoute(route)) route = '#/login';
   if(currentUser && /^#\/(login|register)\/?$/.test(route)) route = DEFAULT_AUTH_ROUTE;
-  // Give every authenticated deep link an in-app page behind it. This makes
-  // the first Back press return to the dashboard instead of closing the PWA.
-  const baseRoute = currentUser ? DEFAULT_AUTH_ROUTE : '#/';
+  // Normalize only the initial route. Do not manufacture a second browser
+  // history entry behind a deep link: on iOS this made Back appear to
+  // navigate twice and could re-open a half-rendered license editor.
   try{
-    history.replaceState({ trackportRoot:true }, '', baseRoute);
-    if(route !== baseRoute){
-      history.pushState({ trackportRoute:true }, '', route);
-    }
+    if(route !== requestedRoute) history.replaceState({ trackportRoute:true }, '', route);
   }catch(error){
     console.warn('App navigation history could not be initialized.', error);
   }
@@ -2784,6 +2812,10 @@ async function saveFlights(){
   try{ await storageAPI.set('nbatools-flights', JSON.stringify(flightsDB), true); return true; }
   catch(e){ showToast('Could not save — try again', true); return false; }
 }
+async function saveReceipts(){
+  try{ await storageAPI.set('nbatools-receipts', JSON.stringify(receiptsDB), true); return true; }
+  catch(e){ showToast('Could not save receipt — try again', true); return false; }
+}
 async function loadLicenseHistory(){
   licenseHistoryDB = [];
   if(!currentUser || !window.firebaseCloud || !window.firebaseCloud.isReady) return;
@@ -2815,9 +2847,28 @@ function hidePageLoader(){
   loader.classList.remove('is-active');
   loader.setAttribute('aria-hidden','true');
 }
-function navigate(hash){
-  if(String(location.hash||'') !== String(hash||'')) showPageLoader();
-  location.hash = hash;
+function normalizeRouteHash(hash){
+  let next = String(hash || '#/');
+  if(!next.startsWith('#')) next = `#${next}`;
+  if(!next.startsWith('#/')) next = `#/${next.replace(/^\/+/, '')}`;
+  next = next.replace(/\/+$/, '');
+  return next === '#' ? '#/' : (next || '#/');
+}
+function navigate(hash, options={}){
+  const next = normalizeRouteHash(hash);
+  const current = normalizeRouteHash(location.hash || '#/');
+  if(current === next) return;
+  showPageLoader();
+  if(options.replace){
+    try{
+      history.replaceState({trackportRoute:true}, '', next);
+      router();
+    }catch(error){
+      location.hash = next;
+    }
+  }else{
+    location.hash = next;
+  }
 }
 function esc(str){ return (str==null?'':String(str)).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function fmtMoney(v,c){ if(v===undefined||v==='') return '—'; return `${c||''} ${Number(v).toLocaleString()}`; }
@@ -3078,7 +3129,9 @@ function goToAbout(event){
   const scrollToAbout = () => document.getElementById('about')?.scrollIntoView({behavior:'smooth', block:'start'});
   const hash = location.hash.replace(/^#/,'');
   if(hash && hash !== '/' ){
-    location.hash = '/';
+    // About is an in-page action, not a new destination. Replacing the
+    // current route avoids adding a redundant history entry on iOS.
+    navigate('#/', {replace:true});
     setTimeout(scrollToAbout, 150);
   } else {
     scrollToAbout();
@@ -3592,6 +3645,7 @@ function shipmentHistoryMarkup(items){
 function pageDashboard(){
   const mine = Object.values(shipmentsDB).filter(s=>s.userId===currentUser.email).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const flightsMine = Object.values(flightsDB).filter(f=>f.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  const receiptsMine = Object.values(receiptsDB).filter(r=>r.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
   const stats = computeStats(mine);
   const fstats = computeFlightStats(flightsMine);
   return `
@@ -3687,8 +3741,51 @@ function pageDashboard(){
          ${historySummaryCta({href:'#/flight-history',iconName:'plane',kicker:'Travel records',title:'RECENT FLIGHT TICKETS',count:flightsMine.length,singular:'flight ticket',plural:'flight tickets',latestAt:flightsMine[0]?.updatedAt||flightsMine[0]?.createdAt,className:'flight-history-cta'})}
          ${historySummaryCta({href:'#/shipment-history',iconName:'package',kicker:'Delivery records',title:'RECENT SHIPMENTS',count:mine.length,singular:'shipment',plural:'shipments',latestAt:mine[0]?.updatedAt||mine[0]?.createdAt,className:'shipment-history-cta'})}
          ${historySummaryCta({href:'#/license-history',iconName:'credit-card',kicker:'Identity records',title:'ID CARD CREATIONS',count:licenseHistoryDB.length,singular:'ID card',plural:'ID cards',latestAt:licenseHistoryDB[0]?.createdAt,className:'license-history-cta'})}
+          ${historySummaryCta({href:'#/receipt-history',iconName:'file-text',kicker:'Records tools',title:'SAVED RECEIPTS',count:receiptsMine.length,singular:'receipt',plural:'receipts',latestAt:receiptsMine[0]?.updatedAt||receiptsMine[0]?.createdAt,className:'receipt-history-cta'})}
        </div>
      </div>
+
+     <section class="card card-pad service-showcase-panel" aria-labelledby="service-showcase-title">
+       <div class="section-title-row service-showcase-heading">
+         <div>
+           <h3 id="service-showcase-title">Explore TrackPort services</h3>
+           <p class="grouped-history-intro">Open any workspace to see what TrackPort can help you create, organize, or track.</p>
+         </div>
+         <a href="#/create" class="service-showcase-view-all">View all ${icon('arrow')}</a>
+       </div>
+       <div class="service-showcase-grid">
+         <a href="#/tracking" class="service-showcase-card service-showcase-tracking">
+           <span class="service-showcase-icon">${icon('search')}</span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Tracking tools</span><strong>Track shipments and flights</strong><small>Open the tracking workspace for a live status lookup.</small></span>
+           <span class="service-showcase-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-flight" class="service-showcase-card service-showcase-flight">
+           <span class="service-showcase-icon">${icon('plane')}</span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Travel tools</span><strong>Create trackable flight tickets</strong><small>Build a flight record with route and journey details.</small></span>
+           <span class="service-showcase-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-shipment" class="service-showcase-card service-showcase-shipment">
+           <span class="service-showcase-icon">${icon('package')}</span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Delivery tools</span><strong>Create trackable shipping products</strong><small>Prepare shipment details and share a tracking page.</small></span>
+           <span class="service-showcase-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-id-card" class="service-showcase-card service-showcase-identity">
+           <span class="service-showcase-icon">${icon('credit-card')}</span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Identity workspaces</span><strong>Explore ID card mockups</strong><small>Open clearly labeled driver's license and ID mockup tools.</small></span>
+           <span class="service-showcase-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-document" class="service-showcase-card service-showcase-document">
+           <span class="service-showcase-icon">${icon('file')}</span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Paperwork tools</span><strong>Create internal documents</strong><small>Open the document workspace for approved records and templates.</small></span>
+           <span class="service-showcase-arrow">${icon('arrow')}</span>
+         </a>
+         <a href="#/create-receipt" class="service-showcase-card service-showcase-receipt">
+           <span class="service-showcase-icon">${icon('dollar')}</span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Records tools</span><strong>Create business receipts</strong><small>Build a polished receipt or expense record with a live preview.</small></span>
+           <span class="service-showcase-arrow">${icon('arrow')}</span>
+         </a>
+       </div>
+     </section>
   </div>
   <div style="height:60px;"></div>
   ${footer()}`;
@@ -3822,6 +3919,285 @@ function pageIdCardCreationHub(){
   ${footer()}`;
 }
 
+/* ================= RECEIPT CREATION =================
+   Original TrackPort receipt workspace inspired by the useful patterns found
+   in public receipt builders: template families, itemized rows, live totals,
+   optional logo/barcode, and print-ready output. It intentionally uses
+   TrackPort-owned styling and neutral business-record language rather than
+   reproducing another site's code, artwork, branding, or merchant layouts. */
+const RECEIPT_TEMPLATES = [
+  {id:'editorial', name:'Editorial', note:'Warm paper · classic receipt', icon:'✦'},
+  {id:'midnight', name:'Midnight', note:'Dark luxe · high contrast', icon:'◈'},
+  {id:'mono', name:'Monochrome', note:'Compact · terminal-inspired', icon:'▦'},
+  {id:'minimal', name:'Minimal', note:'Clean invoice · lots of air', icon:'○'}
+];
+const RECEIPT_CURRENCIES = {USD:'$', EUR:'€', GBP:'£', NGN:'₦', CAD:'CA$', AUD:'A$', INR:'₹', ZAR:'R'};
+
+function receiptTemplate(id){
+  return RECEIPT_TEMPLATES.find(t=>t.id===id) || RECEIPT_TEMPLATES[0];
+}
+function receiptCurrencySymbol(code){ return RECEIPT_CURRENCIES[code] || code || '$'; }
+function receiptMoney(value, currency){
+  const n = Number(value)||0;
+  try{
+    return new Intl.NumberFormat(undefined,{style:'currency',currency:currency||'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+  }catch(_e){ return `${receiptCurrencySymbol(currency)}${n.toFixed(2)}`; }
+}
+function receiptMultiline(value){ return esc(value||'').replace(/\r?\n/g,'<br>'); }
+function receiptDefaultData(routeKey){
+  const now = new Date();
+  return {
+    id: `RCT-${now.getFullYear()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`,
+    _routeKey: routeKey || 'new',
+    userId: currentUser?.email || '',
+    template:'editorial',
+    documentLabel:'DRAFT / INTERNAL RECORD',
+    businessName:'TrackPort Studio',
+    businessAddress:'12 Harbour Avenue\nLagos, Nigeria',
+    businessContact:'hello@trackport.example · +234 000 000 0000',
+    receiptTitle:'Receipt',
+    receiptNumber:`TP-${String(now.getTime()).slice(-7)}`,
+    date:now.toISOString().slice(0,10),
+    time:now.toTimeString().slice(0,5),
+    customerName:'',
+    paymentMethod:'Card',
+    currency:'USD',
+    taxRate:0,
+    discountRate:0,
+    tipRate:0,
+    notes:'Thank you for your business.',
+    logo:'',
+    showBarcode:true,
+    items:[
+      {id:genId(), description:'Service or item', quantity:1, price:0}
+    ],
+    createdAt:now.toISOString(),
+    updatedAt:now.toISOString()
+  };
+}
+function receiptCopy(value){ return JSON.parse(JSON.stringify(value)); }
+function receiptActiveData(routeKey){
+  const saved = routeKey && receiptsDB[routeKey];
+  if(!receiptDraft || receiptDraft._routeKey !== routeKey){
+    receiptDraft = saved ? receiptCopy(saved) : receiptDefaultData(routeKey || 'new');
+    receiptDraft._routeKey = routeKey || 'new';
+  }
+  return receiptDraft;
+}
+function receiptTotals(data){
+  const subtotal = (data.items||[]).reduce((sum,item)=>sum + (Number(item.quantity)||0)*(Number(item.price)||0),0);
+  const discount = subtotal * ((Number(data.discountRate)||0)/100);
+  const taxable = Math.max(0, subtotal-discount);
+  const tax = taxable * ((Number(data.taxRate)||0)/100);
+  const tip = taxable * ((Number(data.tipRate)||0)/100);
+  return {subtotal, discount, taxable, tax, tip, total:taxable+tax+tip};
+}
+function receiptBarcodeHtml(value){
+  const seed = String(value||'TRACKPORT').split('').reduce((n,ch)=>(n*31+ch.charCodeAt(0))%997,17);
+  let bars = '';
+  for(let i=0;i<42;i++){
+    const width = 1 + ((seed+i*17)%3);
+    bars += `<i style="width:${width}px"></i>`;
+  }
+  return `<span class="receipt-barcode" aria-label="Reference barcode">${bars}</span><span class="receipt-barcode-text">${esc(value||'')}</span>`;
+}
+function receiptPreviewHtml(data){
+  const totals = receiptTotals(data);
+  const template = receiptTemplate(data.template);
+  const rows = (data.items||[]).map(item=>`
+    <tr>
+      <td><strong>${esc(item.description||'Item')}</strong></td>
+      <td class="receipt-qty">${Number(item.quantity)||0}</td>
+      <td class="receipt-price">${receiptMoney(item.price,data.currency)}</td>
+      <td class="receipt-price">${receiptMoney((Number(item.quantity)||0)*(Number(item.price)||0),data.currency)}</td>
+    </tr>`).join('');
+  return `<article class="receipt-paper receipt-theme-${esc(template.id)}">
+    <div class="receipt-paper-topline"></div>
+    ${data.documentLabel ? `<div class="receipt-document-label">${esc(data.documentLabel)}</div>` : ''}
+    <header class="receipt-paper-header">
+      <div class="receipt-brand-mark">${data.logo ? `<img src="${esc(data.logo)}" alt="Business logo">` : `<span>${esc((data.businessName||'T').slice(0,1).toUpperCase())}</span>`}</div>
+      <div class="receipt-brand-copy">
+        <h2>${esc(data.businessName||'Your business')}</h2>
+        <p>${receiptMultiline(data.businessAddress)}</p>
+        <p>${esc(data.businessContact||'')}</p>
+      </div>
+      <div class="receipt-heading">
+        <span>${esc(data.receiptTitle||'Receipt')}</span>
+        <strong>${esc(data.receiptNumber||'—')}</strong>
+      </div>
+    </header>
+    <div class="receipt-meta">
+      <span><small>Date</small><strong>${esc(data.date||'—')}</strong></span>
+      <span><small>Time</small><strong>${esc(data.time||'—')}</strong></span>
+      <span><small>Customer</small><strong>${esc(data.customerName||'Walk-in customer')}</strong></span>
+      <span><small>Payment</small><strong>${esc(data.paymentMethod||'—')}</strong></span>
+    </div>
+    <div class="receipt-items-wrap">
+      <table class="receipt-items">
+        <thead><tr><th>Item / description</th><th>Qty</th><th>Price</th><th>Amount</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="4" class="receipt-empty-row">No items added</td></tr>`}</tbody>
+      </table>
+    </div>
+    <div class="receipt-bottom-grid">
+      <div class="receipt-notes"><small>Notes</small><p>${receiptMultiline(data.notes||'')}</p></div>
+      <div class="receipt-totals">
+        <div><span>Subtotal</span><strong>${receiptMoney(totals.subtotal,data.currency)}</strong></div>
+        ${totals.discount ? `<div><span>Discount</span><strong>− ${receiptMoney(totals.discount,data.currency)}</strong></div>` : ''}
+        ${Number(data.taxRate) ? `<div><span>Tax (${Number(data.taxRate).toFixed(2)}%)</span><strong>${receiptMoney(totals.tax,data.currency)}</strong></div>` : ''}
+        ${Number(data.tipRate) ? `<div><span>Tip (${Number(data.tipRate).toFixed(2)}%)</span><strong>${receiptMoney(totals.tip,data.currency)}</strong></div>` : ''}
+        <div class="receipt-grand-total"><span>Total</span><strong>${receiptMoney(totals.total,data.currency)}</strong></div>
+      </div>
+    </div>
+    <footer class="receipt-paper-footer">
+      ${data.showBarcode ? `<div class="receipt-barcode-box">${receiptBarcodeHtml(data.receiptNumber)}</div>` : ''}
+      <p>Prepared in TrackPort · Keep this record for your files.</p>
+    </footer>
+  </article>`;
+}
+function receiptFieldValue(data, field){
+  const value = data[field];
+  return value == null ? '' : value;
+}
+function receiptEditorRows(data){
+  return (data.items||[]).map((item,index)=>`<tr data-receipt-item="${esc(item.id)}">
+    <td><input data-receipt-item-field="description" data-item-id="${esc(item.id)}" value="${esc(item.description)}" aria-label="Item ${index+1} description"></td>
+    <td><input type="number" min="0" step="1" data-receipt-item-field="quantity" data-item-id="${esc(item.id)}" value="${Number(item.quantity)||0}" aria-label="Item ${index+1} quantity"></td>
+    <td><input type="number" min="0" step="0.01" data-receipt-item-field="price" data-item-id="${esc(item.id)}" value="${Number(item.price)||0}" aria-label="Item ${index+1} price"></td>
+    <td><button type="button" class="receipt-remove-item" data-action="receipt-remove-item" data-id="${esc(item.id)}" aria-label="Remove item">×</button></td>
+  </tr>`).join('');
+}
+function pageReceiptCreation(routeKey='new'){
+  const data = receiptActiveData(routeKey);
+  const selectedTemplate = receiptTemplate(data.template);
+  return `
+  ${navbar('dashboard')}
+  <div class="receipt-generator-shell">
+    <div class="receipt-generator">
+      <header class="receipt-generator-header">
+        <div>
+          <span class="receipt-kicker">Records tools · original TrackPort workspace</span>
+          <h1>Create a receipt</h1>
+          <p>Build a polished business receipt or expense record with a live preview. Use your own business details and branding.</p>
+        </div>
+        <div class="receipt-header-actions">
+          <a href="#/receipt-history" class="receipt-text-link">${icon('clock')} History</a>
+          <a href="#/create" class="receipt-text-link">${icon('arrow')} Back</a>
+        </div>
+      </header>
+      <div class="receipt-safety-note">${icon('info')} Use this workspace for legitimate business records, invoices, and clearly marked internal documents. Do not use it to imitate another merchant or create deceptive records.</div>
+      <div class="receipt-generator-layout">
+        <section class="receipt-editor-panel no-print" aria-label="Receipt editor">
+          <div class="receipt-panel-heading"><div><span class="receipt-kicker">01 · Choose a direction</span><h2>Receipt style</h2></div><span class="receipt-selected-style">${esc(selectedTemplate.name)}</span></div>
+          <div class="receipt-template-grid">
+            ${RECEIPT_TEMPLATES.map(t=>`<button type="button" class="receipt-template-card ${data.template===t.id?'is-selected':''}" data-action="receipt-template" data-id="${t.id}" aria-pressed="${data.template===t.id}">
+              <span class="receipt-template-glyph">${t.icon}</span><strong>${esc(t.name)}</strong><small>${esc(t.note)}</small>
+            </button>`).join('')}
+          </div>
+          <form id="receipt-generator-form" autocomplete="off">
+            <div class="receipt-editor-section"><div class="receipt-section-title"><span>02</span><h3>Business details</h3></div>
+              <div class="receipt-field-grid two">
+                <label>Business name<input data-receipt-field="businessName" value="${esc(receiptFieldValue(data,'businessName'))}" placeholder="Your business name"></label>
+                <label>Receipt title<input data-receipt-field="receiptTitle" value="${esc(receiptFieldValue(data,'receiptTitle'))}" placeholder="Receipt / Invoice"></label>
+                <label class="span-2">Address<textarea data-receipt-field="businessAddress" rows="2" placeholder="Street, city, country">${esc(receiptFieldValue(data,'businessAddress'))}</textarea></label>
+                <label class="span-2">Contact line<input data-receipt-field="businessContact" value="${esc(receiptFieldValue(data,'businessContact'))}" placeholder="Email · phone · website"></label>
+                <label>Logo<input type="file" id="receipt-logo-file" accept="image/*"><small class="receipt-field-hint">Optional · stored with this record</small></label>
+                <label>Document label<input data-receipt-field="documentLabel" value="${esc(receiptFieldValue(data,'documentLabel'))}" placeholder="DRAFT / INTERNAL RECORD"></label>
+              </div>
+            </div>
+            <div class="receipt-editor-section"><div class="receipt-section-title"><span>03</span><h3>Transaction details</h3></div>
+              <div class="receipt-field-grid two">
+                <label>Receipt number<input data-receipt-field="receiptNumber" value="${esc(receiptFieldValue(data,'receiptNumber'))}"></label>
+                <label>Customer<input data-receipt-field="customerName" value="${esc(receiptFieldValue(data,'customerName'))}" placeholder="Walk-in customer"></label>
+                <label>Date<input type="date" data-receipt-field="date" value="${esc(receiptFieldValue(data,'date'))}"></label>
+                <label>Time<input type="time" data-receipt-field="time" value="${esc(receiptFieldValue(data,'time'))}"></label>
+                <label>Currency<select data-receipt-field="currency">${Object.keys(RECEIPT_CURRENCIES).map(c=>`<option value="${c}" ${data.currency===c?'selected':''}>${c} · ${RECEIPT_CURRENCIES[c]}</option>`).join('')}</select></label>
+                <label>Payment method<select data-receipt-field="paymentMethod">${['Card','Cash','Bank transfer','Mobile money','Other'].map(c=>`<option ${data.paymentMethod===c?'selected':''}>${c}</option>`).join('')}</select></label>
+              </div>
+            </div>
+            <div class="receipt-editor-section"><div class="receipt-section-title"><span>04</span><h3>Items & services</h3><button type="button" class="btn btn-ghost btn-sm" data-action="receipt-add-item">${icon('plus')} Add item</button></div>
+              <div class="receipt-items-editor-wrap"><table class="receipt-items-editor"><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th></th></tr></thead><tbody id="receipt-items-editor-body">${receiptEditorRows(data)}</tbody></table></div>
+            </div>
+            <div class="receipt-editor-section"><div class="receipt-section-title"><span>05</span><h3>Charges & finish</h3></div>
+              <div class="receipt-field-grid three">
+                <label>Tax %<input type="number" min="0" step="0.01" data-receipt-field="taxRate" value="${Number(data.taxRate)||0}"></label>
+                <label>Discount %<input type="number" min="0" step="0.01" data-receipt-field="discountRate" value="${Number(data.discountRate)||0}"></label>
+                <label>Tip %<input type="number" min="0" step="0.01" data-receipt-field="tipRate" value="${Number(data.tipRate)||0}"></label>
+                <label class="span-2">Notes<textarea data-receipt-field="notes" rows="2" placeholder="Optional thank-you or terms">${esc(receiptFieldValue(data,'notes'))}</textarea></label>
+                <label class="receipt-check-label"><input type="checkbox" data-receipt-field="showBarcode" ${data.showBarcode?'checked':''}> Show reference barcode</label>
+              </div>
+            </div>
+            <div class="receipt-editor-actions">
+              <button type="button" class="btn btn-accent receipt-generate-button" data-action="generate-receipt">${icon('checkc')} Generate Receipt</button>
+            </div>
+          </form>
+        </section>
+        <section class="receipt-preview-panel" aria-label="Live receipt preview">
+          <div class="receipt-preview-toolbar"><div><span class="receipt-kicker">Live preview</span><strong>${esc(selectedTemplate.name)} layout</strong></div><span class="receipt-preview-status">Updates as you type</span></div>
+          <div id="receipt-preview-stage" class="receipt-preview-stage">${receiptPreviewHtml(data)}</div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div style="height:60px;"></div>`;
+}
+function pageReceiptResult(receiptId){
+  const saved = receiptsDB[receiptId];
+  if(!saved || saved.userId !== currentUser.email) return redirectTo('/receipt-history');
+  receiptDraft = receiptCopy(saved);
+  receiptDraft._routeKey = receiptId;
+  const totals = receiptTotals(saved);
+  return `
+  ${navbar('dashboard')}
+  <div class="receipt-result-shell">
+    <div class="receipt-result">
+      <header class="receipt-result-header">
+        <div>
+          <span class="receipt-kicker">Receipt generated · saved to your history</span>
+          <h1>Your receipt is ready</h1>
+          <p>Review the finished record below, then print it, download the receipt image, or make an edit.</p>
+        </div>
+        <div class="receipt-result-total"><small>Total</small><strong>${receiptMoney(totals.total,saved.currency)}</strong></div>
+      </header>
+      <div class="receipt-result-layout">
+        <section class="receipt-preview-panel receipt-result-preview" aria-label="Generated receipt">
+          <div class="receipt-preview-toolbar"><div><span class="receipt-kicker">Final output</span><strong>${esc(receiptTemplate(saved.template).name)} layout</strong></div><span class="receipt-preview-status">Ready to use</span></div>
+          <div id="receipt-preview-stage" class="receipt-preview-stage">${receiptPreviewHtml(saved)}</div>
+        </section>
+        <aside class="receipt-result-actions no-print" aria-label="Receipt actions">
+          <div class="receipt-result-action-card">
+            <span class="receipt-kicker">Next step</span>
+            <h2>Use this receipt</h2>
+            <p>Your generated receipt is saved. These actions affect the finished output, not the editor.</p>
+            <button type="button" class="btn btn-accent" data-action="save-receipt">${icon('save')} Save receipt</button>
+            <button type="button" class="btn btn-primary" data-action="print-receipt">${icon('printer')} Print / Save PDF</button>
+            <button type="button" class="btn btn-ghost" data-action="download-receipt">${icon('download')} Download receipt image</button>
+            <a href="#/create-receipt/${encodeURIComponent(receiptId)}" class="receipt-result-link">${icon('edit')} Edit receipt</a>
+            <a href="#/create-receipt" class="receipt-result-link">${icon('plus')} Create another</a>
+            <a href="#/receipt-history" class="receipt-result-link">${icon('clock')} View receipt history</a>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+  <div style="height:60px;"></div>`;
+}
+function receiptHistoryMarkup(items){
+  if(!items.length) return `<div class="record-history-empty">No receipts yet. Create your first business record to start a receipt history.</div>`;
+  return `<div class="record-history-list">${items.map(r=>{
+    const totals = receiptTotals(r);
+    return `<div class="record-history-item">
+      <span class="license-history-item-icon">${icon('file-text')}</span>
+      <span class="record-history-item-copy"><span class="record-history-item-title">${esc(r.businessName||'Receipt')} · ${esc(r.receiptNumber||'—')}</span>
+      <span class="record-history-item-meta">${esc(r.customerName||'Walk-in customer')} · ${receiptMoney(totals.total,r.currency)}<br>${esc(r.template||'editorial')} · Updated ${esc(fmtDateTime(r.updatedAt||r.createdAt))}</span></span>
+      <span class="record-history-item-actions"><a href="#/create-receipt/${encodeURIComponent(r.id)}" class="btn btn-primary btn-sm">${icon('edit')} Open</a></span>
+    </div>`;
+  }).join('')}</div>`;
+}
+function pageReceiptHistory(){
+  const items = Object.values(receiptsDB).filter(r=>r.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  return `${navbar('dashboard')}<div class="wrap"><div class="page-head"><div><h1>Receipt history</h1><div class="greet">Reopen saved business records and continue editing.</div></div><a href="#/create-receipt" class="btn btn-accent">${icon('plus')} New receipt</a></div><div class="card card-pad"><div class="section-title-row"><h3>Saved receipts</h3><span style="font-size:13px;color:var(--muted);">${items.length} saved</span></div>${receiptHistoryMarkup(items)}</div></div><div style="height:60px;"></div>${footer()}`;
+}
+
 function pageCreationPlaceholder(kind){
   const configs = {
     military:{ title:'Create Military ID Card Mockup', kicker:'ID card creation', icon:'shield', description:'This clearly labeled mockup workspace is being prepared for design and internal demonstration use. It does not produce an official military identification document.' },
@@ -3855,6 +4231,9 @@ function pageHistory(){
   const shipments = Object.values(shipmentsDB)
     .filter(s=>s.userId===currentUser.email)
     .sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
+  const receipts = Object.values(receiptsDB)
+    .filter(r=>r.userId===currentUser.email)
+    .sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
   return `
   ${navbar('dashboard')}
   <div class="wrap">
@@ -3872,6 +4251,7 @@ function pageHistory(){
         ${historySummaryCta({href:'#/flight-history',iconName:'plane',kicker:'Travel records',title:'FLIGHT TICKET HISTORY',count:flights.length,singular:'flight ticket',plural:'flight tickets',latestAt:flights[0]?.updatedAt||flights[0]?.createdAt,className:'flight-history-cta'})}
         ${historySummaryCta({href:'#/shipment-history',iconName:'package',kicker:'Delivery records',title:'SHIPPING PRODUCT HISTORY',count:shipments.length,singular:'shipping product',plural:'shipping products',latestAt:shipments[0]?.updatedAt||shipments[0]?.createdAt,className:'shipment-history-cta'})}
         ${historySummaryCta({href:'#/license-history',iconName:'credit-card',kicker:'Identity records',title:"DRIVER'S LICENSE HISTORY",count:licenseHistoryDB.length,singular:'driver license',plural:'driver licenses',latestAt:licenseHistoryDB[0]?.createdAt,className:'license-history-cta'})}
+        ${historySummaryCta({href:'#/receipt-history',iconName:'file-text',kicker:'Records tools',title:'RECEIPT HISTORY',count:receipts.length,singular:'receipt',plural:'receipts',latestAt:receipts[0]?.updatedAt||receipts[0]?.createdAt,className:'receipt-history-cta'})}
       </div>
     </div>
   </div>
@@ -6566,7 +6946,11 @@ async function router(){
   }
   else if(parts[0]==='create-receipt'){
     if(!currentUser){ html = redirectTo('/login'); }
-    else { html = pageCreationPlaceholder('receipt'); }
+    else { html = pageReceiptCreation(parts[1] ? decodeURIComponent(parts[1]) : 'new'); }
+  }
+  else if(parts[0]==='receipt-result'){
+    if(!currentUser){ html = redirectTo('/login'); }
+    else { html = pageReceiptResult(parts[1] ? decodeURIComponent(parts[1]) : ''); }
   }
   else if(parts[0]==='create-shipment'){
     if(!currentUser){ html = redirectTo('/login'); }
@@ -6587,6 +6971,10 @@ async function router(){
   else if(parts[0]==='license-history'){
     if(!currentUser){ html = redirectTo('/login'); }
     else { await loadLicenseHistory(); html = pageLicenseHistory(); }
+  }
+  else if(parts[0]==='receipt-history'){
+    if(!currentUser){ html = redirectTo('/login'); }
+    else { html = pageReceiptHistory(); }
   }
   else if(parts[0]==='license-output'){
     if(!currentUser){ html = redirectTo('/login'); }
@@ -6627,7 +7015,16 @@ async function router(){
   document.documentElement.scrollTop = 0;
   hidePageLoader();
 }
-function redirectTo(hash){ location.hash = hash; return null; }
+function redirectTo(hash){
+  const next = String(hash||'').startsWith('#') ? String(hash) : `#${hash}`;
+  if(String(location.hash||'') === next) return null;
+  // Redirects are replacements, not destinations. This prevents an auth
+  // guard or missing-record fallback from adding an unnecessary Back step.
+  try{ history.replaceState({ trackportRedirect:true }, '', next); }
+  catch(error){ location.hash = next; }
+  setTimeout(()=>router(), 0);
+  return null;
+}
 
 /* ================= EVENT WIRING ================= */
 function fitLicenseSignatures(){
@@ -6754,6 +7151,329 @@ function wireLicenseGenerator(){
     reader.readAsDataURL(file);
   });
 }
+function syncReceiptDraftFromForm(){
+  if(!receiptDraft) return;
+  const form = $('#receipt-generator-form');
+  if(!form) return;
+  $all('[data-receipt-field]', form).forEach(el=>{
+    const field = el.dataset.receiptField;
+    if(!field) return;
+    receiptDraft[field] = el.type === 'checkbox' ? el.checked
+      : ['taxRate','discountRate','tipRate'].includes(field) ? Math.max(0, Number(el.value)||0)
+      : el.value;
+  });
+  $all('[data-receipt-item-id]', form);
+  (receiptDraft.items||[]).forEach(item=>{
+    const row = form.querySelector(`[data-receipt-item="${CSS.escape(item.id)}"]`);
+    if(!row) return;
+    const get = field => row.querySelector(`[data-receipt-item-field="${field}"]`);
+    item.description = get('description')?.value || '';
+    item.quantity = Math.max(0, Number(get('quantity')?.value)||0);
+    item.price = Math.max(0, Number(get('price')?.value)||0);
+  });
+  receiptDraft.updatedAt = new Date().toISOString();
+}
+function renderReceiptPreview(){
+  const stage = $('#receipt-preview-stage');
+  if(stage && receiptDraft) stage.innerHTML = receiptPreviewHtml(receiptDraft);
+}
+function wireReceiptGenerator(){
+  const form = $('#receipt-generator-form');
+  if(!form) return;
+  form.addEventListener('input', ()=>{
+    syncReceiptDraftFromForm();
+    renderReceiptPreview();
+  });
+  form.addEventListener('change', ()=>{
+    syncReceiptDraftFromForm();
+    renderReceiptPreview();
+  });
+  const logoInput = $('#receipt-logo-file');
+  if(logoInput) logoInput.addEventListener('change', event=>{
+    const file = event.target.files && event.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){
+      showToast('Please choose an image file for the logo', true);
+      logoInput.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async e=>{
+      receiptDraft.logo = await window.compressDataUrlImage(e.target.result, 560, .82);
+      receiptDraft.updatedAt = new Date().toISOString();
+      renderReceiptPreview();
+      showToast('Logo added to the preview');
+    };
+    reader.readAsDataURL(file);
+  });
+  renderReceiptPreview();
+}
+async function saveReceiptAction(destination){
+  syncReceiptDraftFromForm();
+  if(!currentUser || !receiptDraft) return;
+  if(!String(receiptDraft.businessName||'').trim()){
+    showToast('Add a business name before saving the receipt', true);
+    return;
+  }
+  const payload = receiptCopy(receiptDraft);
+  delete payload._routeKey;
+  payload.userId = currentUser.email;
+  payload.updatedAt = new Date().toISOString();
+  payload.createdAt = payload.createdAt || payload.updatedAt;
+  receiptsDB[payload.id] = payload;
+  if(await saveReceipts()){
+    receiptDraft = receiptCopy(payload);
+    receiptDraft._routeKey = payload.id;
+    showToast('Receipt saved');
+    const resultRoute = `#/receipt-result/${encodeURIComponent(payload.id)}`;
+    const editorRoute = `#/create-receipt/${encodeURIComponent(payload.id)}`;
+    if(destination === 'result'){
+      if(location.hash !== resultRoute) navigate(resultRoute);
+    }else if(location.hash !== resultRoute && location.hash !== editorRoute){
+      navigate(editorRoute);
+    }
+  }
+}
+async function generateReceiptAction(){
+  syncReceiptDraftFromForm();
+  if(!receiptDraft) return;
+  if(!String(receiptDraft.businessName||'').trim()){
+    showToast('Add a business name before generating the receipt', true);
+    return;
+  }
+  await saveReceiptAction('result');
+}
+function downloadReceiptData(){
+  syncReceiptDraftFromForm();
+  const payload = receiptCopy(receiptDraft||{});
+  delete payload._routeKey;
+  const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${payload.receiptNumber||'trackport-receipt'}.json`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1200);
+  showToast('Receipt data downloaded');
+}
+function receiptCanvasLines(ctx, value, maxWidth){
+  const paragraphs = String(value||'').split(/\r?\n/);
+  const lines = [];
+  paragraphs.forEach(paragraph=>{
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if(!words.length){ lines.push(''); return; }
+    let line = '';
+    words.forEach(word=>{
+      const test = line ? `${line} ${word}` : word;
+      if(line && ctx.measureText(test).width > maxWidth){
+        lines.push(line);
+        line = word;
+      }else{
+        line = test;
+      }
+    });
+    if(line) lines.push(line);
+  });
+  return lines.length ? lines : [''];
+}
+function drawReceiptCanvasLines(ctx, value, x, y, maxWidth, lineHeight, maxLines){
+  const lines = receiptCanvasLines(ctx, value, maxWidth).slice(0, maxLines || 99);
+  lines.forEach((line,index)=>ctx.fillText(line, x, y + index*lineHeight));
+  return lines.length;
+}
+function receiptCanvasImage(dataUrl){
+  return new Promise(resolve=>{
+    if(!dataUrl){ resolve(null); return; }
+    try{
+      const image = new Image();
+      image.onload = ()=>resolve(image);
+      image.onerror = ()=>resolve(null);
+      image.src = dataUrl;
+    }catch(_e){ resolve(null); }
+  });
+}
+async function downloadReceiptImage(){
+  syncReceiptDraftFromForm();
+  const data = receiptCopy(receiptDraft||{});
+  if(!data.businessName && !data.receiptNumber){
+    showToast('Create a receipt before downloading it', true);
+    return;
+  }
+  const totals = receiptTotals(data);
+  const template = receiptTemplate(data.template);
+  const isMidnight = template.id === 'midnight';
+  const isMono = template.id === 'mono';
+  const isMinimal = template.id === 'minimal';
+  const colors = isMidnight
+    ? {paper:'#202431', ink:'#f7f9ff', muted:'#d9dfeb', rule:'#667086', accent:'#9d91ff', soft:'#4e596d'}
+    : isMono
+      ? {paper:'#f2f1ec', ink:'#171b19', muted:'#3d4341', rule:'#858b88', accent:'#252525', soft:'#c9cfcc'}
+      : {paper:'#ffffff', ink:'#171b19', muted:'#3f4a46', rule:'#aeb8b5', accent:isMinimal?'#252525':'#9a6a20', soft:'#d0d6d4'};
+  const W = 1200, pad = 72, contentW = W - pad*2;
+  const rowMetrics = (data.items||[]).map(item=>{
+    const font = isMono ? '700 32px "IBM Plex Mono", monospace' : '700 32px Arial, sans-serif';
+    const probe = document.createElement('canvas').getContext('2d');
+    probe.font = font;
+    return Math.max(58, receiptCanvasLines(probe, item.description||'Item', 430).length*38 + 18);
+  });
+  const itemHeight = rowMetrics.reduce((sum,height)=>sum+height,0);
+  const addressLines = Math.min(3, String(data.businessAddress||'').split(/\r?\n/).length || 1);
+  const notesProbe = document.createElement('canvas').getContext('2d');
+  notesProbe.font = '28px Arial, sans-serif';
+  const noteLines = receiptCanvasLines(notesProbe, data.notes||'', 480).slice(0,5);
+  const H = Math.max(800, 730 + itemHeight + Math.max(0,noteLines.length-1)*35);
+  const DPR = 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = W*DPR; canvas.height = H*DPR;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR,DPR);
+  ctx.fillStyle = colors.paper;
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = colors.accent;
+  ctx.fillRect(0,0,W,isMono?4:(isMinimal?2:7));
+  const logo = await receiptCanvasImage(data.logo);
+  let y = 48;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = isMidnight ? colors.muted : (isMinimal ? colors.muted : '#8d6b3d');
+  ctx.font = '800 23px "IBM Plex Mono", monospace';
+  if(data.documentLabel) ctx.fillText(String(data.documentLabel).toUpperCase(), W/2, y);
+  y += data.documentLabel ? 37 : 12;
+  const logoSize = isMinimal ? 58 : 66;
+  ctx.textAlign = 'left';
+  if(logo){
+    ctx.save();
+    ctx.beginPath();
+    if(isMinimal){ ctx.arc(pad+logoSize/2,y+logoSize/2,logoSize/2,0,Math.PI*2); }
+    else { roundRect(ctx,pad,y,logoSize,logoSize,isMono?0:16); }
+    ctx.clip();
+    ctx.drawImage(logo,pad,y,logoSize,logoSize);
+    ctx.restore();
+  }else{
+    ctx.fillStyle = isMidnight ? colors.accent : colors.ink;
+    if(isMinimal){ ctx.beginPath(); ctx.arc(pad+logoSize/2,y+logoSize/2,logoSize/2,0,Math.PI*2); ctx.fill(); }
+    else { roundRect(ctx,pad,y,logoSize,logoSize,isMono?0:16); ctx.fill(); }
+    ctx.fillStyle = isMidnight ? '#151824' : (isMinimal ? '#ffffff' : '#f5e6c8');
+    ctx.font = '800 38px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(data.businessName||'T').slice(0,1).toUpperCase(),pad+logoSize/2,y+43);
+    ctx.textAlign = 'left';
+  }
+  const brandX = pad+logoSize+20;
+  ctx.fillStyle = colors.ink;
+  ctx.font = '800 35px Arial, sans-serif';
+  ctx.fillText(String(data.businessName||'Your business'),brandX,y+25);
+  ctx.fillStyle = colors.muted;
+  ctx.font = '26px Arial, sans-serif';
+  drawReceiptCanvasLines(ctx,data.businessAddress||'',brandX,y+62,370,30,addressLines);
+  ctx.fillText(String(data.businessContact||''),brandX,y+62+addressLines*30);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = colors.muted;
+  ctx.font = '700 23px "IBM Plex Mono", monospace';
+  ctx.fillText(String(data.receiptTitle||'Receipt').toUpperCase(),W-pad,y+19);
+  ctx.fillStyle = colors.ink;
+  ctx.font = '700 28px "IBM Plex Mono", monospace';
+  drawReceiptCanvasLines(ctx,data.receiptNumber||'—',W-pad,y+58,250,33,2);
+  ctx.textAlign = 'left';
+  y += 105;
+  ctx.strokeStyle = colors.rule; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  y += 38;
+  const meta = [
+    ['DATE',data.date||'—'],['TIME',data.time||'—'],
+    ['CUSTOMER',data.customerName||'Walk-in customer'],['PAYMENT',data.paymentMethod||'—']
+  ];
+  const metaW = contentW/4;
+  meta.forEach((entry,index)=>{
+    const x = pad + metaW*index;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = colors.muted;
+    ctx.font = '700 22px "IBM Plex Mono", monospace';
+    ctx.fillText(entry[0],x,y);
+    ctx.fillStyle = colors.ink;
+    ctx.font = '700 26px Arial, sans-serif';
+    drawReceiptCanvasLines(ctx,entry[1],x,y+34,metaW-18,30,2);
+  });
+  y += 72;
+  ctx.strokeStyle = colors.rule;
+  ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  y += 34;
+  ctx.fillStyle = colors.muted;
+  ctx.font = '700 22px "IBM Plex Mono", monospace';
+  ctx.textAlign = 'left'; ctx.fillText('ITEM / DESCRIPTION',pad,y);
+  ctx.textAlign = 'right';
+  ctx.fillText('QTY',W-430,y); ctx.fillText('PRICE',W-245,y); ctx.fillText('AMOUNT',W-pad,y);
+  y += 22;
+  (data.items||[]).forEach((item,index)=>{
+    const height = rowMetrics[index] || 42;
+    ctx.strokeStyle = colors.soft; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = colors.ink;
+    ctx.font = isMono ? '700 32px "IBM Plex Mono", monospace' : '700 32px Arial, sans-serif';
+    drawReceiptCanvasLines(ctx,item.description||'Item',pad,y+39,430,38,3);
+    ctx.textAlign = 'right';
+    ctx.font = '28px Arial, sans-serif';
+    ctx.fillText(String(Number(item.quantity)||0),W-430,y+38);
+    ctx.fillText(receiptMoney(item.price,data.currency),W-245,y+38);
+    ctx.fillText(receiptMoney((Number(item.quantity)||0)*(Number(item.price)||0),data.currency),W-pad,y+38);
+    y += height;
+  });
+  ctx.strokeStyle = colors.rule;
+  ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  y += 35;
+  const notesX = pad, totalsX = W-430;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = colors.muted;
+  ctx.font = '700 22px "IBM Plex Mono", monospace';
+  ctx.fillText('NOTES',notesX,y);
+  ctx.fillStyle = colors.muted;
+  ctx.font = '28px Arial, sans-serif';
+  drawReceiptCanvasLines(ctx,data.notes||'',notesX,y+38,480,35,5);
+  const totalRows = [['Subtotal',receiptMoney(totals.subtotal,data.currency)]];
+  if(totals.discount) totalRows.push(['Discount','− '+receiptMoney(totals.discount,data.currency)]);
+  if(Number(data.taxRate)) totalRows.push([`Tax (${Number(data.taxRate).toFixed(2)}%)`,receiptMoney(totals.tax,data.currency)]);
+  if(Number(data.tipRate)) totalRows.push([`Tip (${Number(data.tipRate).toFixed(2)}%)`,receiptMoney(totals.tip,data.currency)]);
+  ctx.font = '28px Arial, sans-serif';
+  totalRows.forEach(row=>{
+    ctx.fillStyle = colors.muted; ctx.textAlign = 'left'; ctx.fillText(row[0],totalsX,y);
+    ctx.fillStyle = colors.ink; ctx.textAlign = 'right'; ctx.fillText(row[1],W-pad,y);
+    y += 29;
+  });
+  y += 5;
+  ctx.strokeStyle = colors.ink; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(totalsX,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  y += 34;
+  ctx.fillStyle = colors.ink; ctx.textAlign = 'left'; ctx.font = '800 31px Arial, sans-serif'; ctx.fillText('TOTAL',totalsX,y);
+  ctx.textAlign = 'right'; ctx.fillText(receiptMoney(totals.total,data.currency),W-pad,y);
+  y += 58;
+  ctx.strokeStyle = colors.rule; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke();
+  y += 28;
+  if(data.showBarcode){
+    const barcodeX = W/2-110, barcodeY = y;
+    ctx.fillStyle = isMidnight ? '#f5f5f5' : '#ffffff';
+    ctx.fillRect(barcodeX-8,barcodeY-8,236,48);
+    let seed = String(data.receiptNumber||'TRACKPORT').split('').reduce((n,ch)=>(n*31+ch.charCodeAt(0))%997,17);
+    let bx = barcodeX;
+    for(let i=0;i<52;i++){
+      const barW = 2 + ((seed+i*17)%3);
+      ctx.fillStyle = isMidnight ? '#202431' : '#28231e';
+      ctx.fillRect(bx,barcodeY,barW,28);
+      bx += barW+2;
+    }
+    ctx.fillStyle = colors.muted; ctx.textAlign = 'center'; ctx.font = '700 21px "IBM Plex Mono", monospace';
+    ctx.fillText(String(data.receiptNumber||''),W/2,barcodeY+46);
+    y += 62;
+  }
+  ctx.fillStyle = colors.muted; ctx.textAlign = 'center'; ctx.font = '24px Arial, sans-serif';
+  ctx.fillText('Prepared in TrackPort · Keep this record for your files.',W/2,y);
+  exportCanvas(canvas,`${data.receiptNumber||'trackport-receipt'}.png`,'Receipt image downloaded');
+}
+function resetReceiptEditor(){
+  const key = location.hash.split('/')[2] ? decodeURIComponent(location.hash.split('/')[2]) : 'new';
+  receiptDraft = receiptDefaultData(key);
+  rerenderCurrentPage();
+}
 window.addEventListener('resize', ()=>{ fitLicensePreviews(); fitBoardingPassPreview(); });
 /* Auto-sliding dashboard overview: alternates between the shipment stats
    panel and the flight stats panel. Pauses on hover/focus/tab-hidden and
@@ -6875,6 +7595,7 @@ function wirePageEvents(parts){
     navigate('#/flight/'+encodeURIComponent(code));
   });
   wireLicenseGenerator();
+  wireReceiptGenerator();
   fitBoardingPassPreview();
   if(document.fonts) document.fonts.ready.then(()=>fitBoardingPassPreview());
   wireRouteStopSelects();
@@ -7398,6 +8119,37 @@ document.addEventListener('click', async (e)=>{
   const action = t.dataset.action, id = t.dataset.id;
 
   if(action==='logout'){ clearAuthSession(); showToast('Logged out'); navigate('#/'); return; }
+  if(action==='receipt-template'){
+    syncReceiptDraftFromForm();
+    if(receiptDraft){ receiptDraft.template = id || 'editorial'; rerenderCurrentPage(); }
+    return;
+  }
+  if(action==='receipt-add-item'){
+    syncReceiptDraftFromForm();
+    if(receiptDraft){
+      receiptDraft.items = receiptDraft.items || [];
+      receiptDraft.items.push({id:genId(),description:'New item',quantity:1,price:0});
+      rerenderCurrentPage();
+    }
+    return;
+  }
+  if(action==='receipt-remove-item'){
+    syncReceiptDraftFromForm();
+    if(receiptDraft){
+      receiptDraft.items = (receiptDraft.items||[]).filter(item=>item.id!==id);
+      rerenderCurrentPage();
+    }
+    return;
+  }
+  if(action==='generate-receipt'){ await generateReceiptAction(); return; }
+  if(action==='save-receipt'){ await saveReceiptAction(); return; }
+  if(action==='print-receipt'){
+    syncReceiptDraftFromForm();
+    setTimeout(()=>window.print(),80);
+    return;
+  }
+  if(action==='download-receipt'){ await downloadReceiptImage(); return; }
+  if(action==='reset-receipt'){ resetReceiptEditor(); return; }
   if(action==='social-login'){
     if(t.dataset.provider!=='Google'){ return; }
     if(!window.firebaseAuthHelpers || !window.firebaseAuthHelpers.isReady){
@@ -7612,18 +8364,7 @@ async function performDelete(tn){
 }
 
 /* ---------- init ---------- */
-window.addEventListener('hashchange', ()=>{ showPageLoader(); router(); });
-  document.addEventListener('submit', event=>{
-    // Show the loader for every submit, including forms that validate or
-    // perform async work without changing the hash route. The timeout is a
-    // safety net for validation-only submissions and blocked requests.
-    showPageLoader(2400);
-  }, true);
-document.addEventListener('click', event=>{
-  const actionTarget = event.target.closest?.('#license-generate-btn,[data-action="wizard-submit"]');
-  if(actionTarget) showPageLoader(2400);
-}, true);
-  window.addEventListener('beforeunload', ()=>showPageLoader());
+window.addEventListener('hashchange', ()=>router());
 window.addEventListener('DOMContentLoaded', async ()=>{
   try{
     await ensureDBReady();
@@ -8686,6 +9427,22 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     letter-spacing:.02em;
   }
   body.tp-dashboard-mode .creation-cta .cta-arrow{color:var(--primary-dark);}
+  body.tp-dashboard-mode .service-showcase-panel{margin-bottom:24px;}
+  body.tp-dashboard-mode .service-showcase-card{
+    border-color:var(--tp-shell-line);
+    background:var(--tp-shell-card);
+    color:var(--tp-shell-ink);
+    box-shadow:0 8px 18px rgba(17,28,53,.05);
+  }
+  body.tp-dashboard-mode .service-showcase-card:hover{
+    border-color:rgba(212,175,90,.64);
+    background:#fffdf7;
+    box-shadow:0 14px 26px rgba(17,28,53,.10);
+  }
+  body.tp-dashboard-mode .service-showcase-kicker,
+  body.tp-dashboard-mode .service-showcase-copy small{color:var(--tp-shell-muted);}
+  body.tp-dashboard-mode .service-showcase-copy strong{color:var(--tp-shell-ink);}
+  body.tp-dashboard-mode .service-showcase-arrow{color:var(--primary-dark);}
   body.tp-dashboard-mode .creation-cta.id-card-creation-cta{
     display:block;
     min-height:142px;
@@ -9171,8 +9928,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 (function(){
   'use strict';
   const APP_ROUTES = new Set([
-    'dashboard','history','tracking','profile','flight-history','shipment-history','license-history',
-    'create','create-shipment','create-flight','create-license','create-id-card','create-document','create-receipt','license-output','edit','flight','admin'
+    'dashboard','history','tracking','profile','flight-history','shipment-history','license-history','receipt-history',
+    'create','create-shipment','create-flight','create-license','create-id-card','create-document','create-receipt','receipt-result','license-output','edit','flight','admin'
   ]);
   const routeName = () => (location.hash.replace(/^#/,'').split('/').filter(Boolean)[0] || '');
   const isAppScreen = () => typeof currentUser !== 'undefined' && !!currentUser && APP_ROUTES.has(routeName());
@@ -9182,8 +9939,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   };
   const activeTab = () => {
     const route = routeName();
-    if(['history','flight-history','shipment-history','license-history'].includes(route)) return 'history';
-    if(['create','create-shipment','create-flight','create-license','create-id-card','create-document','create-receipt','license-output'].includes(route)) return 'create';
+    if(['history','flight-history','shipment-history','license-history','receipt-history'].includes(route)) return 'history';
+    if(['create','create-shipment','create-flight','create-license','create-id-card','create-document','create-receipt','receipt-result','license-output'].includes(route)) return 'create';
     if(route === 'tracking' || route === 'flight') return 'tracking';
     if(route === 'profile') return 'profile';
     return 'home';
@@ -10027,7 +10784,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   body.tp-dashboard-mode #app > .wrap,
   body.tp-dashboard-mode #app > .license-choice-shell,
   body.tp-dashboard-mode #app > .license-generator-shell,
-  body.tp-dashboard-mode #app > .track-hero{
+  body.tp-dashboard-mode #app > .track-hero,
+  body.tp-dashboard-mode #app > .receipt-generator-shell,
+  body.tp-dashboard-mode #app > .receipt-result-shell{
     padding-top:112px !important;
     color:var(--renev-cream) !important;
   }
@@ -10121,7 +10880,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     body.tp-dashboard-mode #app > .wrap,
     body.tp-dashboard-mode #app > .license-choice-shell,
     body.tp-dashboard-mode #app > .license-generator-shell,
-    body.tp-dashboard-mode #app > .track-hero{
+    body.tp-dashboard-mode #app > .track-hero,
+    body.tp-dashboard-mode #app > .receipt-generator-shell,
+    body.tp-dashboard-mode #app > .receipt-result-shell{
       padding-top:92px !important;
     }
   }
@@ -11317,5 +12078,526 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     body.tp-dashboard-mode .tp-create-icon{width:50px !important;height:50px !important;border-radius:17px !important;}
   }
 </style>
+<style id="trackport-receipt-workspace">
+  .receipt-generator-shell{width:100%;max-width:100%;box-sizing:border-box;overflow-x:hidden;}
+  .receipt-generator-layout,.receipt-editor-panel,.receipt-preview-panel,.receipt-preview-stage{min-width:0;}
+  .receipt-generator-shell{min-height:calc(100vh - 88px);padding:34px 24px 70px;background:
+    radial-gradient(760px 360px at 8% 0%,rgba(212,175,90,.13),transparent 68%),
+    radial-gradient(680px 420px at 100% 18%,rgba(102,91,224,.12),transparent 70%);color:var(--ink);}
+  .receipt-generator{width:min(1440px,100%);margin:0 auto;}
+  .receipt-generator-header{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;margin:0 auto 18px;padding:28px 30px;border:1px solid rgba(255,255,255,.16);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.11),rgba(255,255,255,.045));box-shadow:0 18px 45px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(22px) saturate(155%);}
+  .receipt-generator-header h1{margin:6px 0 7px;font:800 clamp(28px,3vw,43px)/1.04 Inter,sans-serif;letter-spacing:-.055em;color:var(--ink);}
+  .receipt-generator-header p{max-width:710px;margin:0;color:var(--muted);font-size:14px;line-height:1.65;}
+  .receipt-kicker{display:inline-block;color:var(--primary);font:700 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.13em;text-transform:uppercase;}
+  .receipt-header-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;}
+  .receipt-safety-note{display:flex;align-items:center;gap:9px;margin:0 auto 18px;padding:12px 16px;border:1px solid rgba(212,175,90,.25);border-radius:14px;background:rgba(212,175,90,.07);color:var(--muted);font-size:12px;line-height:1.5;}
+  .receipt-safety-note svg{width:16px;min-width:16px;color:var(--primary);}
+  .receipt-generator-layout{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(440px,.95fr);align-items:start;gap:20px;}
+  .receipt-editor-panel,.receipt-preview-panel{border:1px solid rgba(255,255,255,.16);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.105),rgba(255,255,255,.045));box-shadow:0 18px 45px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(20px) saturate(150%);}
+  .receipt-editor-panel{padding:24px;}
+  .receipt-preview-panel{position:sticky;top:100px;overflow:hidden;}
+  .receipt-panel-heading,.receipt-preview-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .receipt-panel-heading h2{margin:5px 0 0;font:800 22px/1.1 Inter,sans-serif;letter-spacing:-.04em;color:var(--ink);}
+  .receipt-selected-style,.receipt-preview-status{padding:7px 10px;border:1px solid rgba(212,175,90,.28);border-radius:999px;color:var(--primary);font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;}
+  .receipt-template-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:18px 0 24px;}
+  .receipt-template-card{min-height:100px;padding:12px 10px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(255,255,255,.045);color:var(--ink);cursor:pointer;}
+  .receipt-template-card:hover{border-color:rgba(212,175,90,.55);background:rgba(212,175,90,.08);}
+  .receipt-template-card.is-selected{border-color:var(--primary);background:linear-gradient(145deg,rgba(212,175,90,.18),rgba(255,255,255,.06));box-shadow:0 0 0 1px rgba(212,175,90,.16),0 8px 20px rgba(0,0,0,.18);}
+  .receipt-template-glyph{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:rgba(212,175,90,.14);color:var(--primary);font-size:16px;}
+  .receipt-template-card strong{font-size:12px;letter-spacing:-.01em;}
+  .receipt-template-card small{color:var(--muted);font-size:10px;line-height:1.35;}
+  .receipt-editor-section{padding:20px 0;border-top:1px solid rgba(255,255,255,.12);}
+  .receipt-section-title{display:flex;align-items:center;gap:9px;margin-bottom:14px;}
+  .receipt-section-title>span{display:grid;place-items:center;width:25px;height:25px;border-radius:8px;background:rgba(212,175,90,.15);color:var(--primary);font:700 11px 'IBM Plex Mono',monospace;}
+  .receipt-section-title h3{margin:0;font-size:15px;letter-spacing:-.02em;color:var(--ink);}
+  .receipt-section-title button{margin-left:auto;}
+  .receipt-field-grid{display:grid;gap:12px;}
+  .receipt-field-grid.two{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .receipt-field-grid.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .receipt-field-grid label{display:grid;gap:7px;color:var(--muted);font-size:11px;font-weight:700;}
+  .receipt-field-grid label.span-2{grid-column:span 2;}
+  .receipt-field-grid input,.receipt-field-grid select,.receipt-field-grid textarea{width:100%;box-sizing:border-box;min-height:40px;padding:10px 11px;border:1px solid rgba(255,255,255,.15);border-radius:11px;background:rgba(0,0,0,.16);color:var(--ink);font:500 13px Inter,sans-serif;resize:vertical;}
+  .receipt-field-grid input[type=file]{padding:8px;font-size:11px;}
+  .receipt-field-grid input[type=checkbox]{width:17px;min-height:17px;accent-color:var(--primary);}
+  .receipt-field-grid .receipt-check-label{display:flex;align-items:center;gap:8px;align-self:end;padding-bottom:10px;}
+  .receipt-field-hint{margin-top:-2px;color:var(--muted);font-size:10px;font-weight:400;}
+  .receipt-items-editor-wrap{overflow:auto;border:1px solid rgba(255,255,255,.12);border-radius:13px;}
+  .receipt-items-editor{width:100%;min-width:430px;border-collapse:collapse;}
+  .receipt-items-editor th{padding:10px;text-align:left;color:var(--muted);font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.045);}
+  .receipt-items-editor td{padding:7px;border-top:1px solid rgba(255,255,255,.08);}
+  .receipt-items-editor input{width:100%;box-sizing:border-box;min-height:36px;padding:8px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:rgba(0,0,0,.13);color:var(--ink);font:500 12px Inter,sans-serif;}
+  .receipt-items-editor th:nth-child(2),.receipt-items-editor td:nth-child(2){width:70px;}
+  .receipt-items-editor th:nth-child(3),.receipt-items-editor td:nth-child(3){width:115px;}
+  .receipt-items-editor th:last-child,.receipt-items-editor td:last-child{width:36px;}
+  .receipt-remove-item{width:29px;height:29px;border:0;border-radius:9px;background:rgba(226,99,107,.12);color:#ff9da4;font-size:19px;line-height:1;cursor:pointer;}
+  .receipt-editor-actions{display:flex;flex-wrap:wrap;gap:9px;padding-top:20px;}
+  .receipt-preview-toolbar{padding:20px 22px;border-bottom:1px solid rgba(255,255,255,.12);}
+  .receipt-preview-toolbar strong{display:block;margin-top:5px;color:var(--ink);font-size:14px;}
+  .receipt-preview-stage{min-height:650px;padding:34px 24px 46px;display:flex;align-items:flex-start;justify-content:center;background:radial-gradient(circle at 50% 20%,rgba(212,175,90,.12),transparent 48%);}
+  .receipt-paper{width:min(100%,560px);box-sizing:border-box;padding:28px 30px 22px;border-radius:4px;color:#2d2925;background:#fbf7ee;box-shadow:0 22px 46px rgba(0,0,0,.32);font-family:Inter,Arial,sans-serif;}
+  .receipt-paper-topline{height:4px;margin:-28px -30px 22px;background:#be9450;}
+  .receipt-document-label{margin-bottom:12px;text-align:center;color:#8d6b3d;font:800 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;text-transform:uppercase;}
+  .receipt-paper-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start;padding-bottom:20px;border-bottom:1px solid #d9d0c1;}
+  .receipt-brand-mark{width:40px;height:40px;display:grid;place-items:center;overflow:hidden;border-radius:12px;background:#2d2925;color:#f5e6c8;font:800 18px Georgia,serif;}
+  .receipt-brand-mark img{width:100%;height:100%;object-fit:cover;}
+  .receipt-brand-copy h2{margin:0 0 4px;font:800 16px/1.1 Inter,sans-serif;letter-spacing:-.03em;overflow-wrap:anywhere;}
+  .receipt-brand-copy p{margin:2px 0;color:#776f66;font-size:9px;line-height:1.45;}
+  .receipt-heading{text-align:right;}
+  .receipt-heading span{display:block;color:#897b6b;font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;}
+  .receipt-heading strong{display:block;margin-top:5px;font:700 11px 'IBM Plex Mono',monospace;overflow-wrap:anywhere;}
+  .receipt-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:18px 0;border-bottom:1px solid #d9d0c1;}
+  .receipt-meta span{display:grid;gap:4px;min-width:0;}
+  .receipt-meta small,.receipt-notes small{color:#9a9083;font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
+  .receipt-meta strong{font-size:9px;overflow-wrap:anywhere;}
+  .receipt-items-wrap{padding:17px 0 12px;}
+  .receipt-items{width:100%;border-collapse:collapse;font-size:10px;}
+  .receipt-items th{padding:0 0 9px;color:#998d7e;text-align:left;font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;}
+  .receipt-items th:not(:first-child),.receipt-items td:not(:first-child){text-align:right;}
+  .receipt-items td{padding:8px 0;border-top:1px solid #ebe4d9;vertical-align:top;}
+  .receipt-items td strong{display:block;max-width:190px;text-align:left;font-size:10px;line-height:1.35;overflow-wrap:anywhere;}
+  .receipt-items .receipt-qty{color:#776f66}.receipt-items .receipt-price{white-space:nowrap;}
+  .receipt-empty-row{text-align:center !important;color:#998d7e;}
+  .receipt-bottom-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,.75fr);gap:22px;padding-top:16px;border-top:1px solid #d9d0c1;}
+  .receipt-notes p{margin:7px 0;color:#776f66;font-size:9px;line-height:1.5;overflow-wrap:anywhere;}
+  .receipt-totals{display:grid;gap:7px;align-content:start;font-size:10px;}
+  .receipt-totals div{display:flex;justify-content:space-between;gap:10px;}
+  .receipt-totals div span{color:#776f66}.receipt-totals strong{white-space:nowrap;}
+  .receipt-totals .receipt-grand-total{margin-top:5px;padding-top:11px;border-top:2px solid #2d2925;font-size:13px;}
+  .receipt-paper-footer{display:grid;justify-items:center;gap:9px;margin-top:21px;padding-top:16px;border-top:1px solid #d9d0c1;text-align:center;}
+  .receipt-paper-footer p{margin:0;color:#998d7e;font-size:8px;}
+  .receipt-barcode-box{display:grid;justify-items:center;gap:4px;}
+  .receipt-barcode{height:30px;display:flex;align-items:stretch;gap:2px;padding:2px 4px;background:#fff;border:1px solid #e2d8c8;}
+  .receipt-barcode i{display:block;background:#28231e;}
+  .receipt-barcode-text{color:#776f66;font:700 7px 'IBM Plex Mono',monospace;letter-spacing:.12em;}
+  .receipt-theme-midnight{color:#edf0f5;background:#202431;}
+  .receipt-theme-midnight .receipt-paper-topline{background:#9d91ff;}
+  .receipt-theme-midnight .receipt-document-label,.receipt-theme-midnight .receipt-heading span,.receipt-theme-midnight .receipt-meta small,.receipt-theme-midnight .receipt-items th,.receipt-theme-midnight .receipt-notes small,.receipt-theme-midnight .receipt-paper-footer p{color:#a7a9bd;}
+  .receipt-theme-midnight .receipt-brand-mark{background:#9d91ff;color:#151824;}
+  .receipt-theme-midnight .receipt-brand-copy p,.receipt-theme-midnight .receipt-notes p,.receipt-theme-midnight .receipt-items .receipt-qty,.receipt-theme-midnight .receipt-totals div span{color:#a7a9bd;}
+  .receipt-theme-midnight .receipt-paper-header,.receipt-theme-midnight .receipt-meta,.receipt-theme-midnight .receipt-bottom-grid,.receipt-theme-midnight .receipt-paper-footer{border-color:#414656;}
+  .receipt-theme-midnight .receipt-items td{border-color:#343947;}
+  .receipt-theme-midnight .receipt-totals .receipt-grand-total{border-color:#eef0f5;}
+  .receipt-theme-midnight .receipt-barcode-box{filter:invert(1);}
+  .receipt-theme-mono{font-family:'IBM Plex Mono',monospace;border-radius:0;background:#f2f1ec;box-shadow:8px 10px 0 rgba(0,0,0,.13);}
+  .receipt-theme-mono .receipt-paper-topline{height:2px;background:#252525;}
+  .receipt-theme-mono .receipt-brand-mark{border-radius:0;background:#252525;}
+  .receipt-theme-mono .receipt-brand-copy h2,.receipt-theme-mono .receipt-heading strong,.receipt-theme-mono .receipt-items,.receipt-theme-mono .receipt-totals{font-family:'IBM Plex Mono',monospace;}
+  .receipt-theme-minimal{border-radius:18px;background:#fff;box-shadow:0 18px 42px rgba(0,0,0,.22);}
+  .receipt-theme-minimal .receipt-paper-topline{height:1px;margin-bottom:25px;background:#252525;}
+  .receipt-theme-minimal .receipt-brand-mark{border-radius:50%;width:34px;height:34px;background:#252525;}
+  .receipt-theme-minimal .receipt-meta{grid-template-columns:repeat(2,minmax(0,1fr));}
+  /* The receipt is the deliverable: use a stronger type scale and accessible
+     contrast instead of the tiny low-contrast preview used in the first pass. */
+  .receipt-paper{color:#171b19;border:1px solid #c7cdd1;}
+  .receipt-brand-copy h2{font-size:26px;}
+  .receipt-brand-copy p{color:#3f4a46;font-size:19px;}
+  .receipt-heading span{color:#46524d;font-size:19px;}
+  .receipt-heading strong{font-size:21px;}
+  .receipt-paper-header,.receipt-meta,.receipt-bottom-grid,.receipt-paper-footer{border-color:#aeb8b5;}
+  .receipt-meta small,.receipt-notes small{color:#4d5a55;font-size:18px;}
+  .receipt-meta strong{font-size:19px;}
+  .receipt-items{font-size:20px;}
+  .receipt-items th{color:#4d5a55;font-size:18px;}
+  .receipt-items td{border-color:#d0d6d4;padding:10px 0;}
+  .receipt-items td strong{font-size:20px;}
+  .receipt-items .receipt-qty,.receipt-totals div span,.receipt-notes p{color:#3f4a46;}
+  .receipt-notes p{font-size:19px;}
+  .receipt-totals{font-size:20px;}
+  .receipt-totals .receipt-grand-total{border-color:#171b19;font-size:23px;}
+  .receipt-paper-footer p{color:#4d5a55;font-size:18px;}
+  .receipt-barcode-text{color:#3f4a46;font-size:17px;}
+  .receipt-theme-midnight{color:#f7f9ff;border-color:#667086;}
+  .receipt-theme-midnight .receipt-brand-copy p,.receipt-theme-midnight .receipt-notes p,.receipt-theme-midnight .receipt-items .receipt-qty,.receipt-theme-midnight .receipt-totals div span{color:#d9dfeb;}
+  .receipt-theme-midnight .receipt-document-label,.receipt-theme-midnight .receipt-heading span,.receipt-theme-midnight .receipt-meta small,.receipt-theme-midnight .receipt-items th,.receipt-theme-midnight .receipt-notes small,.receipt-theme-midnight .receipt-paper-footer p{color:#d9dfeb;}
+  .receipt-theme-midnight .receipt-paper-header,.receipt-theme-midnight .receipt-meta,.receipt-theme-midnight .receipt-bottom-grid,.receipt-theme-midnight .receipt-paper-footer{border-color:#667086;}
+  .receipt-theme-midnight .receipt-items td{border-color:#4e596d;}
+  .receipt-theme-midnight .receipt-totals .receipt-grand-total{border-color:#f7f9ff;}
+  .receipt-theme-mono .receipt-brand-copy p,.receipt-theme-mono .receipt-items .receipt-qty,.receipt-theme-mono .receipt-totals div span,.receipt-theme-mono .receipt-notes p{color:#3d4341;}
+  .receipt-theme-mono .receipt-paper-header,.receipt-theme-mono .receipt-meta,.receipt-theme-mono .receipt-bottom-grid,.receipt-theme-mono .receipt-paper-footer{border-color:#858b88;}
+  .receipt-theme-minimal .receipt-brand-copy p,.receipt-theme-minimal .receipt-items .receipt-qty,.receipt-theme-minimal .receipt-totals div span,.receipt-theme-minimal .receipt-notes p{color:#3f4a46;}
+  .receipt-text-link{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
+  .receipt-text-link svg{width:14px;height:14px;}
+  .receipt-text-link:hover{color:var(--ink);text-decoration:underline;text-underline-offset:4px;}
+  .receipt-generate-button{width:100%;min-height:54px;font-size:13px;letter-spacing:.12em;}
+  .receipt-result-shell{min-height:calc(100vh - 88px);padding:34px 24px 70px;background:
+    radial-gradient(760px 360px at 8% 0%,rgba(200,255,46,.12),transparent 68%),
+    radial-gradient(680px 420px at 100% 18%,rgba(39,157,106,.14),transparent 70%);color:var(--ink);}
+  .receipt-result{width:min(1440px,100%);margin:0 auto;}
+  .receipt-result-header{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;margin:0 auto 18px;padding:28px 30px;border:1px solid rgba(255,255,255,.18);border-radius:26px;background:linear-gradient(145deg,rgba(27,42,30,.94),rgba(8,14,10,.84));box-shadow:0 18px 45px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.12);}
+  .receipt-result-header h1{margin:6px 0 7px;font:800 clamp(28px,3vw,43px)/1.04 Inter,sans-serif;letter-spacing:-.055em;color:var(--ink);}
+  .receipt-result-header p{max-width:710px;margin:0;color:var(--muted);font-size:14px;line-height:1.65;}
+  .receipt-result-total{display:grid;gap:5px;min-width:140px;padding:14px 18px;border:1px solid rgba(200,255,46,.35);border-radius:15px;background:rgba(200,255,46,.08);text-align:right;}
+  .receipt-result-total small{color:var(--primary);font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.12em;text-transform:uppercase;}
+  .receipt-result-total strong{color:#f7f9ff;font-size:24px;}
+  .receipt-result-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(270px,340px);align-items:start;gap:20px;}
+  .receipt-result-preview{min-width:0;position:relative;}
+  .receipt-result-actions{min-width:0;}
+  .receipt-result-action-card{display:grid;gap:11px;padding:24px;border:1px solid rgba(255,255,255,.16);border-radius:26px;background:linear-gradient(145deg,rgba(27,42,30,.9),rgba(8,14,10,.78));box-shadow:0 18px 45px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.1);}
+  .receipt-result-action-card h2{margin:2px 0 0;color:var(--ink);font-size:24px;}
+  .receipt-result-action-card p{margin:0 0 7px;color:var(--muted);font-size:13px;line-height:1.6;}
+  .receipt-result-action-card .btn{width:100%;min-height:48px;}
+  .receipt-result-link{display:flex;align-items:center;gap:8px;padding:7px 0;color:var(--primary);font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.07em;text-transform:uppercase;}
+  .receipt-result-link svg{width:15px;height:15px;}
+  .receipt-result-link:hover{text-decoration:underline;text-underline-offset:4px;}
+  @media(max-width:1040px){.receipt-generator-layout{grid-template-columns:1fr}.receipt-preview-panel{position:relative;top:auto}.receipt-preview-stage{min-height:0}}
+  @media(max-width:1040px){.receipt-result-layout{grid-template-columns:1fr}.receipt-result-actions{order:2}.receipt-result-action-card{grid-template-columns:repeat(2,minmax(0,1fr));align-items:center}.receipt-result-action-card h2,.receipt-result-action-card p,.receipt-result-action-card .receipt-kicker{grid-column:1/-1}.receipt-result-action-card .btn{width:auto}.receipt-result-link{justify-content:center;}}
+  @media(max-width:680px){.receipt-generator-shell,.receipt-result-shell{padding:112px 12px 136px}.receipt-generator-header,.receipt-result-header{display:block;padding:22px 20px}.receipt-header-actions{justify-content:flex-start;margin-top:18px;gap:16px}.receipt-editor-panel{padding:18px}.receipt-template-grid{grid-template-columns:repeat(2,1fr)}.receipt-field-grid.two,.receipt-field-grid.three{grid-template-columns:1fr}.receipt-field-grid label.span-2{grid-column:auto}.receipt-preview-toolbar{padding:17px}.receipt-preview-stage{padding:22px 10px 32px;overflow-x:hidden}.receipt-paper{padding:22px 14px 18px}.receipt-paper-topline{margin:-22px -14px 18px}.receipt-paper-header{grid-template-columns:auto minmax(0,1fr)}.receipt-heading{grid-column:2;text-align:left}.receipt-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-bottom-grid{grid-template-columns:1fr}.receipt-editor-actions .btn{flex:1 1 auto}.receipt-result-total{margin-top:20px;text-align:left}.receipt-result-action-card{grid-template-columns:1fr;padding:20px}.receipt-result-action-card h2,.receipt-result-action-card p,.receipt-result-action-card .receipt-kicker{grid-column:auto}.receipt-result-action-card .btn{width:100%}.receipt-result-link{justify-content:flex-start}.receipt-brand-copy h2{font-size:clamp(20px,6vw,26px)}.receipt-brand-copy p{font-size:clamp(14px,4vw,19px)}.receipt-heading span{font-size:clamp(14px,4vw,19px)}.receipt-heading strong{font-size:clamp(16px,4.5vw,21px)}.receipt-meta small{font-size:clamp(13px,3.8vw,18px)}.receipt-meta strong{font-size:clamp(14px,4vw,19px)}.receipt-items{font-size:clamp(16px,4.5vw,20px)}.receipt-items th{font-size:clamp(12px,3.3vw,18px)}.receipt-items td strong{font-size:clamp(16px,4.5vw,20px)}.receipt-notes small{font-size:clamp(13px,3.8vw,18px)}.receipt-notes p{font-size:clamp(15px,4.2vw,19px)}.receipt-totals{font-size:clamp(16px,4.5vw,20px)}.receipt-totals .receipt-grand-total{font-size:clamp(19px,5vw,23px)}.receipt-paper-footer p{font-size:clamp(13px,3.8vw,18px)}.receipt-barcode-text{font-size:clamp(12px,3.5vw,17px)}}
+  @media print{body *{visibility:hidden !important}#receipt-preview-stage,#receipt-preview-stage *{visibility:visible !important}#receipt-preview-stage{position:absolute;left:0;top:0;width:100%;padding:0;background:#fff}.receipt-paper{width:100%;max-width:680px;margin:0 auto;box-shadow:none !important}.receipt-preview-panel{border:0;box-shadow:none;background:#fff}.receipt-preview-toolbar{display:none !important}}
+</style>
+<style id="trackport-luxury-header">
+  /* The signed-in header is a floating premium shell; the existing logo asset remains unchanged. */
+  body.tp-dashboard-mode .navbar{
+    top:16px !important;
+    left:50% !important;
+    right:auto !important;
+    inset-block-end:auto !important;
+    width:min(1320px,calc(100% - 40px)) !important;
+    margin:0 !important;
+    transform:translateX(-50%) !important;
+    border:1px solid rgba(182,255,54,.24) !important;
+    border-radius:22px !important;
+    background:
+      linear-gradient(135deg,rgba(27,49,32,.96),rgba(6,14,10,.94)) !important;
+    box-shadow:
+      0 16px 42px rgba(0,0,0,.42),
+      0 0 28px rgba(182,255,54,.10),
+      0 0 54px rgba(182,255,54,.06),
+      inset 0 1px 0 rgba(255,255,255,.18),
+      inset 0 -14px 26px rgba(0,0,0,.24) !important;
+    -webkit-backdrop-filter:blur(24px) saturate(165%) !important;
+    backdrop-filter:blur(24px) saturate(165%) !important;
+  }
+  body.tp-dashboard-mode .navbar::after{
+    content:"";
+    position:absolute;
+    inset:3px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:17px;
+    pointer-events:none;
+  }
+  body.tp-dashboard-mode .navbar .nav-inner{
+    position:relative;
+    z-index:1;
+    height:60px;
+    min-height:60px;
+    padding:0 16px;
+  }
+  body.tp-dashboard-mode .navbar .brand-logo{
+    width:auto;
+    height:32px;
+    max-width:220px;
+    object-fit:contain;
+  }
+  body.tp-dashboard-mode .navbar .nav-link{
+    color:#EAF5E6 !important;
+    font-weight:700;
+    letter-spacing:.13em;
+  }
+  body.tp-dashboard-mode .navbar .nav-link:hover,
+  body.tp-dashboard-mode .navbar .nav-link.active{
+    color:#B6FF36 !important;
+  }
+  body.tp-dashboard-mode .navbar .nav-toggle{
+    width:38px;
+    height:38px;
+    border:1px solid rgba(182,255,54,.52) !important;
+    border-radius:13px;
+    background:rgba(4,13,8,.52) !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px rgba(0,0,0,.22);
+  }
+  body.tp-dashboard-mode .navbar .nav-toggle:hover{
+    border-color:#B6FF36 !important;
+    background:rgba(182,255,54,.12) !important;
+  }
+  body.tp-dashboard-mode .navbar .nav-mobile{
+    position:relative;
+    z-index:2;
+    margin:0 -4px -4px;
+    border-radius:0 0 22px 22px;
+    background:rgba(7,16,10,.98) !important;
+    border-top-color:rgba(182,255,54,.22) !important;
+  }
+  @media(max-width:760px){
+    body.tp-dashboard-mode .navbar{
+      top:10px !important;
+      width:calc(100% - 20px) !important;
+      border-radius:19px !important;
+    }
+    body.tp-dashboard-mode .navbar .nav-inner{
+      height:52px;
+      min-height:52px;
+      padding:0 11px;
+    }
+    body.tp-dashboard-mode .navbar .brand-logo{
+      height:30px;
+      max-width:180px;
+    }
+    body.tp-dashboard-mode .navbar .nav-mobile{
+      top:52px !important;
+      border-radius:0 0 15px 15px;
+    }
+  }
+</style>
+<style id="trackport-luxury-public-header">
+  /* Carry the same premium header language onto the public landing page. */
+  body:not(.tp-dashboard-mode) .navbar{
+    position:sticky;
+    top:14px;
+    z-index:950;
+    width:min(1320px,calc(100% - 40px));
+    margin:0 auto;
+    border:1px solid rgba(182,255,54,.24) !important;
+    border-radius:22px !important;
+    background:linear-gradient(135deg,rgba(27,49,32,.96),rgba(6,14,10,.94)) !important;
+    box-shadow:
+      0 16px 42px rgba(0,0,0,.42),
+      0 0 28px rgba(182,255,54,.10),
+      0 0 54px rgba(182,255,54,.06),
+      inset 0 1px 0 rgba(255,255,255,.18),
+      inset 0 -14px 26px rgba(0,0,0,.24) !important;
+    -webkit-backdrop-filter:blur(24px) saturate(165%) !important;
+    backdrop-filter:blur(24px) saturate(165%) !important;
+  }
+  body:not(.tp-dashboard-mode) .navbar::after{
+    content:"";
+    position:absolute;
+    inset:3px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:17px;
+    pointer-events:none;
+  }
+  body:not(.tp-dashboard-mode) .navbar .nav-inner{
+    position:relative;
+    z-index:1;
+    height:60px;
+    min-height:60px;
+    padding:0 16px;
+  }
+  body:not(.tp-dashboard-mode) .navbar .brand-logo{
+    width:auto;
+    height:32px;
+    max-width:220px;
+    object-fit:contain;
+  }
+  body:not(.tp-dashboard-mode) .navbar .nav-link{
+    color:#EAF5E6 !important;
+    font-weight:700;
+    letter-spacing:.13em;
+  }
+  body:not(.tp-dashboard-mode) .navbar .nav-link:hover,
+  body:not(.tp-dashboard-mode) .navbar .nav-link.active{
+    color:#B6FF36 !important;
+  }
+  body:not(.tp-dashboard-mode) .navbar .nav-toggle{
+    width:38px;
+    height:38px;
+    border:1px solid rgba(182,255,54,.52) !important;
+    border-radius:13px;
+    background:rgba(4,13,8,.52) !important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 6px 16px rgba(0,0,0,.22);
+  }
+  body:not(.tp-dashboard-mode) .navbar .nav-toggle:hover{
+    border-color:#B6FF36 !important;
+    background:rgba(182,255,54,.12) !important;
+  }
+  body:not(.tp-dashboard-mode) .navbar .nav-mobile{
+    position:relative;
+    z-index:2;
+    margin:0 -4px -4px;
+    border-radius:0 0 22px 22px;
+    background:rgba(7,16,10,.98) !important;
+    border-top-color:rgba(182,255,54,.22) !important;
+  }
+  @media(max-width:760px){
+    body:not(.tp-dashboard-mode) .navbar{
+      top:10px;
+      width:calc(100% - 20px);
+      border-radius:19px !important;
+    }
+    body:not(.tp-dashboard-mode) .navbar .nav-inner{
+      height:52px;
+      min-height:52px;
+      padding:0 11px;
+    }
+    body:not(.tp-dashboard-mode) .navbar .brand-logo{
+      height:30px;
+      max-width:180px;
+    }
+    body:not(.tp-dashboard-mode) .navbar .nav-mobile{
+      top:52px !important;
+      border-radius:0 0 15px 15px;
+    }
+  }
+</style>
+<!-- Final compact dashboard header override. The earlier mobile correction
+     used a full-width 90px bar; keep the premium dock compact on iPhone too. -->
+<style id="trackport-ios-compact-dashboard-header">
+  @media (max-width:760px){
+    body.tp-dashboard-mode .navbar{
+      position:fixed !important;
+      inset:auto 10px auto 10px !important;
+      top:10px !important;
+      left:10px !important;
+      right:10px !important;
+      width:auto !important;
+      margin:0 !important;
+      transform:none !important;
+      border:1px solid rgba(182,255,54,.18) !important;
+      border-radius:19px !important;
+      background:rgba(10,24,15,.92) !important;
+      box-shadow:0 10px 28px rgba(0,0,0,.28),0 0 24px rgba(182,255,54,.06) !important;
+      -webkit-backdrop-filter:none !important;
+      backdrop-filter:none !important;
+    }
+    body.tp-dashboard-mode .navbar .nav-inner{
+      height:52px !important;
+      min-height:52px !important;
+      padding:0 11px !important;
+    }
+    body.tp-dashboard-mode .navbar .brand-logo{
+      width:auto !important;
+      height:30px !important;
+      max-width:180px !important;
+    }
+    body.tp-dashboard-mode .navbar .nav-toggle{
+      width:36px !important;
+      height:36px !important;
+      border-radius:12px !important;
+    }
+    body.tp-dashboard-mode #app > .wrap,
+    body.tp-dashboard-mode #app > .license-choice-shell,
+    body.tp-dashboard-mode #app > .license-generator-shell,
+    body.tp-dashboard-mode #app > .track-hero{
+      padding-top:82px !important;
+    }
+  }
+</style>
+<!-- iOS stability pass: keep form controls at the non-zooming size and
+     remove WebKit's most fragile compositing paths from the license editor. -->
+<style id="trackport-ios-license-stability">
+  @media (pointer:coarse), (max-width:760px){
+    .license-field input,
+    .license-field textarea,
+    .license-field select{
+      font-size:16px !important;
+      line-height:1.35 !important;
+    }
+    .license-photo-input{font-size:16px !important;}
+
+    /* WebKit can repeatedly kill a tab when paint containment, blend modes,
+       image filters and large scaled layers are combined on this screen. */
+    .license-generator-shell,
+    .license-generator,
+    .license-editor,
+    .license-preview-col,
+    .license-card-scroll,
+    .license-tabletop,
+    .license-card-min,
+    .license-card-wrapper,
+    .license-card{
+      contain:none !important;
+      content-visibility:visible !important;
+      -webkit-backdrop-filter:none !important;
+      backdrop-filter:none !important;
+    }
+    .license-tabletop::before{display:none !important;}
+    .license-holo-blob,
+    .tx-seal,
+    .tx-map svg,
+    .pa-license-card .pa-guilloche{
+      mix-blend-mode:normal !important;
+      filter:none !important;
+    }
+    .license-portrait img,
+    .license-ghost img,
+    .tx-portrait img,
+    .tx-map-ghost img,
+    .pa-license-card img,
+    .nj-license-card img{
+      filter:none !important;
+      mix-blend-mode:normal !important;
+    }
+  }
+</style>
+<!-- Final iPhone stability pass. Keep the existing visual system, but avoid
+     WebKit's form-zoom, horizontal overscroll, and large compositing paths. -->
+<style id="trackport-ios-final-stability">
+  html{
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+    overflow-x:hidden;
+    overscroll-behavior-x:none;
+  }
+  body{
+    min-width:0;
+    max-width:100%;
+    overflow-x:hidden;
+    overscroll-behavior-x:none;
+  }
+  #app{
+    min-width:0;
+    max-width:100%;
+  }
+  @media (pointer:coarse), (max-width:760px){
+    /* Safari zooms controls whose computed text is below 16px. */
+    input:not([type="hidden"]),
+    select,
+    textarea{
+      font-size:16px !important;
+      line-height:1.35;
+    }
+    input,
+    select,
+    textarea,
+    button,
+    a{
+      touch-action:manipulation;
+    }
+
+    /* These effects are decorative; removing them on touch devices prevents
+       dropped frames and WebKit layer instability while scrolling/forms edit. */
+    #tp-aura .orb,
+    #tp-grain,
+    .hero:after{
+      animation:none !important;
+      will-change:auto !important;
+    }
+    #tp-aura .orb{
+      filter:none !important;
+      mix-blend-mode:normal !important;
+    }
+    .tp-reveal{
+      opacity:1 !important;
+      transform:none !important;
+      filter:none !important;
+    }
+    .card,
+    .panel,
+    section{
+      contain:none !important;
+    }
+    .navbar,
+    .card,
+    .panel,
+    .glass,
+    .modal-box,
+    .sheet,
+    .box,
+    .tp-bottom-tabs{
+      -webkit-backdrop-filter:none !important;
+      backdrop-filter:none !important;
+    }
+  }
+  @supports not (overflow-x:clip){
+    #app{overflow-x:hidden;}
+  }
+</style>
+<script id="trackport-ios-navigation-cleanup">
+  // A page restored from Safari's back-forward cache must never retain the
+  // transient loader from the page it left.
+  window.addEventListener('pageshow', ()=>{
+    if(typeof hidePageLoader === 'function') hidePageLoader();
+  }, {passive:true});
+</script>
 </body>
 </html>
