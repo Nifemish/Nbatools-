@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.6.9">
+<meta name="trackport-version" content="1.8.1">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1863,6 +1863,93 @@
   }
 </style>
 
+<style id="military-id-card-styles">
+  /* ===== Military ID Card Mockup Workspace (wired from supplied template) ===== */
+  .mil-layout{display:grid; grid-template-columns:360px minmax(0,1fr); gap:18px; align-items:start;}
+  @media (max-width:1024px){ .mil-layout{grid-template-columns:1fr;} }
+  .mil-panel{padding:18px; border:1px solid var(--glass-border); border-radius:18px; background:rgba(255,255,255,.035);}
+  .mil-panel h2{display:flex; align-items:center; gap:8px; font-family:'Inter',sans-serif; font-size:15px; font-weight:800; letter-spacing:.02em; margin:0 0 14px;}
+  .mil-panel h2 svg{width:18px; height:18px; color:var(--primary);}
+  .mil-group{display:flex; flex-direction:column; gap:12px;}
+  .mil-field label{display:block; font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:6px;}
+  .mil-field input[type=text], .mil-field select, .mil-field input[type=file]{width:100%; padding:10px 12px; border:1px solid var(--glass-border); border-radius:12px; background:rgba(0,0,0,.28); color:var(--ink); font-size:13px; font-family:'Inter',sans-serif;}
+  .mil-field input[type=text]:focus, .mil-field select:focus{outline:none; border-color:rgba(212,175,90,.7);}
+  .mil-upper{text-transform:uppercase;}
+  .mil-two{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .mil-sub{margin-top:14px; padding-top:14px; border-top:1px solid var(--glass-border); display:flex; flex-direction:column; gap:12px;}
+  .mil-sub h3{display:flex; align-items:center; gap:6px; margin:0; font-size:10.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);}
+  .mil-sub h3 svg{width:14px; height:14px; color:var(--primary);}
+  .mil-check{display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:600; cursor:pointer;}
+  .mil-check input{width:16px; height:16px; accent-color:var(--primary); cursor:pointer;}
+  .mil-slider{padding-left:25px;}
+  .mil-slider .mil-slider-head{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:5px;}
+  .mil-slider input[type=range]{width:100%; accent-color:var(--primary); cursor:pointer;}
+  .mil-slider[hidden]{display:none;}
+  .mil-actions{margin-top:16px; display:flex; flex-direction:column; gap:9px;}
+  .mil-generate-button{width:100%; min-height:50px; font-size:13px; letter-spacing:.08em;}
+  .mil-note{font-size:11px; line-height:1.5; color:var(--muted);}
+
+  .mil-preview-shell{border:1px solid var(--glass-border); border-radius:18px; overflow:hidden; background:rgba(0,0,0,.3);}
+  .mil-stage{position:relative; display:flex; align-items:center; justify-content:center; padding:26px 14px; min-height:420px; user-select:none; background-size:cover; background-position:center;}
+  .mil-vignette{position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle at 50% 42%, rgba(0,0,0,0) 0%, rgba(0,0,0,.12) 55%, rgba(0,0,0,.5) 100%);}
+  .mil-perspective{position:relative; perspective:1200px; transform-style:preserve-3d; transform:scale(var(--mil-scale,1)); transform-origin:center center;}
+  .mil-tiltwrap{transition:transform .3s ease-out, box-shadow .3s ease-out;}
+  .mil-sleeve{transition:all .3s ease-out;}
+  .mil-sleeve.on{padding:3px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.4); border-radius:18px; backdrop-filter:blur(2px); box-shadow:inset 0 1px 1px rgba(255,255,255,.6);}
+  .mil-card{position:relative; width:380px; height:575px; box-sizing:border-box; padding:14px 18px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden; border-radius:15px; border:1px solid #d8d2c7; background:#ede8e1; color:#000; font-family:Arial,Helvetica,sans-serif;}
+  .mil-card.gloss{box-shadow:inset 0 1.5px 2px rgba(255,255,255,.8), inset 0 -1.5px 2px rgba(0,0,0,.12);}
+  .mil-glare{position:absolute; inset:0; z-index:20; pointer-events:none; border-radius:15px; overflow:hidden;}
+  .mil-glare[hidden]{display:none;}
+  .mil-top{position:relative; z-index:10;}
+  .mil-toprow{display:flex; justify-content:space-between; align-items:flex-start;}
+  .mil-photo{width:165px; height:220px; flex:0 0 165px; overflow:hidden; background:#d4d4d4; border:1px solid #a3a3a3; box-shadow:inset 0 1px 3px rgba(0,0,0,.15);}
+  .mil-photo img{width:100%; height:100%; object-fit:cover; object-position:top;}
+  .mil-sealcol{flex:1; display:flex; flex-direction:column; align-items:center; padding-left:8px; padding-top:2px; min-width:0;}
+  .mil-dept{margin:0; text-align:center; font-size:13px; line-height:1.15; font-weight:700; letter-spacing:-.01em; color:#000;}
+  .mil-seal{width:105px; height:105px; margin:4px 0; display:flex; align-items:center; justify-content:center;}
+  .mil-seal img{max-width:100%; max-height:100%; object-fit:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
+  .mil-branch{margin:0; text-align:center; font-size:18px; line-height:1.15; font-weight:700; color:#000;}
+  .mil-unit{margin:2px 0 0; text-align:center; font-size:16px; line-height:1.15; font-weight:700; color:#000;}
+  .mil-duty{margin:2px 0 0; text-align:center; font-size:21px; line-height:1.15; font-weight:700; color:#000;}
+  .mil-namebar{margin:12px 0 8px;}
+  .mil-namebar h1{margin:0; font-size:26px; line-height:1; font-weight:700; letter-spacing:-.02em; color:#000;}
+  .mil-mid{position:relative; z-index:10; display:flex; align-items:flex-start; justify-content:space-between; margin-top:4px;}
+  .mil-barcode{width:98px; height:195px; flex:0 0 98px; overflow:hidden; border:1px solid #a3a3a3; background:#ede8e1; box-shadow:inset 0 1px 2px rgba(0,0,0,.08);}
+  .mil-barcode img{width:100%; height:100%; object-fit:fill; display:block;}
+  .mil-midright{flex:1; padding-left:16px; height:195px; display:flex; flex-direction:column; justify-content:space-between;}
+  .mil-grades{display:grid; grid-template-columns:1fr 1fr; text-align:center; padding-top:2px;}
+  .mil-lbl{margin:0; font-size:14px; font-weight:700; line-height:1; color:#000;}
+  .mil-val{margin:6px 0 0; font-size:25px; font-weight:700; line-height:1; color:#000;}
+  .mil-chiprow{display:flex; align-items:center; gap:14px; margin-top:auto; margin-bottom:4px;}
+  .mil-chip{position:relative; width:62px; height:78px; flex:0 0 62px; border-radius:10px; overflow:hidden; border:1px solid #8a681c; background:linear-gradient(to top right,#9e761d,#f7d983,#a87d1a); box-shadow:inset 0 1px 2px rgba(255,255,255,.7), 0 2px 4px rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;}
+  .mil-chip .mil-chip-gloss{position:absolute; inset:0; pointer-events:none; background:linear-gradient(to bottom left, rgba(255,255,255,.4), rgba(255,255,255,0), rgba(0,0,0,.2));}
+  .mil-chip svg{position:relative; z-index:10; width:100%; height:100%; padding:4px; opacity:.9;}
+  .mil-dates{display:flex; flex-direction:column; gap:10px;}
+  .mil-date-lbl{margin:0; font-size:12px; font-weight:700; line-height:1; color:#000;}
+  .mil-date-val{margin:4px 0 0; font-size:18px; font-weight:700; line-height:1; letter-spacing:-.02em; color:#000;}
+  .mil-footer{position:relative; z-index:10; text-align:center; padding:8px 0 2px;}
+  .mil-footer p{margin:0; font-size:13px; font-weight:700; letter-spacing:-.01em; color:#000;}
+  .mil-result-layout{display:grid; grid-template-columns:minmax(0,1fr) minmax(270px,340px); align-items:start; gap:20px;}
+  .mil-result-preview{min-width:0;}
+  .mil-result-toolbar{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px 22px; border-bottom:1px solid rgba(255,255,255,.12);}
+  .mil-result-toolbar strong{display:block; margin-top:5px; color:var(--ink); font-size:14px;}
+  .mil-result-actions{min-width:0;}
+  .mil-result-action-card{display:grid; gap:11px; padding:24px; border:1px solid rgba(255,255,255,.16); border-radius:26px; background:linear-gradient(145deg,rgba(27,42,30,.9),rgba(8,14,10,.78)); box-shadow:0 18px 45px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.1);}
+  .mil-result-action-card h2{margin:2px 0 0; color:var(--ink); font-size:24px;}
+  .mil-result-action-card p{margin:0 0 7px; color:var(--muted); font-size:13px; line-height:1.6;}
+  .mil-result-action-card .btn{width:100%; min-height:48px;}
+  @media(max-width:1040px){.mil-result-layout{grid-template-columns:1fr}.mil-result-actions{order:2}.mil-result-action-card{grid-template-columns:repeat(2,minmax(0,1fr));align-items:center}.mil-result-action-card h2,.mil-result-action-card p,.mil-result-action-card .receipt-kicker{grid-column:1/-1}.mil-result-action-card .btn{width:auto;}}
+  @media(max-width:680px){.mil-result-action-card{grid-template-columns:1fr;padding:20px}.mil-result-action-card h2,.mil-result-action-card p,.mil-result-action-card .receipt-kicker{grid-column:auto}.mil-result-action-card .btn{width:100%;}}
+  @media print{
+    body{background:#fff !important;}
+    body *{visibility:hidden !important;}
+    #mil-stage,#mil-stage *{visibility:visible !important;}
+    #mil-stage{position:absolute;left:0;top:0;width:100%;min-height:0;padding:28px;background:#fff !important;}
+    #mil-stage .mil-vignette{display:none !important;}
+    #mil-stage .mil-perspective{transform:none !important;}
+    #mil-stage .mil-tiltwrap{transform:none !important;box-shadow:none !important;}
+  }
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1977,7 +2064,7 @@ let currentUser = null; // {email, fullName, phone, isAdmin}
 const AUTH_SESSION_KEY = 'trackport-auth-session-v1';
 const LAST_ROUTE_KEY = 'trackport-last-route-v1';
 const DEFAULT_AUTH_ROUTE = '#/dashboard';
-let initialRouteHistorySeeded = false;
+  let initialRouteHistorySeeded = false;
 let wizard = { step:1, data:{} };
 let dbReady = false;
 let dbLoadPromise = null;
@@ -1986,6 +2073,8 @@ let automationRunActive = false;
 let trackingLiveUnsubscribe = null;
 let trackingLiveNumber = null;
 let receiptDraft = null;
+let militaryIdResultState = null;
+let militaryIdResultPhoto = null;
 
 const STATUS_FLOW = ['Order Created','Shipment Confirmed','Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
 const ALL_STATUSES = [...STATUS_FLOW, 'Delivery Exception'];
@@ -2746,7 +2835,7 @@ function isRestorableRoute(route){
   return /^#\/(dashboard|history|tracking|profile|flight-history|shipment-history|license-history|receipt-history|admin)\/?$/.test(String(route||''));
 }
 function isProtectedRoute(route){
-  return /^#\/(dashboard|history|tracking|profile|create-flight|create-shipment|create|create-license|create-id-card|create-document|create-receipt|receipt-result|flight-history|shipment-history|license-history|receipt-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
+  return /^#\/(dashboard|history|tracking|profile|create-flight|create-shipment|create|create-license|create-id-card|military-id-result|create-document|create-receipt|receipt-result|flight-history|shipment-history|license-history|receipt-history|license-output|confirmation|edit|admin)(?:\/|$)/.test(String(route||''));
 }
 function rememberCurrentRoute(){
   const route = location.hash || '#/';
@@ -2771,11 +2860,17 @@ function seedInitialRouteHistory(){
   let route = requestedRoute || (currentUser ? restoredRoute() : '#/');
   if(!currentUser && isProtectedRoute(route)) route = '#/login';
   if(currentUser && /^#\/(login|register)\/?$/.test(route)) route = DEFAULT_AUTH_ROUTE;
-  // Normalize only the initial route. Do not manufacture a second browser
-  // history entry behind a deep link: on iOS this made Back appear to
-  // navigate twice and could re-open a half-rendered license editor.
+  // Keep one safe in-app entry behind the first route. Standalone mobile
+  // browsers otherwise have no same-document history entry, so device Back
+  // closes the app instead of returning to the app's starting screen.
+  const fallbackRoute = currentUser ? DEFAULT_AUTH_ROUTE : '#/';
   try{
-    if(route !== requestedRoute) history.replaceState({ trackportRoute:true }, '', route);
+    history.replaceState(
+      { trackportRoute:true, trackportBoundary:true, route:fallbackRoute },
+      '',
+      fallbackRoute
+    );
+    history.pushState({ trackportRoute:true, route }, '', route);
   }catch(error){
     console.warn('App navigation history could not be initialized.', error);
   }
@@ -2859,14 +2954,14 @@ function navigate(hash, options={}){
   const current = normalizeRouteHash(location.hash || '#/');
   if(current === next) return;
   showPageLoader();
-  if(options.replace){
-    try{
-      history.replaceState({trackportRoute:true}, '', next);
-      router();
-    }catch(error){
-      location.hash = next;
-    }
-  }else{
+  try{
+    const state = { trackportRoute:true, route:next };
+    if(options.replace) history.replaceState(state, '', next);
+    else history.pushState(state, '', next);
+    router();
+  }catch(error){
+    // Older embedded browsers may not expose History API methods reliably.
+    // Keep the hash fallback for those environments.
     location.hash = next;
   }
 }
@@ -3926,10 +4021,14 @@ function pageIdCardCreationHub(){
    TrackPort-owned styling and neutral business-record language rather than
    reproducing another site's code, artwork, branding, or merchant layouts. */
 const RECEIPT_TEMPLATES = [
-  {id:'editorial', name:'Editorial', note:'Warm paper · classic receipt', icon:'✦'},
-  {id:'midnight', name:'Midnight', note:'Dark luxe · high contrast', icon:'◈'},
-  {id:'mono', name:'Monochrome', note:'Compact · terminal-inspired', icon:'▦'},
-  {id:'minimal', name:'Minimal', note:'Clean invoice · lots of air', icon:'○'}
+  {id:'thermal', name:'Thermal', note:'Compact shop till receipt', icon:'▥'},
+  {id:'retail', name:'Retail', note:'Branded department store slip', icon:'▤'},
+  {id:'delivery', name:'Delivery', note:'Blue delivery confirmation', icon:'▣'},
+  {id:'invoice', name:'Shipping Invoice', note:'Formal freight invoice', icon:'▦'},
+  {id:'club', name:'Club Till', note:'Centered membership-style receipt', icon:'▧'},
+  {id:'value', name:'Value Till', note:'Bold high-contrast store slip', icon:'▨'},
+  {id:'hardware', name:'Hardware', note:'Workshop and home-improvement slip', icon:'▩'},
+  {id:'department', name:'Department', note:'Classic department-store receipt', icon:'▥'}
 ];
 const RECEIPT_CURRENCIES = {USD:'$', EUR:'€', GBP:'£', NGN:'₦', CAD:'CA$', AUD:'A$', INR:'₹', ZAR:'R'};
 
@@ -3950,7 +4049,7 @@ function receiptDefaultData(routeKey){
     id: `RCT-${now.getFullYear()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`,
     _routeKey: routeKey || 'new',
     userId: currentUser?.email || '',
-    template:'editorial',
+    template:'thermal',
     documentLabel:'DRAFT / INTERNAL RECORD',
     businessName:'TrackPort Studio',
     businessAddress:'12 Harbour Avenue\nLagos, Nigeria',
@@ -4161,6 +4260,9 @@ function pageReceiptResult(receiptId){
       <div class="receipt-result-layout">
         <section class="receipt-preview-panel receipt-result-preview" aria-label="Generated receipt">
           <div class="receipt-preview-toolbar"><div><span class="receipt-kicker">Final output</span><strong>${esc(receiptTemplate(saved.template).name)} layout</strong></div><span class="receipt-preview-status">Ready to use</span></div>
+          <div class="receipt-output-style-picker no-print" aria-label="Choose final receipt style">
+            ${RECEIPT_TEMPLATES.map(t=>`<button type="button" class="receipt-output-style ${saved.template===t.id?'is-selected':''}" data-action="receipt-result-template" data-id="${t.id}" aria-pressed="${saved.template===t.id}"><span>${t.icon}</span><strong>${esc(t.name)}</strong></button>`).join('')}
+          </div>
           <div id="receipt-preview-stage" class="receipt-preview-stage">${receiptPreviewHtml(saved)}</div>
         </section>
         <aside class="receipt-result-actions no-print" aria-label="Receipt actions">
@@ -4196,6 +4298,433 @@ function receiptHistoryMarkup(items){
 function pageReceiptHistory(){
   const items = Object.values(receiptsDB).filter(r=>r.userId===currentUser.email).sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));
   return `${navbar('dashboard')}<div class="wrap"><div class="page-head"><div><h1>Receipt history</h1><div class="greet">Reopen saved business records and continue editing.</div></div><a href="#/create-receipt" class="btn btn-accent">${icon('plus')} New receipt</a></div><div class="card card-pad"><div class="section-title-row"><h3>Saved receipts</h3><span style="font-size:13px;color:var(--muted);">${items.length} saved</span></div>${receiptHistoryMarkup(items)}</div></div><div style="height:60px;"></div>${footer()}`;
+}
+
+/* ================= MILITARY ID CARD MOCKUP WORKSPACE =================
+   Wired directly from the supplied ID-card configurator template.
+   Same card geometry, seals, table surfaces, plastic finish and 3D scene,
+   re-implemented with the app's own page/route/event system. */
+const MILITARY_BRANCHES = {
+  Army:{ name:'Army', seal:'https://i.postimg.cc/ZWvc0Lq9/Background-Eraser-20260907-053311295.png' },
+  Navy:{ name:'Navy', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Seal_of_the_United_States_Department_of_the_Navy.svg/500px-Seal_of_the_United_States_Department_of_the_Navy.svg.png' },
+  Marines:{ name:'Marine Corps', seal:'https://i.postimg.cc/mP1whSrD/Background-Eraser-20260907-053335818.png' },
+  AirForce:{ name:'Air Force', seal:'https://i.postimg.cc/GH5Kcfb8/Seal-of-the-United-States-Department-of-the-Air-Force-svg.png' },
+  CoastGuard:{ name:'Coast Guard', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Seal_of_the_United_States_Coast_Guard.svg/500px-Seal_of_the_United_States_Coast_Guard.svg.png' },
+  SpaceForce:{ name:'Space Force', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Seal_of_the_United_States_Space_Force.svg/500px-Seal_of_the_United_States_Space_Force.svg.png' }
+};
+const MILITARY_TABLE_SURFACES = {
+  wood:{ name:'Wood Desk', image:'https://i.postimg.cc/dL7Xmwx9/IMG-20260907-045724.jpg' },
+  darkLeather:{ name:'Leather Mat', image:'https://i.postimg.cc/F1C8L7D8/Screenshot-20260907-050056.jpg' },
+  marble:{ name:'Gray Stone', image:'https://i.postimg.cc/1fgTcsjH/depositphotos-67606641-stock-photo-gray-stone-texture.jpg' },
+  neutralBg:{ name:'Plain Studio', image:'https://i.postimg.cc/w7tPcgGF/Screenshot-20260907-050210.jpg' }
+};
+const MILITARY_DEFAULT_PHOTO = 'https://images.unsplash.com/photo-1508873696983-2df515122519?auto=format&fit=crop&w=600&q=80';
+const MILITARY_ID_DEFAULTS = {
+  fullName:'George Cox', unitName:'Special Force', dutyStatus:'Active Duty', payGrade:'0-9', rank:'L.t G',
+  issueDate:'2018JAN09', expDate:'2030MAY27', branch:'Army', tableTexture:'wood',
+  showHolderCase:true, plasticGloss:true, glareIntensity:65,
+  enableTilt:true, tiltX:14, tiltY:-8, enableRotation:true, rotation:4, enableShadow:true, shadowDepth:40
+};
+let militaryIdState = Object.assign({}, MILITARY_ID_DEFAULTS);
+let militaryIdPhoto = MILITARY_DEFAULT_PHOTO;
+
+/* Stacked 2D matrix barcode, drawn once on a canvas exactly as in the template. */
+function militaryBarcodeDataUrl(){
+  const canvas = document.createElement('canvas');
+  canvas.width = 200; canvas.height = 250;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ede8e1';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#111111';
+  ctx.fillRect(0,0,canvas.width,18);
+  ctx.fillRect(0,22,canvas.width,6);
+  ctx.fillRect(0,31,canvas.width,3);
+  ctx.fillRect(0,canvas.height-18,canvas.width,18);
+  ctx.fillRect(0,canvas.height-28,canvas.width,6);
+  ctx.fillRect(0,canvas.height-34,canvas.width,3);
+  const startY = 42, endY = canvas.height-42, gridCols = 18, gridRows = 22;
+  const cellWidth = canvas.width/gridCols, cellHeight = (endY-startY)/gridRows;
+  for(let r=0;r<gridRows;r++){
+    for(let c=0;c<gridCols;c++){
+      if((r<3&&c<3)||(r<3&&c>gridCols-4)||(r>gridRows-4&&c<3)){
+        if(r===0||r===2||c===0||c===2||c===gridCols-1||c===gridCols-3||r===gridRows-1||r===gridRows-3){
+          ctx.fillRect(c*cellWidth, startY+r*cellHeight, cellWidth, cellHeight);
+        } else if(r===1&&c===1){
+          ctx.fillRect(c*cellWidth, startY+r*cellHeight, cellWidth, cellHeight);
+        }
+      } else {
+        const hash = Math.sin(r*12.9898 + c*78.233) * 43758.5453;
+        if(hash - Math.floor(hash) > 0.45) ctx.fillRect(c*cellWidth, startY+r*cellHeight, cellWidth, cellHeight);
+      }
+    }
+  }
+  return canvas.toDataURL();
+}
+
+function militaryChipSvg(){
+  return `<span class="mil-chip-gloss"></span>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120" aria-hidden="true">
+    <path d="M 0 35 H 100 M 0 85 H 100 M 35 0 V 120 M 65 0 V 120" stroke="#5c4309" stroke-width="3.5" fill="none"/>
+    <path d="M 20 35 A 25 25 0 0 1 80 35 M 20 85 A 25 25 0 0 0 80 85" stroke="#5c4309" stroke-width="3.5" fill="none"/>
+    <circle cx="50" cy="60" r="18" fill="#e8c358" stroke="#5c4309" stroke-width="3.5"/>
+  </svg>`;
+}
+
+function militaryPreviewMarkup(){
+  return `
+    <span class="mil-vignette"></span>
+    <div class="mil-perspective" id="mil-perspective">
+      <div class="mil-tiltwrap" id="mil-tilt">
+        <div class="mil-sleeve" id="mil-sleeve">
+          <div class="mil-card" id="mil-card">
+            <span class="mil-glare" id="mil-glare"></span>
+            <div class="mil-top">
+              <div class="mil-toprow">
+                <div class="mil-photo"><img id="mil-photo" src="${MILITARY_DEFAULT_PHOTO}" alt="Member portrait"></div>
+                <div class="mil-sealcol">
+                  <h3 class="mil-dept">Armed Forces OF The<br>United States</h3>
+                  <div class="mil-seal"><img id="mil-seal" src="" alt="Branch seal" crossorigin="anonymous"></div>
+                  <p class="mil-branch" id="mil-out-branch"></p>
+                  <p class="mil-unit" id="mil-out-unit"></p>
+                  <p class="mil-duty" id="mil-out-duty"></p>
+                </div>
+              </div>
+              <div class="mil-namebar"><h1 id="mil-out-name"></h1></div>
+            </div>
+            <div class="mil-mid">
+              <div class="mil-barcode"><img id="mil-barcode" src="" alt="2D barcode matrix"></div>
+              <div class="mil-midright">
+                <div class="mil-grades">
+                  <div><p class="mil-lbl">Pay Grade</p><p class="mil-val" id="mil-out-pay"></p></div>
+                  <div><p class="mil-lbl">Rank</p><p class="mil-val" id="mil-out-rank"></p></div>
+                </div>
+                <div class="mil-chiprow">
+                  <div class="mil-chip">${militaryChipSvg()}</div>
+                  <div class="mil-dates">
+                    <div><p class="mil-date-lbl">Issue Date</p><p class="mil-date-val" id="mil-out-issue"></p></div>
+                    <div><p class="mil-date-lbl">Expiration Date</p><p class="mil-date-val" id="mil-out-exp"></p></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mil-footer"><p>Armed Forces Identification Card</p></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function pageMilitaryIdCard(){
+  const d = militaryIdState;
+  const branchOptions = Object.keys(MILITARY_BRANCHES).map(key=>`<option value="${key}"${key===d.branch?' selected':''}>${esc(MILITARY_BRANCHES[key].name)}</option>`).join('');
+  const surfaceOptions = Object.keys(MILITARY_TABLE_SURFACES).map(key=>`<option value="${key}"${key===d.tableTexture?' selected':''}>${esc(MILITARY_TABLE_SURFACES[key].name)}</option>`).join('');
+  return `
+  ${navbar('dashboard')}
+  <div class="wrap">
+    <div class="page-head">
+      <div><h1>Create Military ID Card Mockup</h1><div class="greet">Clearly labeled mockup workspace for design and internal demonstration use only.</div></div>
+      <a href="#/create-id-card" class="btn btn-ghost">${icon('arrow')} ID card types</a>
+    </div>
+    <div class="mil-layout">
+      <section class="mil-panel" aria-labelledby="mil-config-title">
+        <h2 id="mil-config-title">${icon('shield')} ID Card Configurator</h2>
+        <div class="mil-group">
+          <div class="mil-field">
+            <label for="mil-branch">Military Branch</label>
+            <select id="mil-branch" data-mil-field="branch">${branchOptions}</select>
+          </div>
+          <div class="mil-field">
+            <label for="mil-photo-input">Member Photo</label>
+            <input id="mil-photo-input" type="file" accept="image/*">
+          </div>
+          <div class="mil-field">
+            <label for="mil-fullName">Full Name</label>
+            <input id="mil-fullName" type="text" data-mil-field="fullName" value="${esc(d.fullName)}">
+          </div>
+          <div class="mil-two">
+            <div class="mil-field">
+              <label for="mil-unitName">Special Unit / Dept</label>
+              <input id="mil-unitName" type="text" data-mil-field="unitName" value="${esc(d.unitName)}">
+            </div>
+            <div class="mil-field">
+              <label for="mil-dutyStatus">Duty Status</label>
+              <input id="mil-dutyStatus" type="text" data-mil-field="dutyStatus" value="${esc(d.dutyStatus)}">
+            </div>
+          </div>
+          <div class="mil-two">
+            <div class="mil-field">
+              <label for="mil-payGrade">Pay Grade</label>
+              <input id="mil-payGrade" type="text" data-mil-field="payGrade" value="${esc(d.payGrade)}">
+            </div>
+            <div class="mil-field">
+              <label for="mil-rank">Rank</label>
+              <input id="mil-rank" type="text" data-mil-field="rank" value="${esc(d.rank)}">
+            </div>
+          </div>
+          <div class="mil-two">
+            <div class="mil-field">
+              <label for="mil-issueDate">Issue Date</label>
+              <input id="mil-issueDate" type="text" class="mil-upper" data-mil-field="issueDate" value="${esc(d.issueDate)}">
+            </div>
+            <div class="mil-field">
+              <label for="mil-expDate">Expiration Date</label>
+              <input id="mil-expDate" type="text" class="mil-upper" data-mil-field="expDate" value="${esc(d.expDate)}">
+            </div>
+          </div>
+        </div>
+
+        <div class="mil-sub">
+          <h3>${icon('box')} Table Surface Scene</h3>
+          <div class="mil-field">
+            <label for="mil-tableTexture">Table Surface Texture</label>
+            <select id="mil-tableTexture" data-mil-field="tableTexture">${surfaceOptions}</select>
+          </div>
+          <label class="mil-check"><input type="checkbox" data-mil-field="enableTilt"${d.enableTilt?' checked':''}><span>Enable 3D Perspective Tilt</span></label>
+          <div class="mil-slider" data-mil-slider="enableTilt"${d.enableTilt?'':' hidden'}>
+            <div class="mil-slider-head"><span>Tilt Angle</span><span data-mil-readout="tiltX">${d.tiltX}&deg;</span></div>
+            <input type="range" min="0" max="30" data-mil-field="tiltX" value="${d.tiltX}">
+          </div>
+          <label class="mil-check"><input type="checkbox" data-mil-field="enableRotation"${d.enableRotation?' checked':''}><span>Enable Card Rotation</span></label>
+          <div class="mil-slider" data-mil-slider="enableRotation"${d.enableRotation?'':' hidden'}>
+            <div class="mil-slider-head"><span>Rotation Angle</span><span data-mil-readout="rotation">${d.rotation}&deg;</span></div>
+            <input type="range" min="-20" max="20" data-mil-field="rotation" value="${d.rotation}">
+          </div>
+          <label class="mil-check"><input type="checkbox" data-mil-field="enableShadow"${d.enableShadow?' checked':''}><span>Enable Drop Shadow</span></label>
+          <div class="mil-slider" data-mil-slider="enableShadow"${d.enableShadow?'':' hidden'}>
+            <div class="mil-slider-head"><span>Shadow Intensity</span><span data-mil-readout="shadowDepth">${d.shadowDepth}%</span></div>
+            <input type="range" min="10" max="80" data-mil-field="shadowDepth" value="${d.shadowDepth}">
+          </div>
+        </div>
+
+        <div class="mil-sub">
+          <h3>${icon('star')} Plastic Card Finish</h3>
+          <label class="mil-check"><input type="checkbox" data-mil-field="plasticGloss"${d.plasticGloss?' checked':''}><span>Enable Plastic Glare Sheen</span></label>
+          <div class="mil-slider" data-mil-slider="plasticGloss"${d.plasticGloss?'':' hidden'}>
+            <div class="mil-slider-head"><span>Plastic Glare Intensity</span><span data-mil-readout="glareIntensity">${d.glareIntensity}%</span></div>
+            <input type="range" min="20" max="100" data-mil-field="glareIntensity" value="${d.glareIntensity}">
+          </div>
+          <label class="mil-check"><input type="checkbox" data-mil-field="showHolderCase"${d.showHolderCase?' checked':''}><span>Render Thin Clear Plastic Sleeve</span></label>
+        </div>
+
+        <div class="mil-actions">
+          <button type="button" id="mil-reset" class="btn btn-ghost">${icon('refresh-cw')} Reset</button>
+          <button type="button" class="btn btn-accent mil-generate-button" data-action="generate-military-id">${icon('checkc')} Generate ID Card</button>
+          <p class="mil-note">This workspace produces a clearly labeled mockup for design and internal demonstration use. It does not produce an official military identification document.</p>
+        </div>
+      </section>
+
+      <section class="mil-preview-shell" aria-label="Live ID card preview">
+        <div class="mil-stage" id="mil-stage">
+          ${militaryPreviewMarkup()}
+        </div>
+      </section>
+    </div>
+  </div>
+  <div style="height:60px;"></div>
+  ${footer()}`;
+}
+
+function pageMilitaryIdResult(){
+  if(!militaryIdResultState) return redirectTo('/create-id-card/military');
+  militaryIdState = Object.assign({}, militaryIdResultState);
+  if(militaryIdResultPhoto) militaryIdPhoto = militaryIdResultPhoto;
+  const name = String(militaryIdState.fullName || 'military_id').trim().replace(/\s+/g,'_');
+  return `
+  ${navbar('dashboard')}
+  <div class="wrap mil-result-page">
+    <div class="page-head">
+      <div><h1>Generated Military ID Card</h1><div class="greet">Final mockup output · review it before downloading or printing.</div></div>
+    </div>
+    <div class="mil-result-layout">
+      <section class="mil-preview-shell mil-result-preview" aria-label="Generated military ID card">
+        <div class="mil-result-toolbar">
+          <div><span class="receipt-kicker">Final output</span><strong>${esc(name.replace(/_/g,' '))}</strong></div>
+          <span class="receipt-preview-status">Ready to use</span>
+        </div>
+        <div class="mil-stage" id="mil-stage">
+          ${militaryPreviewMarkup()}
+        </div>
+      </section>
+      <aside class="mil-result-actions no-print" aria-label="Military ID card actions">
+        <div class="mil-result-action-card">
+          <span class="receipt-kicker">Next step</span>
+          <h2>ID card ready</h2>
+          <p>This is the same rendered mockup shown above. Download and print actions use this final output.</p>
+          <button type="button" class="btn btn-accent" data-action="download-military-id">${icon('download')} Download ID Card</button>
+          <button type="button" class="btn btn-primary" data-action="print-military-id">${icon('printer')} Print / Save PDF</button>
+          <a href="#/create-id-card/military" class="receipt-result-link">${icon('edit')} Edit ID card</a>
+          <a href="#/create-id-card" class="receipt-result-link">${icon('arrow')} Back to ID card types</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <div style="height:60px;"></div>
+  ${footer()}`;
+}
+
+/* Fit-to-screen scaling for the fixed 380px card scene, matching the
+   technique already used for the licence and boarding-pass previews. */
+function fitMilitaryPreview(){
+  const stage = document.getElementById('mil-stage');
+  const scene = document.getElementById('mil-perspective');
+  if(!stage || !scene) return;
+  const available = Math.max(1, stage.clientWidth - 28);
+  const scale = Math.min(1, available / 400);
+  scene.style.setProperty('--mil-scale', String(scale));
+  stage.style.minHeight = `${Math.ceil(600 * scale) + 52}px`;
+}
+
+function renderMilitaryIdPreview(){
+  const d = militaryIdState;
+  const card = document.getElementById('mil-card');
+  if(!card) return;
+  const branch = MILITARY_BRANCHES[d.branch] || MILITARY_BRANCHES.Army;
+  const surface = MILITARY_TABLE_SURFACES[d.tableTexture] || MILITARY_TABLE_SURFACES.wood;
+  const setText = (id, value)=>{ const el = document.getElementById(id); if(el) el.textContent = value; };
+  setText('mil-out-branch', branch.name);
+  setText('mil-out-unit', d.unitName);
+  setText('mil-out-duty', d.dutyStatus);
+  setText('mil-out-name', d.fullName);
+  setText('mil-out-pay', d.payGrade);
+  setText('mil-out-rank', d.rank);
+  setText('mil-out-issue', d.issueDate);
+  setText('mil-out-exp', d.expDate);
+  const sealEl = document.getElementById('mil-seal');
+  if(sealEl && sealEl.getAttribute('src') !== branch.seal) sealEl.src = branch.seal;
+  const photoEl = document.getElementById('mil-photo');
+  if(photoEl && photoEl.getAttribute('src') !== militaryIdPhoto) photoEl.src = militaryIdPhoto;
+  const stage = document.getElementById('mil-stage');
+  if(stage) stage.style.backgroundImage = `url('${surface.image}')`;
+
+  const tiltX = d.enableTilt ? Number(d.tiltX) : 0;
+  const tiltY = d.enableTilt ? Number(d.tiltY) : 0;
+  const rotation = d.enableRotation ? Number(d.rotation) : 0;
+  const shadowDepth = d.enableShadow ? Number(d.shadowDepth) : 0;
+  const tilt = document.getElementById('mil-tilt');
+  if(tilt){
+    tilt.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg) rotateZ(${rotation}deg)`;
+    tilt.style.boxShadow = d.enableShadow
+      ? `${-rotation*0.6}px ${shadowDepth*0.5}px ${shadowDepth*0.9}px rgba(0,0,0,${0.3 + (shadowDepth/160)}), 0 2px 4px rgba(0,0,0,0.3)`
+      : 'none';
+  }
+  const sleeve = document.getElementById('mil-sleeve');
+  if(sleeve) sleeve.classList.toggle('on', !!d.showHolderCase);
+  card.classList.toggle('gloss', !!d.plasticGloss);
+  const glare = document.getElementById('mil-glare');
+  if(glare){
+    glare.hidden = !d.plasticGloss;
+    const intensity = Number(d.glareIntensity)/100;
+    glare.style.background = `linear-gradient(${110 + rotation}deg,
+      rgba(255,255,255,${0.40*intensity}) 0%,
+      rgba(255,255,255,${0.15*intensity}) 30%,
+      rgba(255,255,255,0) 50%,
+      rgba(255,255,255,${0.12*intensity}) 100%)`;
+  }
+  const barcode = document.getElementById('mil-barcode');
+  if(barcode && !barcode.getAttribute('src')) barcode.src = militaryBarcodeDataUrl();
+  fitMilitaryPreview();
+}
+
+function ensureHtml2Canvas(){
+  if(window.html2canvas) return Promise.resolve(window.html2canvas);
+  if(window.__milHtml2CanvasPromise) return window.__milHtml2CanvasPromise;
+  window.__milHtml2CanvasPromise = new Promise((resolve, reject)=>{
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = ()=>resolve(window.html2canvas);
+    script.onerror = ()=>reject(new Error('html2canvas failed to load'));
+    document.body.appendChild(script);
+  });
+  return window.__milHtml2CanvasPromise;
+}
+
+function waitForRenderedImages(root){
+  const images = root ? Array.from(root.querySelectorAll('img')) : [];
+  const imageReady = images.map(img=>{
+    if(img.complete) return Promise.resolve();
+    return new Promise(resolve=>{
+      const done = ()=>{ img.removeEventListener('load',done); img.removeEventListener('error',done); resolve(); };
+      img.addEventListener('load',done);
+      img.addEventListener('error',done);
+    });
+  });
+  const fontsReady = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  return Promise.all([...imageReady, fontsReady]);
+}
+
+async function downloadMilitaryIdScene(){
+  const stage = document.getElementById('mil-stage');
+  const target = stage;
+  if(!target) return;
+  try{
+    showToast('Rendering the final ID card…');
+    await waitForRenderedImages(target);
+    const html2canvas = await ensureHtml2Canvas();
+    const canvas = await html2canvas(target, {
+      scale:2,
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:null,
+      logging:false
+    });
+    const link = document.createElement('a');
+    link.download = `${String(militaryIdState.fullName||'military_id').trim().replace(/\s+/g,'_')}_military_id.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('Military ID card downloaded');
+  }catch(error){
+    console.warn('Military ID download failed', error);
+    showToast('Could not generate the image. Please try the download again.', true);
+  }
+}
+
+function generateMilitaryIdCard(){
+  militaryIdResultState = Object.assign({}, militaryIdState);
+  militaryIdResultPhoto = militaryIdPhoto;
+  navigate('#/military-id-result');
+}
+
+function wireMilitaryIdCard(){
+  if(!document.getElementById('mil-card')) return;
+  $all('[data-mil-field]').forEach(input=>{
+    const field = input.getAttribute('data-mil-field');
+    const eventName = input.type === 'checkbox' || input.tagName === 'SELECT' ? 'change' : 'input';
+    input.addEventListener(eventName, ()=>{
+      militaryIdState[field] = input.type === 'checkbox' ? input.checked : input.value;
+      const readout = document.querySelector(`[data-mil-readout="${field}"]`);
+      if(readout) readout.textContent = field === 'tiltX' || field === 'rotation' ? `${input.value}\u00B0` : `${input.value}%`;
+      const slider = document.querySelector(`[data-mil-slider="${field}"]`);
+      if(slider && input.type === 'checkbox') slider.hidden = !input.checked;
+      renderMilitaryIdPreview();
+    });
+    if(input.type === 'range') input.addEventListener('change', renderMilitaryIdPreview);
+  });
+  const photoInput = document.getElementById('mil-photo-input');
+  if(photoInput) photoInput.addEventListener('change', e=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = event=>{
+      militaryIdPhoto = event.target.result;
+      renderMilitaryIdPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  const resetBtn = document.getElementById('mil-reset');
+  if(resetBtn) resetBtn.addEventListener('click', ()=>{
+    militaryIdState = Object.assign({}, MILITARY_ID_DEFAULTS);
+    militaryIdPhoto = MILITARY_DEFAULT_PHOTO;
+    router();
+    showToast('Military ID card reset to defaults');
+  });
+  window.addEventListener('resize', fitMilitaryPreview);
+  renderMilitaryIdPreview();
+}
+
+function wireMilitaryIdResult(){
+  if(!document.querySelector('.mil-result-page')) return;
+  renderMilitaryIdPreview();
+  window.addEventListener('resize', fitMilitaryPreview);
 }
 
 function pageCreationPlaceholder(kind){
@@ -6938,7 +7467,12 @@ async function router(){
   }
   else if(parts[0]==='create-id-card'){
     if(!currentUser){ html = redirectTo('/login'); }
+    else if(parts[1]==='military'){ html = pageMilitaryIdCard(); }
     else { html = parts[1] ? pageCreationPlaceholder(parts[1]) : pageIdCardCreationHub(); }
+  }
+  else if(parts[0]==='military-id-result'){
+    if(!currentUser){ html = redirectTo('/login'); }
+    else { html = pageMilitaryIdResult(); }
   }
   else if(parts[0]==='create-document'){
     if(!currentUser){ html = redirectTo('/login'); }
@@ -7020,7 +7554,7 @@ function redirectTo(hash){
   if(String(location.hash||'') === next) return null;
   // Redirects are replacements, not destinations. This prevents an auth
   // guard or missing-record fallback from adding an unnecessary Back step.
-  try{ history.replaceState({ trackportRedirect:true }, '', next); }
+  try{ history.replaceState({ trackportRoute:true, trackportRedirect:true, route:next }, '', next); }
   catch(error){ location.hash = next; }
   setTimeout(()=>router(), 0);
   return null;
@@ -7256,6 +7790,33 @@ function downloadReceiptData(){
   setTimeout(()=>URL.revokeObjectURL(url),1200);
   showToast('Receipt data downloaded');
 }
+
+async function downloadReceiptImage(){
+  const stage = document.getElementById('receipt-preview-stage');
+  const target = stage && stage.querySelector('.receipt-paper');
+  if(!target){
+    showToast('Open the generated receipt before downloading it', true);
+    return;
+  }
+  try{
+    showToast('Rendering the final receipt…');
+    await waitForRenderedImages(target);
+    const html2canvas = await ensureHtml2Canvas();
+    const canvas = await html2canvas(target, {
+      scale:2,
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:null,
+      logging:false
+    });
+    const data = receiptDraft || {};
+    exportCanvas(canvas,`${data.receiptNumber||'trackport-receipt'}.png`,'Receipt image downloaded');
+  }catch(error){
+    console.warn('Receipt download failed', error);
+    showToast('Could not generate the receipt image. Please try again.', true);
+  }
+}
+
 function receiptCanvasLines(ctx, value, maxWidth){
   const paragraphs = String(value||'').split(/\r?\n/);
   const lines = [];
@@ -7292,7 +7853,7 @@ function receiptCanvasImage(dataUrl){
     }catch(_e){ resolve(null); }
   });
 }
-async function downloadReceiptImage(){
+async function downloadReceiptImageLegacy(){
   syncReceiptDraftFromForm();
   const data = receiptCopy(receiptDraft||{});
   if(!data.businessName && !data.receiptNumber){
@@ -7301,9 +7862,9 @@ async function downloadReceiptImage(){
   }
   const totals = receiptTotals(data);
   const template = receiptTemplate(data.template);
-  const isMidnight = template.id === 'midnight';
-  const isMono = template.id === 'mono';
-  const isMinimal = template.id === 'minimal';
+  const isMidnight = template.id === 'delivery';
+  const isMono = template.id === 'thermal';
+  const isMinimal = template.id === 'retail';
   const colors = isMidnight
     ? {paper:'#202431', ink:'#f7f9ff', muted:'#d9dfeb', rule:'#667086', accent:'#9d91ff', soft:'#4e596d'}
     : isMono
@@ -7596,6 +8157,8 @@ function wirePageEvents(parts){
   });
   wireLicenseGenerator();
   wireReceiptGenerator();
+  wireMilitaryIdCard();
+  wireMilitaryIdResult();
   fitBoardingPassPreview();
   if(document.fonts) document.fonts.ready.then(()=>fitBoardingPassPreview());
   wireRouteStopSelects();
@@ -8121,7 +8684,21 @@ document.addEventListener('click', async (e)=>{
   if(action==='logout'){ clearAuthSession(); showToast('Logged out'); navigate('#/'); return; }
   if(action==='receipt-template'){
     syncReceiptDraftFromForm();
-    if(receiptDraft){ receiptDraft.template = id || 'editorial'; rerenderCurrentPage(); }
+    if(receiptDraft){ receiptDraft.template = id || 'thermal'; rerenderCurrentPage(); }
+    return;
+  }
+  if(action==='receipt-result-template'){
+    if(receiptDraft && receiptTemplate(id).id===id){
+      receiptDraft.template = id;
+      receiptDraft.updatedAt = new Date().toISOString();
+      if(receiptDraft.id && receiptsDB[receiptDraft.id]){
+        receiptsDB[receiptDraft.id] = receiptCopy(receiptDraft);
+        delete receiptsDB[receiptDraft.id]._routeKey;
+        await saveReceipts();
+      }
+      rerenderCurrentPage();
+      showToast(`${receiptTemplate(id).name} style selected`);
+    }
     return;
   }
   if(action==='receipt-add-item'){
@@ -8139,6 +8716,12 @@ document.addEventListener('click', async (e)=>{
       receiptDraft.items = (receiptDraft.items||[]).filter(item=>item.id!==id);
       rerenderCurrentPage();
     }
+    return;
+  }
+  if(action==='generate-military-id'){ generateMilitaryIdCard(); return; }
+  if(action==='download-military-id'){ await downloadMilitaryIdScene(); return; }
+  if(action==='print-military-id'){
+    setTimeout(()=>window.print(),80);
     return;
   }
   if(action==='generate-receipt'){ await generateReceiptAction(); return; }
@@ -8364,7 +8947,11 @@ async function performDelete(tn){
 }
 
 /* ---------- init ---------- */
-window.addEventListener('hashchange', ()=>router());
+// pushState routes do not emit hashchange, while direct hash links do. Listen
+// to both so browser Back, iOS swipe-back, Android Back, and plain anchors all
+// render through the same router.
+window.addEventListener('popstate', ()=>router(), {passive:true});
+window.addEventListener('hashchange', ()=>router(), {passive:true});
 window.addEventListener('DOMContentLoaded', async ()=>{
   try{
     await ensureDBReady();
@@ -9929,7 +10516,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   'use strict';
   const APP_ROUTES = new Set([
     'dashboard','history','tracking','profile','flight-history','shipment-history','license-history','receipt-history',
-    'create','create-shipment','create-flight','create-license','create-id-card','create-document','create-receipt','receipt-result','license-output','edit','flight','admin'
+    'create','create-shipment','create-flight','create-license','create-id-card','military-id-result','create-document','create-receipt','receipt-result','license-output','edit','flight','admin'
   ]);
   const routeName = () => (location.hash.replace(/^#/,'').split('/').filter(Boolean)[0] || '');
   const isAppScreen = () => typeof currentUser !== 'undefined' && !!currentUser && APP_ROUTES.has(routeName());
@@ -9940,7 +10527,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   const activeTab = () => {
     const route = routeName();
     if(['history','flight-history','shipment-history','license-history','receipt-history'].includes(route)) return 'history';
-    if(['create','create-shipment','create-flight','create-license','create-id-card','create-document','create-receipt','receipt-result','license-output'].includes(route)) return 'create';
+    if(['create','create-shipment','create-flight','create-license','create-id-card','military-id-result','create-document','create-receipt','receipt-result','license-output'].includes(route)) return 'create';
     if(route === 'tracking' || route === 'flight') return 'tracking';
     if(route === 'profile') return 'profile';
     return 'home';
@@ -12242,6 +12829,16 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   @media(max-width:1040px){.receipt-generator-layout{grid-template-columns:1fr}.receipt-preview-panel{position:relative;top:auto}.receipt-preview-stage{min-height:0}}
   @media(max-width:1040px){.receipt-result-layout{grid-template-columns:1fr}.receipt-result-actions{order:2}.receipt-result-action-card{grid-template-columns:repeat(2,minmax(0,1fr));align-items:center}.receipt-result-action-card h2,.receipt-result-action-card p,.receipt-result-action-card .receipt-kicker{grid-column:1/-1}.receipt-result-action-card .btn{width:auto}.receipt-result-link{justify-content:center;}}
   @media(max-width:680px){.receipt-generator-shell,.receipt-result-shell{padding:112px 12px 136px}.receipt-generator-header,.receipt-result-header{display:block;padding:22px 20px}.receipt-header-actions{justify-content:flex-start;margin-top:18px;gap:16px}.receipt-editor-panel{padding:18px}.receipt-template-grid{grid-template-columns:repeat(2,1fr)}.receipt-field-grid.two,.receipt-field-grid.three{grid-template-columns:1fr}.receipt-field-grid label.span-2{grid-column:auto}.receipt-preview-toolbar{padding:17px}.receipt-preview-stage{padding:22px 10px 32px;overflow-x:hidden}.receipt-paper{padding:22px 14px 18px}.receipt-paper-topline{margin:-22px -14px 18px}.receipt-paper-header{grid-template-columns:auto minmax(0,1fr)}.receipt-heading{grid-column:2;text-align:left}.receipt-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.receipt-bottom-grid{grid-template-columns:1fr}.receipt-editor-actions .btn{flex:1 1 auto}.receipt-result-total{margin-top:20px;text-align:left}.receipt-result-action-card{grid-template-columns:1fr;padding:20px}.receipt-result-action-card h2,.receipt-result-action-card p,.receipt-result-action-card .receipt-kicker{grid-column:auto}.receipt-result-action-card .btn{width:100%}.receipt-result-link{justify-content:flex-start}.receipt-brand-copy h2{font-size:clamp(20px,6vw,26px)}.receipt-brand-copy p{font-size:clamp(14px,4vw,19px)}.receipt-heading span{font-size:clamp(14px,4vw,19px)}.receipt-heading strong{font-size:clamp(16px,4.5vw,21px)}.receipt-meta small{font-size:clamp(13px,3.8vw,18px)}.receipt-meta strong{font-size:clamp(14px,4vw,19px)}.receipt-items{font-size:clamp(16px,4.5vw,20px)}.receipt-items th{font-size:clamp(12px,3.3vw,18px)}.receipt-items td strong{font-size:clamp(16px,4.5vw,20px)}.receipt-notes small{font-size:clamp(13px,3.8vw,18px)}.receipt-notes p{font-size:clamp(15px,4.2vw,19px)}.receipt-totals{font-size:clamp(16px,4.5vw,20px)}.receipt-totals .receipt-grand-total{font-size:clamp(19px,5vw,23px)}.receipt-paper-footer p{font-size:clamp(13px,3.8vw,18px)}.receipt-barcode-text{font-size:clamp(12px,3.5vw,17px)}}
+
+  /* 1.8.1 receipt families: original layouts based on common receipt formats. */
+  .receipt-output-style-picker{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.1)}
+  .receipt-output-style{min-height:54px;display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.04);color:var(--ink);cursor:pointer;font:700 10px 'IBM Plex Mono',monospace;text-align:center}
+  .receipt-output-style:hover,.receipt-output-style.is-selected{border-color:var(--primary);background:rgba(212,175,90,.13);color:var(--primary)}.receipt-output-style span{font-size:17px}.receipt-output-style strong{font-size:inherit}
+  .receipt-theme-thermal{max-width:380px;padding:30px 24px 24px;border:0;border-radius:0;background:#fff;color:#090909;box-shadow:0 18px 42px rgba(0,0,0,.26);font-family:'IBM Plex Mono',monospace}.receipt-theme-thermal .receipt-paper-topline{display:none}.receipt-theme-thermal .receipt-document-label{color:#111;font-size:10px}.receipt-theme-thermal .receipt-paper-header{display:block;text-align:center;border-bottom:2px dashed #222}.receipt-theme-thermal .receipt-brand-mark{margin:0 auto 10px;border-radius:0;background:#111;color:#fff}.receipt-theme-thermal .receipt-brand-copy h2{font:800 25px/1.05 'IBM Plex Mono',monospace;text-transform:uppercase}.receipt-theme-thermal .receipt-brand-copy p{color:#111;font-size:11px}.receipt-theme-thermal .receipt-heading{margin-top:15px;text-align:center}.receipt-theme-thermal .receipt-heading span,.receipt-theme-thermal .receipt-heading strong{color:#111;font-size:12px}.receipt-theme-thermal .receipt-meta{grid-template-columns:1fr 1fr;border-bottom:2px dashed #222}.receipt-theme-thermal .receipt-meta small,.receipt-theme-thermal .receipt-meta strong{color:#111;font-size:10px}.receipt-theme-thermal .receipt-items{font-family:'IBM Plex Mono',monospace;font-size:11px}.receipt-theme-thermal .receipt-items th{color:#111;font-size:9px;border-bottom:1px solid #222}.receipt-theme-thermal .receipt-items td{border-color:#bbb}.receipt-theme-thermal .receipt-items td strong{font-size:11px}.receipt-theme-thermal .receipt-bottom-grid{display:block;border-top:2px dashed #222}.receipt-theme-thermal .receipt-notes{margin-bottom:15px}.receipt-theme-thermal .receipt-notes small,.receipt-theme-thermal .receipt-notes p,.receipt-theme-thermal .receipt-totals div span{color:#111;font-size:10px}.receipt-theme-thermal .receipt-totals{font:700 11px 'IBM Plex Mono',monospace}.receipt-theme-thermal .receipt-totals .receipt-grand-total{border-color:#111;font-size:15px}.receipt-theme-thermal .receipt-paper-footer{border-top:2px dashed #222}.receipt-theme-thermal .receipt-paper-footer p,.receipt-theme-thermal .receipt-barcode-text{color:#111;font-size:9px}
+  .receipt-theme-retail{max-width:430px;padding:34px 32px 26px;border:0;border-radius:0;background:#fff;color:#111;font-family:'Arial Narrow',Arial,sans-serif}.receipt-theme-retail .receipt-paper-topline{height:8px;margin:-34px -32px 26px;background:#111}.receipt-theme-retail .receipt-paper-header{display:block;text-align:center;border-color:#111}.receipt-theme-retail .receipt-brand-mark{margin:0 auto 12px;border-radius:50%;background:#111}.receipt-theme-retail .receipt-brand-copy h2{font-size:31px}.receipt-theme-retail .receipt-brand-copy p{color:#222;font-size:12px}.receipt-theme-retail .receipt-heading{margin-top:16px;text-align:center}.receipt-theme-retail .receipt-meta{grid-template-columns:repeat(2,1fr);border-color:#111}.receipt-theme-retail .receipt-meta small,.receipt-theme-retail .receipt-meta strong{color:#111;font-size:11px}.receipt-theme-retail .receipt-items{font-size:12px}.receipt-theme-retail .receipt-items th{color:#111;font-size:10px}.receipt-theme-retail .receipt-items td strong{font-size:12px}.receipt-theme-retail .receipt-bottom-grid{display:block;border-color:#111}.receipt-theme-retail .receipt-totals{margin-left:auto;max-width:250px;font-size:12px}.receipt-theme-retail .receipt-notes p,.receipt-theme-retail .receipt-notes small,.receipt-theme-retail .receipt-totals div span{color:#111;font-size:11px}.receipt-theme-retail .receipt-paper-footer{border-color:#111}.receipt-theme-retail .receipt-paper-footer p,.receipt-theme-retail .receipt-barcode-text{color:#111;font-size:10px}
+  .receipt-theme-delivery{max-width:650px;padding:30px;border:2px solid #1c4e8c;border-radius:5px;background:#fff;color:#132a48}.receipt-theme-delivery .receipt-paper-topline{height:9px;margin:-30px -30px 24px;background:#164980}.receipt-theme-delivery .receipt-document-label{color:#164980}.receipt-theme-delivery .receipt-paper-header{border-color:#7796bb}.receipt-theme-delivery .receipt-brand-mark{border-radius:6px;background:#164980;color:#fff}.receipt-theme-delivery .receipt-brand-copy h2{color:#164980;font-size:27px}.receipt-theme-delivery .receipt-brand-copy p{color:#354e6d;font-size:12px}.receipt-theme-delivery .receipt-heading span,.receipt-theme-delivery .receipt-meta small,.receipt-theme-delivery .receipt-items th,.receipt-theme-delivery .receipt-notes small{color:#164980}.receipt-theme-delivery .receipt-meta{border-color:#7796bb}.receipt-theme-delivery .receipt-meta small{font-size:10px}.receipt-theme-delivery .receipt-meta strong{font-size:12px}.receipt-theme-delivery .receipt-items-wrap{border:1px solid #7796bb;margin-top:16px;padding:0}.receipt-theme-delivery .receipt-items th{padding:10px;background:#164980;color:#fff;font-size:10px}.receipt-theme-delivery .receipt-items td{padding:10px;border-color:#b9cadc}.receipt-theme-delivery .receipt-bottom-grid{border-color:#7796bb}.receipt-theme-delivery .receipt-notes p,.receipt-theme-delivery .receipt-totals div span{color:#354e6d}.receipt-theme-delivery .receipt-totals .receipt-grand-total{padding:10px;background:#164980;color:#fff;border:0}.receipt-theme-delivery .receipt-paper-footer{border-color:#7796bb}
+  .receipt-theme-invoice{max-width:700px;padding:32px 34px;border:1px solid #8797a7;border-radius:0;background:#fff;color:#17293b}.receipt-theme-invoice .receipt-paper-topline{height:5px;margin:-32px -34px 24px;background:#315d8d}.receipt-theme-invoice .receipt-document-label{color:#315d8d}.receipt-theme-invoice .receipt-brand-mark{border-radius:0;background:#315d8d;color:#fff}.receipt-theme-invoice .receipt-brand-copy h2{color:#244f7d;font:800 28px Arial,sans-serif}.receipt-theme-invoice .receipt-brand-copy p{color:#43576b;font-size:12px}.receipt-theme-invoice .receipt-heading span,.receipt-theme-invoice .receipt-meta small,.receipt-theme-invoice .receipt-items th,.receipt-theme-invoice .receipt-notes small{color:#315d8d}.receipt-theme-invoice .receipt-meta{padding:14px;border:1px solid #9eb0c2;background:#f3f7fa}.receipt-theme-invoice .receipt-meta strong{font-size:12px}.receipt-theme-invoice .receipt-items{border:1px solid #7992ab}.receipt-theme-invoice .receipt-items th{padding:10px;background:#315d8d;color:#fff}.receipt-theme-invoice .receipt-items td{padding:11px 9px;border-color:#b7c5d2}.receipt-theme-invoice .receipt-bottom-grid{border-color:#7992ab}.receipt-theme-invoice .receipt-totals .receipt-grand-total{padding:10px;background:#315d8d;color:#fff;border:0}.receipt-theme-invoice .receipt-paper-footer{border-color:#7992ab}
+  @media(max-width:680px){.receipt-output-style-picker{grid-template-columns:repeat(2,minmax(0,1fr));padding:12px}.receipt-output-style{font-size:9px}.receipt-theme-thermal,.receipt-theme-retail,.receipt-theme-delivery,.receipt-theme-invoice{padding:20px 12px}.receipt-theme-delivery .receipt-paper-topline,.receipt-theme-invoice .receipt-paper-topline{margin:-20px -12px 18px}.receipt-theme-retail .receipt-paper-topline{margin:-20px -12px 18px}}
   @media print{body *{visibility:hidden !important}#receipt-preview-stage,#receipt-preview-stage *{visibility:visible !important}#receipt-preview-stage{position:absolute;left:0;top:0;width:100%;padding:0;background:#fff}.receipt-paper{width:100%;max-width:680px;margin:0 auto;box-shadow:none !important}.receipt-preview-panel{border:0;box-shadow:none;background:#fff}.receipt-preview-toolbar{display:none !important}}
 </style>
 <style id="trackport-luxury-header">
@@ -12592,6 +13189,141 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     #app{overflow-x:hidden;}
   }
 </style>
+<style id="trackport-light-luxury-pass">
+  /* Balanced premium finish: keep the original Renev glass system, then add
+     a restrained metal highlight without replacing the visual direction. */
+  :root{
+    --renev-lime:#C8FF2E;
+    --renev-lime-soft:rgba(200,255,46,.14);
+    --renev-night:#050807;
+    --renev-night-2:#0B120D;
+    --renev-panel:rgba(18,28,21,.78);
+    --renev-panel-strong:rgba(23,35,26,.94);
+    --renev-cream:#F5F7EF;
+    --renev-muted:#AAB6A9;
+    --primary:var(--renev-lime);
+    --primary-light:var(--renev-lime-soft);
+    --primary-glow:rgba(200,255,46,.30);
+    --card:var(--renev-panel);
+    --bg:var(--renev-night);
+    --dark:var(--renev-night);
+    --ink:var(--renev-cream);
+    --muted:var(--renev-muted);
+    --border:rgba(255,255,255,.14);
+    --glass-border:rgba(255,255,255,.18);
+    --gold:var(--renev-lime);
+    --gold-soft:var(--renev-lime-soft);
+  }
+  html,body{
+    background:
+      radial-gradient(900px 600px at -6% 26%,rgba(95,146,28,.22),transparent 64%),
+      radial-gradient(720px 520px at 102% 8%,rgba(14,72,49,.32),transparent 66%),
+      var(--renev-night) !important;
+  }
+  body{
+    background-attachment:scroll;
+    -webkit-font-smoothing:antialiased;
+  }
+  body:before{opacity:.46 !important;}
+  #tp-aura{opacity:1 !important;}
+  #tp-aura .orb{
+    mix-blend-mode:screen !important;
+  }
+  .hero:after{
+    opacity:.95 !important;
+    animation:renevHeroOrb 9s ease-in-out infinite !important;
+  }
+  .navbar,
+  .card,.panel,.glass,.lux-card,.creation-cta,.modal-box,.sheet,.box,
+  .tracking-app-card,.tracking-map-card,.flight-history-card,
+  .flight-overview-card,.flight-share-card,.wizard-card,.auth-card,
+  .track-box,.track-summary,.tracking-map{
+    box-shadow:
+      0 22px 60px rgba(0,0,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.08) !important;
+    -webkit-backdrop-filter:blur(20px) saturate(135%) !important;
+    backdrop-filter:blur(20px) saturate(135%) !important;
+  }
+  .navbar{
+    border-color:rgba(182,255,54,.24) !important;
+    background:linear-gradient(135deg,rgba(27,49,32,.96),rgba(6,14,10,.94)) !important;
+    box-shadow:
+      0 16px 42px rgba(0,0,0,.42),
+      0 0 28px rgba(182,255,54,.10),
+      inset 0 1px 0 rgba(255,255,255,.18),
+      inset 0 -14px 26px rgba(0,0,0,.24) !important;
+  }
+  .navbar::before{
+    content:"";
+    position:absolute;
+    left:12%;right:12%;top:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(216,183,119,.68),transparent);
+    pointer-events:none;
+  }
+  .navbar .nav-link:hover,
+  .navbar .nav-link.active,
+  .footer-col h5,
+  .f-icon,.tile-icon,.stat-icon,.icon-panel,
+  .kicker,.eyebrow-route,.cta-kicker{
+    color:#B6FF36 !important;
+  }
+  .navbar .nav-link:after{background:#B6FF36 !important;}
+  .btn.btn-primary,.btn.btn-accent,.btn.btn-ghost,.btn.btn-outline-light,
+  .license-generate-btn,.btn.btn-featured{
+    min-height:48px;
+    border:2px solid rgba(174,255,47,.92) !important;
+    background:linear-gradient(135deg,rgba(16,28,22,.64),rgba(7,12,11,.82)) !important;
+    color:#F8FFF9 !important;
+    box-shadow:
+      0 10px 28px rgba(0,0,0,.34),
+      0 0 0 1px rgba(174,255,47,.10) inset,
+      inset 0 1px 0 rgba(255,255,255,.12),
+      0 0 18px rgba(174,255,47,.08) !important;
+  }
+  .btn.btn-primary:hover,.btn.btn-accent:hover,.btn.btn-ghost:hover,
+  .btn.btn-outline-light:hover,.license-generate-btn:hover,.btn.btn-featured:hover{
+    background:linear-gradient(135deg,rgba(28,48,35,.78),rgba(9,17,14,.92)) !important;
+    border-color:#B6FF36 !important;
+    box-shadow:
+      0 16px 38px rgba(0,0,0,.42),
+      0 0 0 1px rgba(182,255,54,.18) inset,
+      inset 0 1px 0 rgba(255,255,255,.18),
+      0 0 24px rgba(174,255,47,.20) !important;
+  }
+  .card:hover,.panel:hover,.tile:hover,.stat-card:hover,.creation-cta:hover{
+    border-color:rgba(200,255,46,.48) !important;
+    box-shadow:0 30px 72px rgba(0,0,0,.42),0 0 28px rgba(200,255,46,.07),inset 0 1px 0 rgba(255,255,255,.12) !important;
+  }
+  .stat-val,.receipt-result-total small{color:#C8FF2E !important;}
+  .cta-band{
+    background:
+      radial-gradient(600px 220px at 50% 0%,rgba(200,255,46,.12),transparent 72%),
+      linear-gradient(145deg,#17271A,#0B130D) !important;
+    border-color:rgba(200,255,46,.20) !important;
+  }
+  @media (pointer:coarse), (max-width:760px){
+    #tp-aura .orb,.hero:after{
+      animation:none !important;
+      will-change:auto !important;
+    }
+    #tp-aura .orb{
+      filter:none !important;
+      mix-blend-mode:normal !important;
+    }
+    .navbar,
+    .card,.panel,.glass,.lux-card,.creation-cta,.modal-box,.sheet,.box,
+    .tracking-app-card,.tracking-map-card,.flight-history-card,
+    .flight-overview-card,.flight-share-card,.wizard-card,.auth-card,
+    .track-box,.track-summary,.tracking-map{
+      -webkit-backdrop-filter:none !important;
+      backdrop-filter:none !important;
+      box-shadow:0 10px 24px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.07) !important;
+    }
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*:before,*:after{animation-duration:.001ms !important;transition-duration:.001ms !important;}
+  }
+</style>
 <script id="trackport-ios-navigation-cleanup">
   // A page restored from Safari's back-forward cache must never retain the
   // transient loader from the page it left.
@@ -12599,5 +13331,128 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     if(typeof hidePageLoader === 'function') hidePageLoader();
   }, {passive:true});
 </script>
+<style id="trackport-creation-type-enhancements">
+  /* Higher-contrast, larger type across every generated ID-card variant. */
+  .license-card{color:#030712 !important;}
+  .license-card-title{font-size:30px !important;color:#0b1220 !important;}
+  .license-card-usa{font-size:22px !important;color:#0b1220 !important;}
+  .license-output-field{font-size:27px !important;color:#020617 !important;}
+  .license-output-field .label{font-size:18px !important;color:#1e293b !important;}
+  .license-output-address{font-size:23px !important;color:#020617 !important;}
+  .license-output-address .label{font-size:18px !important;color:#1e293b !important;}
+  .license-output-stat .label,.license-output-rest .label{font-size:17px !important;color:#1e293b !important;}
+  .license-output-stat .value,.license-output-rest .value{font-size:22px !important;color:#020617 !important;}
+  .license-output-serial{font-size:20px !important;color:#020617 !important;}
+  .license-serial-caption{font-size:12px !important;color:#334155 !important;opacity:.9 !important;}
+  .pa-license-card .pa-header-title{font-size:24px !important;color:#102a5e !important;}
+  .pa-license-card .pa-header-visit{font-size:12px !important;color:#102a5e !important;}
+  .pa-license-card .pa-field-label,.pa-license-card .pa-field-label-small{font-size:12px !important;color:#18356d !important;}
+  .pa-license-card .pa-field-value{font-size:20px !important;color:#030712 !important;}
+  .pa-license-card .pa-field-value-lg{font-size:26px !important;}
+  .pa-license-card .pa-field-value-sm{font-size:17px !important;}
+  .pa-license-card .pa-field-value-xs{font-size:15px !important;}
+  .nj-license-card .nj-label{font-size:15px !important;color:#1e40af !important;}
+  .nj-license-card .nj-value{font-size:18px !important;color:#030712 !important;}
+  .nj-license-card .nj-heavy{font-size:20px !important;color:#030712 !important;}
+  .tx-card .tx-doctitle{font-size:21px !important;color:#0f172a !important;}
+  .tx-card .tx-class,.tx-card .tx-field .tag{font-size:12px !important;color:#334155 !important;}
+  .tx-card .tx-field .val{font-size:20px !important;color:#020617 !important;}
+  .tx-card .tx-state{font-size:50px !important;}
+
+  /* Larger, darker military mockup typography without changing the card geometry. */
+  .mil-dept{font-size:14px !important;color:#000 !important;}
+  .mil-branch{font-size:19px !important;color:#000 !important;}
+  .mil-unit{font-size:17px !important;color:#000 !important;}
+  .mil-duty{font-size:22px !important;color:#000 !important;}
+  .mil-namebar h1{font-size:28px !important;color:#000 !important;}
+  .mil-lbl{font-size:15px !important;color:#000 !important;}
+  .mil-val{font-size:27px !important;color:#000 !important;}
+  .mil-date-lbl{font-size:13px !important;color:#000 !important;}
+  .mil-date-val{font-size:19px !important;color:#000 !important;}
+  .mil-footer p{font-size:14px !important;color:#000 !important;}
+
+  /* More legible receipt text for every light and dark receipt family. */
+  .receipt-paper:not(.receipt-theme-midnight){color:#080b0a !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-brand-copy h2{font-size:clamp(22px,4vw,30px) !important;color:#080b0a !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-brand-copy p{font-size:clamp(12px,2.8vw,20px) !important;color:#1f2a26 !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-heading span{font-size:clamp(13px,2.8vw,20px) !important;color:#18221f !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-heading strong{font-size:clamp(15px,3vw,23px) !important;color:#080b0a !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-meta small,.receipt-paper:not(.receipt-theme-midnight) .receipt-notes small{font-size:clamp(11px,2.4vw,18px) !important;color:#1f2a26 !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-meta strong{font-size:clamp(13px,2.7vw,20px) !important;color:#080b0a !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-items{font-size:clamp(14px,2.7vw,21px) !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-items th{font-size:clamp(10px,2.3vw,18px) !important;color:#17211e !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-items td strong{font-size:clamp(14px,2.8vw,21px) !important;color:#080b0a !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-notes p{font-size:clamp(13px,2.6vw,20px) !important;color:#1f2a26 !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-totals{font-size:clamp(14px,2.7vw,21px) !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-totals div span{color:#1f2a26 !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-totals .receipt-grand-total{font-size:clamp(17px,3.2vw,25px) !important;color:#080b0a !important;}
+  .receipt-paper:not(.receipt-theme-midnight) .receipt-paper-footer p{font-size:clamp(11px,2.3vw,18px) !important;color:#1f2a26 !important;}
+  .receipt-theme-midnight .receipt-brand-copy h2{font-size:clamp(22px,4vw,30px) !important;color:#fff !important;}
+  .receipt-theme-midnight .receipt-brand-copy p,.receipt-theme-midnight .receipt-notes p{font-size:clamp(12px,2.8vw,20px) !important;color:#f1f5f9 !important;}
+  .receipt-theme-midnight .receipt-heading span,.receipt-theme-midnight .receipt-meta small,.receipt-theme-midnight .receipt-notes small{font-size:clamp(13px,2.8vw,20px) !important;color:#e2e8f0 !important;}
+  .receipt-theme-midnight .receipt-heading strong,.receipt-theme-midnight .receipt-meta strong{font-size:clamp(15px,3vw,23px) !important;color:#fff !important;}
+  .receipt-theme-midnight .receipt-items{font-size:clamp(14px,2.7vw,21px) !important;}
+  .receipt-theme-midnight .receipt-items th{font-size:clamp(10px,2.3vw,18px) !important;color:#e2e8f0 !important;}
+  .receipt-theme-midnight .receipt-items td strong{font-size:clamp(14px,2.8vw,21px) !important;color:#fff !important;}
+  .receipt-theme-midnight .receipt-totals{font-size:clamp(14px,2.7vw,21px) !important;}
+  .receipt-theme-midnight .receipt-totals div span{color:#e2e8f0 !important;}
+  .receipt-theme-midnight .receipt-totals .receipt-grand-total{font-size:clamp(17px,3.2vw,25px) !important;color:#fff !important;}
+  .receipt-theme-midnight .receipt-paper-footer p{font-size:clamp(11px,2.3vw,18px) !important;color:#e2e8f0 !important;}
+
+  /* Additional neutral receipt directions inspired by common retail formats. */
+  .receipt-theme-club{max-width:440px;padding:34px 30px 26px;border:0;border-radius:0;background:#fff;color:#0b0d0c;font-family:'IBM Plex Mono',monospace;box-shadow:0 18px 42px rgba(0,0,0,.24);}
+  .receipt-theme-club .receipt-paper-topline{height:6px;margin:-34px -30px 25px;background:#1d4d3b;}
+  .receipt-theme-club .receipt-paper-header{display:block;text-align:center;border-bottom:2px dashed #1d4d3b;}
+  .receipt-theme-club .receipt-brand-mark{margin:0 auto 12px;border-radius:50%;background:#1d4d3b;color:#fff;}
+  .receipt-theme-club .receipt-brand-copy h2{font-family:Inter,Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;}
+  .receipt-theme-club .receipt-brand-copy p,.receipt-theme-club .receipt-heading span,.receipt-theme-club .receipt-heading strong{color:#10271f;}
+  .receipt-theme-club .receipt-heading{margin-top:16px;text-align:center;}
+  .receipt-theme-club .receipt-meta{grid-template-columns:1fr 1fr;border-bottom:2px dashed #1d4d3b;}
+  .receipt-theme-club .receipt-items th{color:#10271f;border-bottom:1px solid #1d4d3b;}
+  .receipt-theme-club .receipt-bottom-grid{display:block;border-top:2px dashed #1d4d3b;}
+  .receipt-theme-club .receipt-notes{margin-bottom:15px;}
+  .receipt-theme-club .receipt-paper-footer{border-top:2px dashed #1d4d3b;}
+
+  .receipt-theme-value{max-width:450px;padding:32px 28px 24px;border:2px solid #202020;border-radius:0;background:#fff;color:#080808;font-family:Arial,sans-serif;box-shadow:10px 12px 0 rgba(0,0,0,.12);}
+  .receipt-theme-value .receipt-paper-topline{height:8px;margin:-32px -28px 23px;background:#202020;}
+  .receipt-theme-value .receipt-paper-header{display:block;text-align:center;border-bottom:2px solid #202020;}
+  .receipt-theme-value .receipt-brand-mark{margin:0 auto 10px;border-radius:4px;background:#202020;color:#fff;}
+  .receipt-theme-value .receipt-brand-copy h2{font-size:clamp(24px,4.2vw,34px) !important;letter-spacing:-.05em;}
+  .receipt-theme-value .receipt-heading{margin-top:14px;text-align:center;}
+  .receipt-theme-value .receipt-meta{grid-template-columns:repeat(2,1fr);border-color:#202020;}
+  .receipt-theme-value .receipt-items th{color:#080808;border-bottom:2px solid #202020;}
+  .receipt-theme-value .receipt-items td{border-color:#c9c9c9;}
+  .receipt-theme-value .receipt-bottom-grid{display:block;border-color:#202020;}
+  .receipt-theme-value .receipt-totals{margin-left:auto;max-width:255px;}
+  .receipt-theme-value .receipt-paper-footer{border-color:#202020;}
+
+  .receipt-theme-hardware{max-width:600px;padding:31px 32px 25px;border:1px solid #a85a1f;border-radius:2px;background:#fffdf7;color:#25170e;font-family:Arial,sans-serif;box-shadow:0 16px 34px rgba(73,39,11,.2);}
+  .receipt-theme-hardware .receipt-paper-topline{height:9px;margin:-31px -32px 23px;background:#c66a20;}
+  .receipt-theme-hardware .receipt-brand-mark{border-radius:2px;background:#25170e;color:#f7d59c;}
+  .receipt-theme-hardware .receipt-brand-copy h2{color:#632d10 !important;}
+  .receipt-theme-hardware .receipt-brand-copy p,.receipt-theme-hardware .receipt-notes p,.receipt-theme-hardware .receipt-totals div span{color:#5b4537 !important;}
+  .receipt-theme-hardware .receipt-heading span,.receipt-theme-hardware .receipt-meta small,.receipt-theme-hardware .receipt-items th,.receipt-theme-hardware .receipt-notes small{color:#8b4316 !important;}
+  .receipt-theme-hardware .receipt-paper-header,.receipt-theme-hardware .receipt-meta,.receipt-theme-hardware .receipt-bottom-grid,.receipt-theme-hardware .receipt-paper-footer{border-color:#cf9a6b;}
+  .receipt-theme-hardware .receipt-items td{border-color:#ead1ba;}
+  .receipt-theme-hardware .receipt-totals .receipt-grand-total{border-color:#632d10;}
+
+  .receipt-theme-department{max-width:480px;padding:35px 32px 27px;border:1px solid #242424;border-radius:3px;background:#fdfbf7;color:#111;font-family:Arial,sans-serif;box-shadow:0 18px 40px rgba(0,0,0,.2);}
+  .receipt-theme-department .receipt-paper-topline{height:2px;margin:-35px -32px 27px;background:#242424;}
+  .receipt-theme-department .receipt-paper-header{display:block;text-align:center;border-bottom:1px solid #242424;}
+  .receipt-theme-department .receipt-brand-mark{margin:0 auto 13px;border-radius:0;background:#242424;color:#fff;}
+  .receipt-theme-department .receipt-brand-copy h2{font-family:Georgia,serif;font-weight:700 !important;letter-spacing:.02em;}
+  .receipt-theme-department .receipt-heading{margin-top:15px;text-align:center;}
+  .receipt-theme-department .receipt-meta{grid-template-columns:repeat(2,1fr);border-color:#242424;}
+  .receipt-theme-department .receipt-items th{color:#242424;border-bottom:1px solid #242424;}
+  .receipt-theme-department .receipt-items td{border-color:#d8d2ca;}
+  .receipt-theme-department .receipt-bottom-grid{display:block;border-color:#242424;}
+  .receipt-theme-department .receipt-totals{margin-left:auto;max-width:250px;}
+  .receipt-theme-department .receipt-paper-footer{border-color:#242424;}
+
+  @media(max-width:680px){
+    .receipt-theme-club,.receipt-theme-value,.receipt-theme-hardware,.receipt-theme-department{padding:22px 14px 18px;}
+    .receipt-theme-club .receipt-paper-topline,.receipt-theme-value .receipt-paper-topline,.receipt-theme-hardware .receipt-paper-topline,.receipt-theme-department .receipt-paper-topline{margin:-22px -14px 18px;}
+  }
+</style>
 </body>
 </html>
