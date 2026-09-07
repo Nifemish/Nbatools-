@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.8.1">
+<meta name="trackport-version" content="1.8.2">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -4312,8 +4312,8 @@ const MILITARY_BRANCHES = {
   Navy:{ name:'Navy', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Seal_of_the_United_States_Department_of_the_Navy.svg/500px-Seal_of_the_United_States_Department_of_the_Navy.svg.png' },
   Marines:{ name:'Marine Corps', seal:'https://i.postimg.cc/mP1whSrD/Background-Eraser-20260907-053335818.png' },
   AirForce:{ name:'Air Force', seal:'https://i.postimg.cc/GH5Kcfb8/Seal-of-the-United-States-Department-of-the-Air-Force-svg.png' },
-  CoastGuard:{ name:'Coast Guard', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Seal_of_the_United_States_Coast_Guard.svg/500px-Seal_of_the_United_States_Coast_Guard.svg.png' },
-  SpaceForce:{ name:'Space Force', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Seal_of_the_United_States_Space_Force.svg/500px-Seal_of_the_United_States_Space_Force.svg.png' }
+  CoastGuard:{ name:'Coast Guard', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Seal_of_the_United_States_Coast_Guard.svg/500px-Seal_of_the_United_States_Coast_Guard.svg.png' },
+  SpaceForce:{ name:'Space Force', seal:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/29/Seal_of_the_United_States_Space_Force.svg/500px-Seal_of_the_United_States_Space_Force.svg.png' }
 };
 const MILITARY_TABLE_SURFACES = {
   wood:{ name:'Wood Desk', image:'https://i.postimg.cc/dL7Xmwx9/IMG-20260907-045724.jpg' },
@@ -4667,6 +4667,29 @@ function waitForRenderedImages(root){
   return Promise.all([...imageReady, fontsReady]);
 }
 
+async function militarySealExportSource(sealEl){
+  if(!sealEl) return '';
+  const source = sealEl.currentSrc || sealEl.getAttribute('src') || '';
+  if(!source || source.startsWith('data:')) return source;
+  /* Convert the chosen seal to a data URL when its host permits CORS. This
+     makes the html2canvas clone independent from the live image request. If
+     the host does not permit CORS, keep the original source instead of
+     substituting a different seal. */
+  try{
+    const response = await fetch(source, { mode:'cors', credentials:'omit', cache:'force-cache' });
+    if(!response.ok) return source;
+    const blob = await response.blob();
+    return await new Promise(resolve=>{
+      const reader = new FileReader();
+      reader.onload = ()=>resolve(typeof reader.result === 'string' ? reader.result : source);
+      reader.onerror = ()=>resolve(source);
+      reader.readAsDataURL(blob);
+    });
+  }catch(_error){
+    return source;
+  }
+}
+
 async function downloadMilitaryIdScene(){
   const stage = document.getElementById('mil-stage');
   const target = stage;
@@ -4674,6 +4697,8 @@ async function downloadMilitaryIdScene(){
   try{
     showToast('Rendering the final ID card…');
     await waitForRenderedImages(target);
+    const selectedSeal = target.querySelector('#mil-seal');
+    const exportSealSource = await militarySealExportSource(selectedSeal);
     const html2canvas = await ensureHtml2Canvas();
     const canvas = await html2canvas(target, {
       scale:2,
@@ -4682,13 +4707,16 @@ async function downloadMilitaryIdScene(){
       backgroundColor:null,
       logging:false,
       onclone: clonedDocument=>{
-        /* Remote branch-seal hosts can omit CORS headers. Keep the live
-           preview intact, but force the built-in branch badge into the
-           downloaded clone so the export never loses this required element. */
+        /* Keep the exact branch seal selected in the live preview. The
+           fallback badge is only a visual backup for a failed image load and
+           must never replace the selected seal in the downloaded card. */
         const clonedSeal = clonedDocument.getElementById('mil-seal');
         const clonedFallback = clonedDocument.getElementById('mil-seal-fallback');
-        if(clonedSeal) clonedSeal.style.display = 'none';
-        if(clonedFallback) clonedFallback.style.display = 'flex';
+        if(clonedSeal){
+          clonedSeal.style.display = 'block';
+          if(exportSealSource) clonedSeal.src = exportSealSource;
+        }
+        if(clonedFallback) clonedFallback.style.display = 'none';
       }
     });
     const link = document.createElement('a');
