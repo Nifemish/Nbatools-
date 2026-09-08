@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  /* TrackPort default theme: Black & Gold (applied before first paint to avoid a flash). */
+  (function(){
+    var KEY='trackport.theme', THEMES=['lime','gold','ocean'], name='gold';
+    try{ var v=localStorage.getItem(KEY); if(THEMES.indexOf(v)>-1){ name=v; } else { localStorage.setItem(KEY,'gold'); } }catch(e){}
+    var el=document.documentElement;
+    THEMES.forEach(function(t){ el.classList.remove('tp-theme-'+t); });
+    if(name!=='lime') el.classList.add('tp-theme-'+name);
+    el.setAttribute('data-tp-theme', name);
+  })();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>TrackPort — Shipment &amp; Flight Tracking, One Place</title>
@@ -11,13 +22,13 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-<meta name="trackport-version" content="1.9.18">
+  <meta name="trackport-version" content="1.10.1">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
-<meta name="theme-color" content="#0A0B12">
+<meta name="theme-color" content="#08090F">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Cinzel:wght@900&family=Graduate&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Courier+Prime:wght@400;700&family=Dancing+Script:wght@600&family=Great+Vibes&family=Special+Elite&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -353,28 +364,28 @@
   }
   .tp-page-loader.is-active{opacity:1; visibility:visible;}
   .tp-loader-mark{
-    position:relative; width:104px; height:104px; display:grid; place-items:center;
+    position:relative; width:132px; height:132px; display:grid; place-items:center;
     color:#C8FF2E;
     animation:tpLoaderBreath 2.4s var(--ease) infinite;
   }
   .tp-loader-mark svg{display:block; width:100%; height:100%; overflow:visible;}
   .tp-loader-ring{fill:none; stroke:currentColor; vector-effect:non-scaling-stroke;}
-  .tp-loader-track{stroke:rgba(200,255,46,.15); stroke-width:1;}
-  .tp-loader-track--inner{stroke:rgba(223,255,133,.11); stroke-width:1;}
-  .tp-loader-arc{stroke-width:2.8; stroke-linecap:round; stroke-dasharray:34 16 10 82; transform-origin:60px 60px;}
+  .tp-loader-track{stroke:rgba(200,255,46,.15); stroke-width:1.4;}
+  .tp-loader-track--inner{stroke:rgba(223,255,133,.11); stroke-width:1.2;}
+  .tp-loader-arc{stroke-width:4; stroke-linecap:round; stroke-dasharray:34 16 10 82; transform-origin:60px 60px;}
   .tp-loader-arc--outer{animation:tpLoaderSpin 1.7s linear infinite;}
   .tp-loader-arc--inner{
-    stroke:#E5FF91; stroke-width:1.9; stroke-dasharray:18 52 7 96;
+    stroke:#E5FF91; stroke-width:2.8; stroke-dasharray:18 52 7 96;
     transform-origin:60px 60px; animation:tpLoaderSpinReverse 1.15s linear infinite;
   }
   .tp-loader-highlight{
-    fill:none; stroke:#F6FFD1; stroke-width:1.4; stroke-linecap:round;
+    fill:none; stroke:#F6FFD1; stroke-width:2.2; stroke-linecap:round;
     stroke-dasharray:24 216; stroke-dashoffset:0; transform-origin:60px 60px;
     animation:tpLoaderSweep 1.35s linear infinite;
   }
   .tp-loader-core{fill:currentColor; transform-origin:60px 60px; animation:tpLoaderPulse 1.35s ease-in-out infinite;}
   .tp-loader-core-ring{
-    fill:none; stroke:rgba(229,255,145,.75); stroke-width:1;
+    fill:none; stroke:rgba(229,255,145,.75); stroke-width:1.4;
     transform-origin:60px 60px; animation:tpLoaderPulse 1.35s ease-in-out infinite reverse;
   }
   .tp-loader-orbit{
@@ -382,12 +393,12 @@
     animation:tpLoaderSpin 2.8s linear infinite;
   }
   .tp-loader-orbit::after{
-    content:""; position:absolute; top:5px; left:50%; width:3px; height:3px;
-    border-radius:50%; background:#F6FFD1; box-shadow:0 0 10px 2px rgba(200,255,46,.72);
+    content:""; position:absolute; top:4px; left:50%; width:4px; height:4px;
+    border-radius:50%; background:#F6FFD1; box-shadow:0 0 12px 3px rgba(200,255,46,.72);
     transform:translateX(-50%);
   }
   @media (max-width:480px){
-    .tp-loader-mark{width:88px; height:88px;}
+    .tp-loader-mark{width:112px; height:112px;}
   }
   @media (prefers-reduced-motion:reduce){
     .tp-loader-mark,.tp-loader-arc--outer,.tp-loader-arc--inner,.tp-loader-highlight,
@@ -2085,7 +2096,13 @@ const SVG_ICONS = {
   truck: '<path d="M2 6.5h10.5v8.5H2z"></path><path d="M12.5 9.5h4l3 3v2.5h-7z"></path><circle cx="6" cy="17.5" r="1.9"></circle><circle cx="16.5" cy="17.5" r="1.9"></circle><path d="M7.9 17.5h6.7"></path>',
   checkc: '<circle cx="12" cy="12" r="9"></circle><polyline points="8 12.2 11 15 16 9.5"></polyline>',
   plane: '<path d="M21 4.5 3.5 11.2l6.1 2.2 2.2 6.1z"></path><path d="M9.6 13.4 21 4.5"></path>',
-  package: '<path d="M20.5 7.8 12 3.2 3.5 7.8v8.4L12 20.8l8.5-4.6z"></path><path d="M3.7 7.9 12 12.4l8.3-4.5"></path><path d="M12 12.4v8.4"></path>'
+  package: '<path d="M20.5 7.8 12 3.2 3.5 7.8v8.4L12 20.8l8.5-4.6z"></path><path d="M3.7 7.9 12 12.4l8.3-4.5"></path><path d="M12 12.4v8.4"></path>',
+  search: '<circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 4.6 4.6"></path>',
+  'credit-card': '<rect x="3" y="5.5" width="18" height="13" rx="2"></rect><path d="M3 9.5h18"></path><path d="M7 14h3.5"></path>',
+  file: '<path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4"></path><path d="M9 12h6M9 15.5h6"></path>',
+  'file-text': '<path d="M6 3.5h8l4 4v13H6z"></path><path d="M14 3.5v4h4"></path><path d="M9 12h6M9 15.5h4"></path>',
+  dollar: '<circle cx="12" cy="12" r="8.5"></circle><path d="M14.8 8.8c-.6-.6-1.5-.9-2.6-.9-1.5 0-2.5.7-2.5 1.8 0 2.8 5.4 1.2 5.4 4.1 0 1.1-1 1.9-2.6 1.9-1.1 0-2.1-.4-2.8-1.1"></path><path d="M12 6.1v11.8"></path>',
+  arrow: '<path d="M4 12h15"></path><path d="m13 6 6 6-6 6"></path>'
 };
 function svgIcon(name, cls){
   const body = SVG_ICONS[name];
@@ -3835,13 +3852,13 @@ function historySummaryCta({href, iconName, kicker, title, count, singular, plur
     ? `${savedText} · Last saved ${fmtDate(latestAt)}`
     : `No ${plural} yet · Open to get started`;
   return `<a href="${href}" class="creation-cta history-cta ${className||''}">
-    <span class="cta-icon">${icon(iconName)}</span>
+    <span class="cta-icon luxury-icon">${svgIcon(iconName, 'luxury-svg-icon')}</span>
     <span class="cta-copy">
       <span class="cta-kicker">${kicker}</span>
       <span class="cta-title">${title}</span>
       <span class="cta-count">${detail}</span>
     </span>
-    <span class="cta-arrow">${icon('arrow')}</span>
+    <span class="cta-arrow luxury-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
   </a>`;
 }
 
@@ -3973,38 +3990,38 @@ function pageDashboard(){
            <h3 id="service-showcase-title">Explore TrackPort services</h3>
            <p class="grouped-history-intro">Open any workspace to see what TrackPort can help you create, organize, or track.</p>
          </div>
-         <a href="#/create" class="service-showcase-view-all">View all ${icon('arrow')}</a>
+         <a href="#/create" class="service-showcase-view-all">View all ${svgIcon('arrow', 'luxury-svg-icon')}</a>
        </div>
        <div class="service-showcase-grid">
          <a href="#/tracking" class="service-showcase-card service-showcase-tracking">
-           <span class="service-showcase-icon">${icon('search')}</span>
+           <span class="service-showcase-icon">${svgIcon('search', 'luxury-svg-icon')}</span>
            <span class="service-showcase-copy"><span class="service-showcase-kicker">Tracking tools</span><strong>Track shipments and flights</strong><small>Open the tracking workspace for a live status lookup.</small></span>
-           <span class="service-showcase-arrow">${icon('arrow')}</span>
+           <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-flight" class="service-showcase-card service-showcase-flight">
-           <span class="service-showcase-icon">${icon('plane')}</span>
+           <span class="service-showcase-icon">${svgIcon('plane', 'luxury-svg-icon')}</span>
            <span class="service-showcase-copy"><span class="service-showcase-kicker">Travel tools</span><strong>Create trackable flight tickets</strong><small>Build a flight record with route and journey details.</small></span>
-           <span class="service-showcase-arrow">${icon('arrow')}</span>
+           <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-shipment" class="service-showcase-card service-showcase-shipment">
-           <span class="service-showcase-icon">${icon('package')}</span>
+           <span class="service-showcase-icon">${svgIcon('package', 'luxury-svg-icon')}</span>
            <span class="service-showcase-copy"><span class="service-showcase-kicker">Delivery tools</span><strong>Create trackable shipping products</strong><small>Prepare shipment details and share a tracking page.</small></span>
-           <span class="service-showcase-arrow">${icon('arrow')}</span>
+           <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-id-card" class="service-showcase-card service-showcase-identity">
-           <span class="service-showcase-icon">${icon('credit-card')}</span>
+           <span class="service-showcase-icon">${svgIcon('credit-card', 'luxury-svg-icon')}</span>
            <span class="service-showcase-copy"><span class="service-showcase-kicker">Identity workspaces</span><strong>Explore ID card mockups</strong><small>Open clearly labeled driver's license and ID mockup tools.</small></span>
-           <span class="service-showcase-arrow">${icon('arrow')}</span>
+           <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-document" class="service-showcase-card service-showcase-document">
-           <span class="service-showcase-icon">${icon('file')}</span>
+           <span class="service-showcase-icon">${svgIcon('file', 'luxury-svg-icon')}</span>
            <span class="service-showcase-copy"><span class="service-showcase-kicker">Paperwork tools</span><strong>Create internal documents</strong><small>Open the document workspace for approved records and templates.</small></span>
-           <span class="service-showcase-arrow">${icon('arrow')}</span>
+           <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-receipt" class="service-showcase-card service-showcase-receipt">
-           <span class="service-showcase-icon">${icon('dollar')}</span>
+           <span class="service-showcase-icon">${svgIcon('dollar', 'luxury-svg-icon')}</span>
            <span class="service-showcase-copy"><span class="service-showcase-kicker">Records tools</span><strong>Create business receipts</strong><small>Build a polished receipt or expense record with a live preview.</small></span>
-           <span class="service-showcase-arrow">${icon('arrow')}</span>
+           <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
        </div>
      </section>
@@ -5032,7 +5049,7 @@ function pageProfile(){
           <button type="button" class="tp-theme-option" data-theme-choice="gold" aria-label="Use Black and Gold theme">
             <span class="tp-theme-swatch" style="background:linear-gradient(135deg,#08090F 0%,#161923 55%,#D4AF5A 100%);"></span>
             <span class="tp-theme-name">TrackPort Heritage</span>
-            <span class="tp-theme-desc">Original black &amp; gold luxury</span>
+            <span class="tp-theme-desc">Original black &amp; gold luxury &middot; Default</span>
             <span class="tp-theme-check">Active</span>
           </button>
           <button type="button" class="tp-theme-option" data-theme-choice="ocean">
@@ -10736,26 +10753,68 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 </style>
 
 <style id="trackport-version-update">
+  @keyframes tpUpdateIn{
+    from{opacity:0; transform:translateX(-50%) translateY(-14px) scale(.98);}
+    to{opacity:1; transform:translateX(-50%) translateY(0) scale(1);}
+  }
   #tp-app-update{
-    position:fixed; top:calc(var(--app-top-space) + env(safe-area-inset-top,0px) + 12px);
-    left:50%; width:min(calc(100% - 24px), 520px); transform:translateX(-50%);
-    z-index:10000; display:flex; align-items:center; justify-content:space-between; gap:16px;
-    padding:15px 16px 15px 18px; border:1px solid rgba(212,175,90,.4); border-radius:18px;
-    color:#fff; background:rgba(17,18,29,.96); box-shadow:0 18px 50px rgba(0,0,0,.5), 0 0 36px -12px rgba(212,175,90,.5);
-    -webkit-backdrop-filter:blur(22px) saturate(150%); backdrop-filter:blur(22px) saturate(150%);
+    position:fixed;
+    top:calc(var(--app-top-space) + env(safe-area-inset-top,0px) + 16px);
+    left:50%; width:min(calc(100% - 32px), 420px); transform:translateX(-50%);
+    max-height:min(64dvh, 520px);
+    z-index:10000; display:flex; flex-direction:column; gap:10px;
+    padding:14px 14px 12px; border:1px solid rgba(212,175,90,.35); border-radius:18px;
+    color:#fff; background:rgba(14,15,22,.96);
+    box-shadow:0 18px 50px rgba(0,0,0,.55), 0 0 36px -12px rgba(212,175,90,.35);
+    -webkit-backdrop-filter:blur(24px) saturate(160%); backdrop-filter:blur(24px) saturate(160%);
+    overflow:hidden;
+    animation:tpUpdateIn .45s var(--ease) both;
   }
   #tp-app-update[hidden]{display:none;}
-  #tp-app-update .tp-update-copy{min-width:0; display:grid; gap:4px;}
-  #tp-app-update strong{font-size:14px; letter-spacing:.01em;}
-  #tp-app-update span{font-size:12px; line-height:1.45; color:rgba(255,255,255,.7);}
-  #tp-app-update .tp-update-actions{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
-  #tp-app-update button{border:0; font:inherit; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;}
-  #tp-app-update .tp-update-now{padding:10px 13px; border-radius:10px; color:#11131d; background:var(--primary);}
-  #tp-app-update .tp-update-later{padding:8px 4px; color:rgba(255,255,255,.68); background:transparent;}
-  #tp-app-update button:disabled{cursor:wait; opacity:.65;}
+  #tp-app-update .tp-update-head{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  #tp-app-update .tp-update-copy{min-width:0; display:grid; gap:2px;}
+  #tp-app-update strong{font-size:13.5px; font-weight:700; letter-spacing:.01em;}
+  #tp-app-update .tp-update-copy span{font-size:11px; line-height:1.4; color:rgba(255,255,255,.65);}
+  #tp-app-update .tp-update-version{
+    flex:0 0 auto; padding:4px 9px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.07em;
+    text-transform:uppercase; color:#F1D79B; border:1px solid rgba(212,175,90,.40);
+    background:linear-gradient(145deg,rgba(212,175,90,.18),rgba(255,255,255,.04));
+  }
+  #tp-app-update .tp-update-scroll{
+    max-height:min(28dvh, 220px); overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding-right:4px; display:grid; gap:10px;
+  }
+  #tp-app-update .tp-update-scroll::-webkit-scrollbar{width:4px;}
+  #tp-app-update .tp-update-scroll::-webkit-scrollbar-thumb{background:rgba(212,175,90,.32); border-radius:99px;}
+  #tp-app-update .tp-update-group{display:grid; gap:5px;}
+  #tp-app-update .tp-update-group h4{
+    margin:0; font-size:10px; font-weight:800; letter-spacing:.11em; text-transform:uppercase; color:#D4AF5A;
+  }
+  #tp-app-update .tp-update-group ul{margin:0; padding:0; list-style:none; display:grid; gap:4px;}
+  #tp-app-update .tp-update-group li{
+    position:relative; padding-left:14px; font-size:11.5px; line-height:1.45; color:rgba(255,255,255,.78);
+  }
+  #tp-app-update .tp-update-group li::before{
+    content:''; position:absolute; left:1px; top:7px; width:4px; height:4px; border-radius:50%;
+    background:linear-gradient(145deg,#F1D79B,#D4AF5A);
+  }
+  #tp-app-update .tp-update-actions{
+    display:flex; flex-direction:column; align-items:stretch; gap:6px;
+    padding-top:10px; border-top:1px solid rgba(255,255,255,.06);
+  }
+  #tp-app-update .tp-update-actions .btn{
+    width:100%; justify-content:center; padding:10px 18px; font-size:11px; min-height:40px;
+  }
+  #tp-app-update .tp-update-later{
+    border:0; background:transparent; font:inherit; font-size:11px; font-weight:600; cursor:pointer;
+    padding:4px 4px; color:rgba(255,255,255,.55); transition:color .2s ease;
+  }
+  #tp-app-update .tp-update-later:hover{color:rgba(255,255,255,.85);}
+  #tp-app-update .btn:disabled,#tp-app-update button:disabled{cursor:wait; opacity:.65;}
   @media (max-width:560px){
-    #tp-app-update{align-items:flex-start; flex-direction:column; gap:12px; padding:15px;}
-    #tp-app-update .tp-update-actions{width:100%; justify-content:flex-end;}
+    #tp-app-update{padding:13px 13px 11px; gap:9px; width:min(calc(100% - 24px), 420px);}
+    #tp-app-update .tp-update-scroll{max-height:min(26dvh, 190px);}
+    #tp-app-update .tp-update-actions .btn{padding:9px 16px; min-height:38px;}
   }
 </style>
 
@@ -10953,6 +11012,61 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   };
   const isDismissed = version => Boolean(storageGet(sessionStorage, DISMISSED_VERSION_PREFIX + (version || 'latest')));
 
+  /* ---- Release notes shown inside the update banner ---- */
+  const RELEASE_NOTES = [
+    {
+      title: 'New features',
+      items: [
+        'Black & Gold is now the default TrackPort theme across every screen.',
+        'Redesigned update banner with a full, scrollable release breakdown.',
+        'Theme switcher marks the default theme and remembers your choice on every device.',
+        'Automatic tracking schedules can be paused and resumed without losing progress.',
+        'Route maps show stopovers, current position and live status history together.',
+        'Shareable flight and shipment receipts with printable portrait layouts.'
+      ]
+    },
+    {
+      title: 'Improvements & changes',
+      items: [
+        'Update button moved to the bottom of the banner and now matches the app CTA buttons.',
+        'Clearer update copy that names the exact version being installed.',
+        'Gold accents applied to icons, badges, buttons and card outlines for a consistent look.',
+        'Refined dashboard cards with tidier spacing and no blue tap flash on mobile.',
+        'Consistent toast messages for saving, updating and permission errors.',
+        'Better safe-area handling on notched phones and installed (PWA) windows.'
+      ]
+    },
+    {
+      title: 'Performance',
+      items: [
+        'Theme is applied before first paint, removing the start-up colour flash.',
+        'Faster version checks with no-store requests, so updates appear sooner.',
+        'Smoother scrolling and lighter animations, with reduced-motion respected.',
+        'Service worker refresh keeps saved records intact while loading new files.',
+        'Leaflet maps and fonts are preconnected and loaded on demand for quicker screens.'
+      ]
+    },
+    {
+      title: 'Fixes',
+      items: [
+        'Update banner no longer reappears after choosing "Remind me later" in the same session.',
+        'Long release notes scroll inside the banner instead of overflowing the screen.',
+        'Theme selection stays highlighted when the app re-renders a page.'
+      ]
+    }
+  ];
+
+  const escapeNote = value => String(value)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  function releaseNotesHtml(){
+    return RELEASE_NOTES.map(group => `
+      <section class="tp-update-group">
+        <h4>${escapeNote(group.title)}</h4>
+        <ul>${group.items.map(item => `<li>${escapeNote(item)}</li>`).join('')}</ul>
+      </section>`).join('');
+  }
+
   function hideUpdateBanner(){
     const banner = document.getElementById('tp-app-update');
     if(banner) banner.hidden = true;
@@ -10971,13 +11085,17 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       banner.setAttribute('role', 'status');
       banner.setAttribute('aria-live', 'polite');
       banner.innerHTML = `
-        <div class="tp-update-copy">
-          <strong>TrackPort update available</strong>
-          <span data-tp-update-copy>A newer version is ready. Update without losing your saved records.</span>
+        <div class="tp-update-head">
+          <div class="tp-update-copy">
+            <strong>Update available</strong>
+            <span data-tp-update-copy>A newer version is ready. Your records are safe.</span>
+          </div>
+          <span class="tp-update-version" data-tp-update-version>New</span>
         </div>
+        <div class="tp-update-scroll" data-tp-update-notes>${releaseNotesHtml()}</div>
         <div class="tp-update-actions">
-          <button type="button" class="tp-update-later" data-tp-update="later">Later</button>
-          <button type="button" class="tp-update-now" data-tp-update="now">Update now</button>
+          <button type="button" class="btn btn-primary tp-update-now" data-tp-update="now">Update now</button>
+          <button type="button" class="tp-update-later" data-tp-update="later">Remind me later</button>
         </div>`;
       document.body.appendChild(banner);
       banner.addEventListener('click', event => {
@@ -10992,9 +11110,11 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     const copy = banner.querySelector('[data-tp-update-copy]');
     if(copy){
       copy.textContent = nextVersion
-        ? `Version ${nextVersion} is ready. Update without losing your saved records.`
-        : 'A newer version is ready. Update without losing your saved records.';
+        ? `Version ${nextVersion} is ready. Here is everything included in this release.`
+        : 'A newer version is ready. Here is everything included in this release.';
     }
+    const versionChip = banner.querySelector('[data-tp-update-version]');
+    if(versionChip) versionChip.textContent = nextVersion ? `v${nextVersion}` : 'New';
     banner.hidden = false;
   }
 
@@ -16298,7 +16418,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   var THEMES=['lime','gold','ocean'];
   function get(){
     try{ var v=localStorage.getItem(KEY); if(THEMES.indexOf(v)>-1) return v; }catch(e){}
-    return 'lime';
+    return 'gold';
   }
   function apply(name){
     var el=document.documentElement;
@@ -16333,5 +16453,312 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   mo.observe(document.documentElement,{childList:true,subtree:true});
 })();
 </script>
+
+<!-- TrackPort card interaction refinements: compact cards, clean taps, gold Create outline. -->
+<style id="trackport-card-interaction-refinements">
+  /* Prevent the browser's translucent blue tap flash on interactive content. */
+  a, button, [role="button"], input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Keep content-card interactions dark and add the same sweeping shine as CTA buttons. */
+  .creation-cta,
+  .id-card-cta,
+  .service-showcase-card,
+  .license-choice-card,
+  .record-history-item,
+  .receipt-template-card {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .creation-cta::after,
+  .id-card-cta::after,
+  .service-showcase-card::after,
+  .license-choice-card::after,
+  .record-history-item::after,
+  .receipt-template-card::after {
+    content: '';
+    position: absolute;
+    z-index: 4;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 42%;
+    pointer-events: none;
+    background: linear-gradient(115deg, transparent, rgba(255,255,255,.34), transparent);
+    transform: translateX(-160%) skewX(-15deg);
+  }
+  .creation-cta:hover::after,
+  .creation-cta:active::after,
+  .id-card-cta:hover::after,
+  .id-card-cta:active::after,
+  .service-showcase-card:hover::after,
+  .service-showcase-card:active::after,
+  .license-choice-card:hover::after,
+  .license-choice-card:active::after,
+  .record-history-item:hover::after,
+  .record-history-item:active::after,
+  .receipt-template-card:hover::after,
+  .receipt-template-card:active::after {
+    animation: shimmerSweep .72s ease;
+  }
+  .creation-cta:active,
+  .id-card-cta:active,
+  .service-showcase-card:active,
+  .license-choice-card:active,
+  .record-history-item:active,
+  .receipt-template-card:active {
+    background-color: transparent;
+    transform: translateY(0) scale(.985);
+  }
+
+  /* More compact action and content cards without reducing readability. */
+  body.tp-dashboard-mode .creation-cta,
+  body.tp-dashboard-mode .creation-cta.id-card-creation-cta {
+    min-height: 108px !important;
+    padding: 14px 16px !important;
+    border-radius: 16px !important;
+  }
+  body.tp-dashboard-mode .creation-cta-grid {
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-icon {
+    width: 40px !important;
+    height: 40px !important;
+    flex-basis: 40px !important;
+    border-radius: 13px !important;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-meta {
+    margin-top: 5px !important;
+    line-height: 1.35 !important;
+  }
+  body.tp-dashboard-mode .id-card-cta {
+    min-height: 74px !important;
+    padding: 11px 13px !important;
+    border-radius: 14px !important;
+  }
+  body.tp-dashboard-mode .service-showcase-card {
+    min-height: 104px !important;
+    padding: 13px !important;
+    border-radius: 14px !important;
+  }
+  .license-choice-card {
+    min-height: 112px !important;
+    padding: 18px !important;
+  }
+  .record-history-item,
+  .receipt-template-card {
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+  }
+
+  /* A visibly softer, thicker gold ring for the central Create tab. */
+  body.tp-dashboard-mode .tp-create-icon {
+    border: 5px solid rgba(229,201,121,.78) !important;
+    box-shadow:
+      0 10px 28px rgba(0,0,0,.36),
+      0 0 0 2px rgba(212,175,90,.13),
+      0 0 20px rgba(212,175,90,.24),
+      inset 0 1px 0 rgba(255,255,255,.16) !important;
+  }
+  body.tp-dashboard-mode .tp-bottom-create:hover .tp-create-icon,
+  body.tp-dashboard-mode .tp-bottom-create.active .tp-create-icon {
+    border: 5px solid rgba(244,218,145,.92) !important;
+    box-shadow:
+      0 14px 34px rgba(0,0,0,.42),
+      0 0 0 2px rgba(229,201,121,.16),
+      0 0 26px rgba(212,175,90,.32),
+      inset 0 1px 0 rgba(255,255,255,.20) !important;
+  }
+
+  @media (max-width: 760px) {
+    body.tp-dashboard-mode .creation-cta,
+    body.tp-dashboard-mode .creation-cta.id-card-creation-cta {
+      min-height: 92px !important;
+      padding: 12px 14px !important;
+    }
+    body.tp-dashboard-mode .service-showcase-card { min-height: 94px !important; }
+    body.tp-dashboard-mode .tp-create-icon {
+      width: 50px !important;
+      height: 50px !important;
+      border-width: 5px !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .creation-cta::after,
+    .id-card-cta::after,
+    .service-showcase-card::after,
+    .license-choice-card::after,
+    .record-history-item::after,
+    .receipt-template-card::after { display: none; }
+  }
+</style>
+
+
+<style id="trackport-dashboard-grid-luxury">
+  /* Dashboard overview: a true editorial grid inside the auto-sliding hero. */
+  body.tp-dashboard-mode .ov-panel {
+    display: grid;
+    grid-template-columns: minmax(220px, .9fr) minmax(0, 1.5fr);
+    grid-template-areas:
+      "kicker rows"
+      "title rows"
+      "sub rows";
+    align-items: center;
+    column-gap: clamp(24px, 5vw, 64px);
+    row-gap: 0;
+  }
+  body.tp-dashboard-mode .ov-kicker {
+    grid-area: kicker;
+    justify-content: flex-start;
+    text-align: left;
+  }
+  body.tp-dashboard-mode .ov-title {
+    grid-area: title;
+    text-align: left;
+  }
+  body.tp-dashboard-mode .ov-sub {
+    grid-area: sub;
+    margin-left: 0;
+    text-align: left;
+  }
+  body.tp-dashboard-mode .ov-rows {
+    grid-area: rows;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 0;
+  }
+  body.tp-dashboard-mode .ov-row {
+    min-height: 138px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 18px 12px;
+    text-align: center;
+  }
+  body.tp-dashboard-mode .ov-row-body {
+    align-items: center;
+  }
+  body.tp-dashboard-mode .ov-row-val {
+    line-height: 1.45;
+  }
+
+  /* Centered, outlined icon language for all dashboard overview/history/service cards. */
+  body.tp-dashboard-mode .ov-ic,
+  body.tp-dashboard-mode .creation-cta .cta-icon,
+  body.tp-dashboard-mode .service-showcase-icon {
+    display: grid;
+    place-items: center;
+    background: color-mix(in oklab, var(--primary) 10%, transparent) !important;
+    color: var(--primary-dark) !important;
+    border: 1px solid color-mix(in oklab, var(--primary) 62%, transparent);
+    box-shadow: 0 8px 22px color-mix(in oklab, var(--primary) 18%, transparent), inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  body.tp-dashboard-mode .ov-ic { border-radius: 50%; }
+  body.tp-dashboard-mode .ov-ic .tp-svg-icon,
+  body.tp-dashboard-mode .cta-icon .luxury-svg-icon,
+  body.tp-dashboard-mode .service-showcase-icon .luxury-svg-icon,
+  body.tp-dashboard-mode .luxury-arrow .luxury-svg-icon {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.55;
+  }
+  body.tp-dashboard-mode .creation-cta .cta-icon,
+  body.tp-dashboard-mode .service-showcase-icon {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 15px;
+  }
+  body.tp-dashboard-mode .luxury-arrow {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid color-mix(in oklab, var(--primary) 46%, transparent);
+    border-radius: 50%;
+  }
+
+  /* Recent creations and Explore services: card grids, with centered icon columns. */
+  body.tp-dashboard-mode .history-cta-grid,
+  body.tp-dashboard-mode .service-showcase-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+  body.tp-dashboard-mode .history-cta {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-content: center;
+    gap: 12px;
+    min-height: 170px;
+    padding: 18px 14px !important;
+    text-align: center;
+  }
+  body.tp-dashboard-mode .history-cta .cta-copy {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+  }
+  body.tp-dashboard-mode .history-cta .cta-arrow { margin-left: 0; }
+  body.tp-dashboard-mode .service-showcase-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-content: start;
+    gap: 11px;
+    min-height: 196px !important;
+    padding: 20px 14px !important;
+    text-align: center;
+  }
+  body.tp-dashboard-mode .service-showcase-copy {
+    justify-items: center;
+    gap: 7px;
+  }
+  body.tp-dashboard-mode .service-showcase-arrow { margin-left: 0; }
+  body.tp-dashboard-mode .service-showcase-card .luxury-arrow { margin-top: auto; }
+
+  @media (max-width: 1100px) {
+    body.tp-dashboard-mode .history-cta-grid,
+    body.tp-dashboard-mode .service-showcase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 760px) {
+    body.tp-dashboard-mode .ov-panel {
+      grid-template-columns: 1fr;
+      grid-template-areas: "kicker" "title" "sub" "rows";
+      row-gap: 0;
+    }
+    body.tp-dashboard-mode .ov-kicker,
+    body.tp-dashboard-mode .ov-title,
+    body.tp-dashboard-mode .ov-sub { text-align: center; justify-content: center; }
+    body.tp-dashboard-mode .ov-sub { margin-left: auto; }
+    body.tp-dashboard-mode .ov-rows {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 22px;
+    }
+    body.tp-dashboard-mode .ov-row {
+      min-height: 136px;
+      padding: 13px 7px;
+      gap: 9px;
+    }
+    body.tp-dashboard-mode .ov-row-label { font-size: 11px; }
+    body.tp-dashboard-mode .ov-row-val { font-size: 10px; }
+    body.tp-dashboard-mode .ov-row-val b { display: block; font-size: 13px; }
+    body.tp-dashboard-mode .history-cta,
+    body.tp-dashboard-mode .service-showcase-card { min-height: 158px !important; }
+  }
+  @media (max-width: 390px) {
+    body.tp-dashboard-mode .history-cta-grid,
+    body.tp-dashboard-mode .service-showcase-grid { gap: 8px; }
+    body.tp-dashboard-mode .history-cta,
+    body.tp-dashboard-mode .service-showcase-card { padding-left: 8px !important; padding-right: 8px !important; }
+  }
+</style>
 </body>
 </html>
