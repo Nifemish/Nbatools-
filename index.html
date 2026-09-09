@@ -22,7 +22,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TrackPort">
 <!-- Change only this number when uploading a new HTML version. -->
-  <meta name="trackport-version" content="1.10.1">
+  <meta name="trackport-version" content="1.10.3">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -946,8 +946,8 @@
   .service-showcase-heading{align-items:flex-start;margin-bottom:16px;}
   .service-showcase-view-all{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;color:var(--primary);font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
   .service-showcase-view-all svg{width:14px;height:14px;}
-  .service-showcase-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
-  .service-showcase-card{display:flex;align-items:flex-start;gap:12px;min-width:0;min-height:132px;padding:16px;border:1px solid var(--glass-border);border-radius:17px;color:var(--ink);background:rgba(255,255,255,.035);transition:transform .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease),box-shadow .25s var(--ease);}
+  .service-showcase-grid{display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding:2px 2px 10px;scrollbar-width:thin;}
+  .service-showcase-card{display:flex;align-items:flex-start;gap:12px;flex:0 0 min(286px,82vw);scroll-snap-align:start;min-width:0;min-height:132px;padding:16px;border:1px solid var(--glass-border);border-radius:17px;color:var(--ink);background:rgba(255,255,255,.035);transition:transform .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease),box-shadow .25s var(--ease);}
   .service-showcase-card:hover{transform:translateY(-3px);border-color:rgba(212,175,90,.62);background:rgba(212,175,90,.08);box-shadow:0 12px 24px rgba(0,0,0,.12);}
   .service-showcase-icon{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:12px;color:#1a1204;background:linear-gradient(145deg,var(--primary),var(--primary-dark));}
   .service-showcase-icon svg{width:19px;height:19px;}
@@ -963,11 +963,11 @@
   .service-showcase-identity .service-showcase-icon{background:#f2d8e8;color:#93446f;}
   .service-showcase-document .service-showcase-icon{background:#dce5ff;color:#3959a4;}
   .service-showcase-receipt .service-showcase-icon{background:#ecdaf1;color:#844b98;}
-  @media (max-width:980px){ .service-showcase-grid{grid-template-columns:1fr 1fr;} }
+  
   @media (max-width:620px){
     .service-showcase-heading{display:block;}
     .service-showcase-view-all{margin-top:12px;}
-    .service-showcase-grid{grid-template-columns:1fr;}
+    
   }
   .creation-section{margin:0 0 18px; padding:22px; border:1px solid var(--glass-border); border-radius:22px; background:rgba(255,255,255,.035);}
   .creation-section-header{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin-bottom:16px;}
@@ -3900,28 +3900,23 @@ function pageDashboard(){
           <div class="ov-slide" role="group" aria-roledescription="slide" aria-label="Shipments overview">
             <section class="ov-panel" aria-label="Shipments overview">
               <span class="ov-kicker">${svgIcon('package')} Your fleet at a glance</span>
-              <h2 class="ov-title">TRACKING <em>${stats.total}</em> SHIPMENTS TODAY</h2>
-              <p class="ov-sub">${stats.total?Math.round(stats.delivered/stats.total*100):0}% of everything you have created has already been delivered.</p>
               <div class="ov-rows">
                 <div class="ov-row">
                   <span class="ov-ic">${svgIcon('clock')}</span>
                   <span class="ov-row-body">
-                    <span class="ov-row-label">Pending</span>
-                    <span class="ov-row-val"><b>${stats.pending}</b> waiting to depart</span>
+                    <span class="ov-row-val"><b>${stats.pending}</b></span>
                   </span>
                 </div>
                 <div class="ov-row">
                   <span class="ov-ic">${svgIcon('truck')}</span>
                   <span class="ov-row-body">
-                    <span class="ov-row-label">In transit</span>
-                    <span class="ov-row-val"><b>${stats.transit}</b> moving right now</span>
+                    <span class="ov-row-val"><b>${stats.transit}</b></span>
                   </span>
                 </div>
                 <div class="ov-row">
                   <span class="ov-ic">${svgIcon('checkc')}</span>
                   <span class="ov-row-body">
-                    <span class="ov-row-label">Delivered</span>
-                    <span class="ov-row-val"><b>${stats.delivered}</b> completed journeys</span>
+                    <span class="ov-row-val"><b>${stats.delivered}</b></span>
                   </span>
                 </div>
               </div>
@@ -3930,28 +3925,23 @@ function pageDashboard(){
           <div class="ov-slide" role="group" aria-roledescription="slide" aria-label="Flights overview">
             <section class="ov-panel ov-panel-flight" aria-label="Flights overview">
               <span class="ov-kicker">${svgIcon('plane')} Your flights at a glance</span>
-              <h2 class="ov-title">TRACKING <em>${fstats.total}</em> FLIGHTS TODAY</h2>
-              <p class="ov-sub">${fstats.total?Math.round(fstats.landed/fstats.total*100):0}% of every ticket you have created has already landed.</p>
               <div class="ov-rows">
                 <div class="ov-row">
                   <span class="ov-ic">${svgIcon('clock')}</span>
                   <span class="ov-row-body">
-                    <span class="ov-row-label">Upcoming</span>
-                    <span class="ov-row-val"><b>${fstats.upcoming}</b> booked or checked in</span>
+                    <span class="ov-row-val"><b>${fstats.upcoming}</b></span>
                   </span>
                 </div>
                 <div class="ov-row">
                   <span class="ov-ic">${svgIcon('plane')}</span>
                   <span class="ov-row-body">
-                    <span class="ov-row-label">In the air</span>
-                    <span class="ov-row-val"><b>${fstats.airborne}</b> flying right now</span>
+                    <span class="ov-row-val"><b>${fstats.airborne}</b></span>
                   </span>
                 </div>
                 <div class="ov-row">
                   <span class="ov-ic">${svgIcon('checkc')}</span>
                   <span class="ov-row-body">
-                    <span class="ov-row-label">Landed</span>
-                    <span class="ov-row-val"><b>${fstats.landed}</b> completed journeys</span>
+                    <span class="ov-row-val"><b>${fstats.landed}</b></span>
                   </span>
                 </div>
               </div>
@@ -3995,32 +3985,32 @@ function pageDashboard(){
        <div class="service-showcase-grid">
          <a href="#/tracking" class="service-showcase-card service-showcase-tracking">
            <span class="service-showcase-icon">${svgIcon('search', 'luxury-svg-icon')}</span>
-           <span class="service-showcase-copy"><span class="service-showcase-kicker">Tracking tools</span><strong>Track shipments and flights</strong><small>Open the tracking workspace for a live status lookup.</small></span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Tracking tools</span><strong>Track shipments and flights</strong></span>
            <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-flight" class="service-showcase-card service-showcase-flight">
            <span class="service-showcase-icon">${svgIcon('plane', 'luxury-svg-icon')}</span>
-           <span class="service-showcase-copy"><span class="service-showcase-kicker">Travel tools</span><strong>Create trackable flight tickets</strong><small>Build a flight record with route and journey details.</small></span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Travel tools</span><strong>Create trackable flight tickets</strong></span>
            <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-shipment" class="service-showcase-card service-showcase-shipment">
            <span class="service-showcase-icon">${svgIcon('package', 'luxury-svg-icon')}</span>
-           <span class="service-showcase-copy"><span class="service-showcase-kicker">Delivery tools</span><strong>Create trackable shipping products</strong><small>Prepare shipment details and share a tracking page.</small></span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Delivery tools</span><strong>Create trackable shipping products</strong></span>
            <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-id-card" class="service-showcase-card service-showcase-identity">
            <span class="service-showcase-icon">${svgIcon('credit-card', 'luxury-svg-icon')}</span>
-           <span class="service-showcase-copy"><span class="service-showcase-kicker">Identity workspaces</span><strong>Explore ID card mockups</strong><small>Open clearly labeled driver's license and ID mockup tools.</small></span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Identity workspaces</span><strong>Explore ID card mockups</strong></span>
            <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-document" class="service-showcase-card service-showcase-document">
            <span class="service-showcase-icon">${svgIcon('file', 'luxury-svg-icon')}</span>
-           <span class="service-showcase-copy"><span class="service-showcase-kicker">Paperwork tools</span><strong>Create internal documents</strong><small>Open the document workspace for approved records and templates.</small></span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Paperwork tools</span><strong>Create internal documents</strong></span>
            <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
          <a href="#/create-receipt" class="service-showcase-card service-showcase-receipt">
            <span class="service-showcase-icon">${svgIcon('dollar', 'luxury-svg-icon')}</span>
-           <span class="service-showcase-copy"><span class="service-showcase-kicker">Records tools</span><strong>Create business receipts</strong><small>Build a polished receipt or expense record with a live preview.</small></span>
+           <span class="service-showcase-copy"><span class="service-showcase-kicker">Records tools</span><strong>Create business receipts</strong></span>
            <span class="service-showcase-arrow">${svgIcon('arrow', 'luxury-svg-icon')}</span>
          </a>
        </div>
@@ -16684,28 +16674,31 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     border-radius: 50%;
   }
 
-  /* Recent creations and Explore services: card grids, with centered icon columns. */
-  body.tp-dashboard-mode .history-cta-grid,
+  /* Recent creations and History categories use a single, left-aligned card list. */
+  body.tp-dashboard-mode .history-cta-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
   body.tp-dashboard-mode .service-showcase-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 14px;
   }
   body.tp-dashboard-mode .history-cta {
-    display: grid;
-    grid-template-columns: 1fr;
-    justify-items: center;
-    align-content: center;
-    gap: 12px;
-    min-height: 170px;
-    padding: 18px 14px !important;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    width: 100%;
+    min-height: 108px;
+    padding: 16px 18px !important;
+    text-align: left;
   }
   body.tp-dashboard-mode .history-cta .cta-copy {
     display: grid;
-    justify-items: center;
+    justify-items: start;
     gap: 5px;
+    min-width: 0;
   }
-  body.tp-dashboard-mode .history-cta .cta-arrow { margin-left: 0; }
+  body.tp-dashboard-mode .history-cta .cta-arrow { margin-left: auto; }
   body.tp-dashboard-mode .service-showcase-card {
     display: grid;
     grid-template-columns: 1fr;
@@ -16724,8 +16717,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   body.tp-dashboard-mode .service-showcase-card .luxury-arrow { margin-top: auto; }
 
   @media (max-width: 1100px) {
-    body.tp-dashboard-mode .history-cta-grid,
-    body.tp-dashboard-mode .service-showcase-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    body.tp-dashboard-mode .history-cta-grid { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 760px) {
     body.tp-dashboard-mode .ov-panel {
