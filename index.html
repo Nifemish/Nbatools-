@@ -11588,11 +11588,67 @@ function pageConfirmation(tn){
    details, package information and payment summary.
    ============================================================ */
 function shipmentReceiptBrand(s){
-  const carrier = findCarrier(s.shipping && s.shipping.carrier) || findCarrier('trackport');
-  const name = carrier.name;
-  const color = carrier.color || carrierHashColor(carrier.name);
-  return { name, color, logo: carrier.logo || '', logoBg: carrier.logoBg || '#fff',
-    service: `${name}${s.shipping && s.shipping.method ? ' ' + s.shipping.method : ''}` };
+  // Self-contained brand helper (no external findCarrier dependency)
+  const sh = (s && s.shipping) || {};
+  const raw = (sh.carrier || (s && s.carrier) || 'TrackPort Logistics');
+  const name = String(raw || 'TrackPort Logistics');
+  const palette = {
+    'trackport': '#1a2b4a',
+    'trackport logistics': '#1a2b4a',
+    'dhl': '#FFCC00',
+    'dhl express': '#FFCC00',
+    'fedex': '#4D148C',
+    'ups': '#351C15',
+    'aramex': '#E30613',
+    'gig logistics': '#00A651',
+    'chronopost': '#003DA5',
+    'ems': '#C8102E'
+  };
+  const key = name.toLowerCase().trim();
+  let color = palette[key];
+  if(!color){
+    // simple hash color fallback
+    let h = 0;
+    for(let i=0;i<key.length;i++) h = ((h<<5)-h)+key.charCodeAt(i)|0;
+    const hue = Math.abs(h) % 360;
+    color = 'hsl('+hue+' 42% 32%)';
+  }
+  const method = sh.method || (s && s.method) || '';
+  return {
+    name,
+    color,
+    logo: '',
+    logoBg: '#fff',
+    service: method ? (name + ' ' + method) : name
+  };
+}
+function findCarrier(name){
+  // Compatibility stub used by older receipt helpers
+  const brand = shipmentReceiptBrand({ shipping: { carrier: name || 'TrackPort Logistics' } });
+  return { name: brand.name, color: brand.color, logo: brand.logo, logoBg: brand.logoBg };
+}
+function carrierHashColor(name){
+  return shipmentReceiptBrand({ shipping: { carrier: name } }).color;
+}
+function fmtDate(value){
+  if(value == null || value === '') return '—';
+  const d = new Date(value);
+  if(isNaN(d.getTime())) return String(value);
+  try{
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }catch(_e){
+    return d.toDateString();
+  }
+}
+function trackingUrl(tn){
+  const id = encodeURIComponent(String(tn || ''));
+  try{
+    if(typeof location !== 'undefined' && location && location.href){
+      const base = String(location.href).split('#')[0];
+      return base + '#/track/' + id;
+    }
+  }catch(_e){}
+  return 'https://trackport.github.io/TrackPort-tracking/#/track/' + id;
 }
 function shipmentReceiptBarcode(value){
   const seed = String(value||'TRACKPORT').split('').reduce((n,ch)=>(n*31+ch.charCodeAt(0))%997,17);
@@ -11617,174 +11673,265 @@ function shipmentReceiptPaymentStatus(s){
   return { label: delivered ? 'Paid' : 'Pending', done: delivered };
 }
 function shipmentReceiptDocHtml(s){
-  const brand = shipmentReceiptBrand(s);
-  const sh = s.shipping || {};
+  try{ if(typeof normalizeShipmentRecordForTrackPort === 'function') normalizeShipmentRecordForTrackPort(s); }catch(_e){}
   const sender = s.sender || {};
   const recipient = s.recipient || {};
-  const pay = shipmentReceiptPaymentStatus(s);
-  const fee = (sh.fee===''||sh.fee==null) ? '—' : receiptMoney(sh.fee, s.currency||'USD');
-  const declared = (s.value===''||s.value==null) ? '—' : receiptMoney(s.value, s.currency||'USD');
-  return `<article class="dr-doc" id="dr-doc" style="--dr-brand:${esc(brand.color)}">
-    <div class="dr-head">
-      <div class="dr-brand">
-        <span class="dr-brand-mark${brand.logo?' dr-brand-mark-logo':''}"${brand.logo?` style="background:${esc(brand.logoBg||'#fff')}"`:''}>${brand.logo?`<img src="${brand.logo}" alt="${esc(brand.name)} logo">`:esc(brand.name)}</span>
-        <small>${esc(brand.name)}</small>
-      </div>
-      <div class="dr-head-mid">
-        <h1>DELIVERY RECEIPT</h1>
-        <p>YOUR PACKAGE, CONFIRMED</p>
-      </div>
-      <div class="dr-head-right">
-        <strong>TrackPort</strong>
-        Receipt no. ${esc(shipmentReceiptNumber(s))}<br>
-        Issued ${esc(fmtDate(s.createdAt))}
-      </div>
-    </div>
-
-    <div class="dr-band">Tracking information</div>
-    <div class="dr-panel">
-      <div class="dr-track">
-        <div>
-          <div class="dr-track-label">Tracking no.</div>
-          <div class="dr-track-no">${esc(s.trackingNumber)}</div>
-          ${shipmentReceiptBarcode(s.trackingNumber)}
-        </div>
-        <div>
-          <div class="dr-meta-row"><span>Ship date</span><b>${esc(fmtDate(s.createdAt))}</b></div>
-          <div class="dr-meta-row"><span>Delivery date</span><b>${esc(sh.eta ? fmtDate(sh.eta) : 'To be confirmed')}</b></div>
-          <div class="dr-meta-row"><span>Service type</span><b>${esc(brand.service)}</b></div>
-          <div class="dr-meta-row"><span>Current status</span><b>${esc(s.status||'Order Created')}</b></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="dr-split">
-      <div>
-        <div class="dr-band">Sender details</div>
-        <div class="dr-panel">
-          <div class="dr-field"><small>Name</small><b>${esc(sender.fullName||'—')}</b></div>
-          <div class="dr-field"><small>Phone number</small><b>${esc(sender.phone||'—')}</b></div>
-          <div class="dr-field"><small>Address</small><b>${shipmentReceiptAddress(sender)}</b></div>
-          <div class="dr-field"><small>Email</small><b>${esc(sender.email||'—')}</b></div>
-        </div>
-      </div>
-      <div>
-        <div class="dr-band">Recipient details</div>
-        <div class="dr-panel">
-          <div class="dr-field"><small>Name</small><b>${esc(recipient.fullName||'—')}</b></div>
-          <div class="dr-field"><small>Phone number</small><b>${esc(recipient.phone||'—')}</b></div>
-          <div class="dr-field"><small>Address</small><b>${shipmentReceiptAddress(recipient)}</b></div>
-          <div class="dr-field"><small>Email</small><b>${esc(recipient.email||'—')}</b></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="dr-band" style="margin-top:18px;">Package information</div>
-    <div class="dr-panel">
-      <div class="dr-pkg">
-        <div class="dr-field"><small>Product</small><b>${esc(s.productName||'—')}</b></div>
-        <div class="dr-field"><small>Category</small><b>${esc(s.category||'—')}</b></div>
-        <div class="dr-field"><small>Package type</small><b>${esc(sh.packageType||'—')}</b></div>
-        <div class="dr-field"><small>Quantity</small><b>${esc(String(s.quantity||1))}</b></div>
-        <div class="dr-field"><small>Package weight</small><b>${sh.weight ? esc(sh.weight)+' kg' : '—'}</b></div>
-        <div class="dr-field"><small>Dimensions (L×W×H cm)</small><b>${esc(sh.dimensions||'—')}</b></div>
-        <div class="dr-field"><small>Declared value</small><b>${esc(declared)}</b></div>
-        <div class="dr-field"><small>Origin hub</small><b>${esc(sh.initialLocation||'—')}</b></div>
-      </div>
-      ${s.description ? `<div class="dr-field" style="margin-top:10px;"><small>Description</small><b>${esc(s.description)}</b></div>` : ''}
-      <div class="dr-care">${icon('box')} HANDLE WITH CARE</div>
-    </div>
-
-    <div class="dr-band" style="margin-top:18px;">Delivery &amp; payment details</div>
-    <div class="dr-panel">
-      <div class="dr-pay">
-        <div><div class="dr-track-label">Delivery fee</div><div class="dr-fee">${esc(fee)}</div></div>
-        <div style="text-align:right;"><div class="dr-track-label">Payment status</div>
-          <div class="dr-status-chip ${pay.done?'is-done':''}" style="margin-top:6px;display:inline-block;">${esc(pay.label)}</div>
-        </div>
-      </div>
-      <div class="dr-note">Thank you for shipping with <b>${esc(brand.name)}</b> via TrackPort.<br>
-      Follow this shipment any time at ${esc(trackingUrl(s.trackingNumber))}</div>
-    </div>
-
-    <div class="dr-band" style="margin-top:18px;">Authorization</div>
-    <div class="dr-panel">
-      <div class="dr-sign">
-        <div class="dr-sign-box">
-          <div class="dr-sign-title">Sender signature</div>
-          <div class="dr-sign-line">${esc(sender.fullName||'')}</div>
-          <small>Date: ${esc(fmtDate(s.createdAt))}</small>
-        </div>
-        <div class="dr-sign-box">
-          <div class="dr-sign-title">Logistics management signature</div>
-          <div class="dr-sign-line">${esc(brand.name)}</div>
-          <small>Date: ${esc(fmtDate(s.updatedAt||s.createdAt))}</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="dr-foot">
-      <div>
-        <b>${esc(brand.name)}</b> shipments are handled under TrackPort terms and conditions.<br>
-        This receipt confirms the shipment record created on ${esc(fmtDateTime(s.createdAt))}.
-      </div>
-      <div class="dr-seal">On time<br>delivery<br>guaranteed</div>
-    </div>
-  </article>`;
-}
-function pageShipmentReceipt(tn){
-  const key = tn ? decodeURIComponent(tn) : '';
-  const s = shipmentsDB[key];
-  if(!s) return pageNotFoundTracking(key);
-  if(currentUser && s.userId && currentUser.email!==s.userId && !currentUser.isAdmin){
-    showToast('Only the creator can open this shipment receipt', true);
-    return redirectTo('/dashboard');
+  const sh = s.shipping || {};
+  const brand = (typeof shipmentReceiptBrand === 'function')
+    ? shipmentReceiptBrand(s)
+    : { name: sh.carrier || s.carrier || 'TrackPort Logistics', service: (sh.carrier || s.carrier || 'TrackPort') + ' ' + (sh.method || s.method || '') };
+  const carrier = brand.name || sh.carrier || s.carrier || 'TrackPort Logistics';
+  const method = sh.method || s.method || 'Express';
+  const delivered = /delivered/i.test(s.status || '');
+  const payLabel = delivered ? 'Paid' : 'Pending';
+  const payDone = delivered;
+  const created = new Date(s.createdAt || s.created || Date.now());
+  const createdStr = isNaN(created.getTime()) ? '—' : (typeof fmtDate === 'function' ? fmtDate(created) : created.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
+  const createdFull = isNaN(created.getTime()) ? '—' : (typeof fmtDateTime === 'function' ? fmtDateTime(created) : created.toLocaleString());
+  const currency = s.currency || 'USD';
+  const money = (val) => {
+    if(val === '' || val == null) return '—';
+    const n = Number(val);
+    if(isNaN(n)) return String(val);
+    if(typeof receiptMoney === 'function') return receiptMoney(n, currency);
+    const sym = currency === 'USD' ? '$' : currency === 'GBP' ? '£' : currency === 'EUR' ? '€' : (currency + ' ');
+    return sym + n.toFixed(2);
+  };
+  const fee = money(sh.fee != null ? sh.fee : s.fee);
+  const declared = money(s.value != null ? s.value : (s.declaredValue != null ? s.declaredValue : null));
+  const etaRaw = sh.eta || s.eta || '';
+  let etaStr = 'To be confirmed';
+  if(etaRaw){
+    const ed = new Date(etaRaw);
+    etaStr = isNaN(ed.getTime()) ? String(etaRaw) : (typeof fmtDate === 'function' ? fmtDate(ed) : ed.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}));
   }
-  return `
-  ${navbar('dashboard')}
-  <div class="wrap">
-    <div class="dr-stage-wrap">
-      <div class="dr-chrome no-print">
-        <h1>Shipment receipt</h1>
-        <p class="dr-chrome-sub">Receipt <span class="mono">${esc(shipmentReceiptNumber(s))}</span> · tracking <span class="mono">${esc(s.trackingNumber)}</span></p>
-        <div class="dr-chrome-actions">
-          <button type="button" class="dr-cta primary" data-action="print-shipment-receipt">${icon('printer')} Print / Save PDF</button>
-          <button type="button" class="dr-cta" data-action="download-shipment-receipt" data-id="${esc(s.trackingNumber)}">${icon('download')} Download image</button>
-          <a href="#/confirmation/${encodeURIComponent(s.trackingNumber)}" class="dr-cta">${icon('eye')} Back to shipment</a>
-        </div>
-      </div>
-      <div id="dr-stage">${shipmentReceiptDocHtml(s)}</div>
-    </div>
+  const tn = s.trackingNumber || '';
+  const receiptNo = (typeof shipmentReceiptNumber === 'function') ? shipmentReceiptNumber(s) : ('RCPT-' + String(tn).replace(/[^A-Za-z0-9]/g,'').slice(-8).toUpperCase());
+  const pkgType = sh.packageType || s.packageType || 'Box';
+  const weight = sh.weight != null ? sh.weight : s.weight;
+  const dims = sh.dimensions || s.dimensions || '—';
+  const originHub = sender.city || s.origin || sh.initialLocation || '—';
+  const senderName = sender.fullName || sender.name || '—';
+  const recipientName = recipient.fullName || recipient.name || '—';
+  const senderPhone = sender.phone || '—';
+  const recipientPhone = recipient.phone || '—';
+  const senderEmail = sender.email || '';
+  const recipientEmail = recipient.email || '';
+  const fmtAddr = (p, fallbackCity) => {
+    const parts = [p.address, [p.city, p.state].filter(Boolean).join(', '), p.country || p.zip || p.postal].filter(Boolean);
+    if(parts.length) return parts.join('<br>');
+    return esc(fallbackCity || '—');
+  };
+  const senderAddr = fmtAddr(sender, s.origin);
+  const recipientAddr = fmtAddr(recipient, s.destination);
+  const trackUrl = (typeof trackingUrl === 'function') ? trackingUrl(tn) : ('https://trackport.github.io/TrackPort-tracking/#/track/' + encodeURIComponent(tn));
+  const serviceLabel = brand.service || (carrier + (method ? (' ' + method) : ''));
+  const barcode = (typeof shipmentReceiptBarcode === 'function') ? shipmentReceiptBarcode(tn) : '';
+
+  return `<article class="dr-doc" id="dr-doc">
+  <div class="dr-top">
+   <div class="dr-top-brand">
+    <span class="mark">T</span>
+    <span class="word">TRACKPORT</span>
+   </div>
+   <div class="dr-top-mid">
+    <h1>Delivery Receipt</h1>
+    <p>Your package, confirmed</p>
+   </div>
+   <div class="dr-top-right">
+    <strong>TrackPort</strong>
+    Receipt no. ${esc(receiptNo)}<br>
+    Issued ${esc(createdStr)}
+   </div>
   </div>
-  ${footer()}`;
+
+  <div class="dr-band">Tracking information</div>
+  <div class="dr-panel">
+   <div class="dr-track-grid">
+    <div>
+     <div class="dr-track-label">Tracking no.</div>
+     <div class="dr-track-no">${esc(tn)}</div>
+     ${barcode}
+    </div>
+    <div>
+     <div class="dr-meta-row"><span>Ship date</span><b>${esc(createdStr)}</b></div>
+     <div class="dr-meta-row"><span>Delivery date</span><b>${esc(etaStr)}</b></div>
+     <div class="dr-meta-row"><span>Service type</span><b>${esc(serviceLabel)}</b></div>
+     <div class="dr-meta-row"><span>Current status</span><b>${esc(s.status || 'Shipment Confirmed')}</b></div>
+    </div>
+   </div>
+  </div>
+
+  <div class="dr-two">
+   <div>
+    <div class="dr-band">Sender details</div>
+    <div class="dr-panel">
+     <div class="dr-field"><small>Name</small><b>${esc(senderName)}</b></div>
+     <div class="dr-field"><small>Phone number</small><b>${esc(senderPhone)}</b></div>
+     <div class="dr-field"><small>Address</small><b>${senderAddr}</b></div>
+     ${senderEmail ? `<div class="dr-field"><small>Email</small><b>${esc(senderEmail)}</b></div>` : ''}
+    </div>
+   </div>
+   <div>
+    <div class="dr-band">Recipient details</div>
+    <div class="dr-panel">
+     <div class="dr-field"><small>Name</small><b>${esc(recipientName)}</b></div>
+     <div class="dr-field"><small>Phone number</small><b>${esc(recipientPhone)}</b></div>
+     <div class="dr-field"><small>Address</small><b>${recipientAddr}</b></div>
+     ${recipientEmail ? `<div class="dr-field"><small>Email</small><b>${esc(recipientEmail)}</b></div>` : ''}
+    </div>
+   </div>
+  </div>
+
+  <div class="dr-band">Package information</div>
+  <div class="dr-panel">
+   <div class="dr-pkg-grid">
+    <div class="dr-field"><small>Product</small><b>${esc(s.productName || '—')}</b></div>
+    <div class="dr-field"><small>Category</small><b>${esc(s.category || '—')}</b></div>
+    <div class="dr-field"><small>Package type</small><b>${esc(pkgType)}</b></div>
+    <div class="dr-field"><small>Quantity</small><b>${esc(String(s.quantity != null ? s.quantity : 1))}</b></div>
+    <div class="dr-field"><small>Package weight</small><b>${weight != null && weight !== '' ? esc(String(weight)) + ' kg' : '—'}</b></div>
+    <div class="dr-field"><small>Dimensions (L×W×H cm)</small><b>${esc(dims)}</b></div>
+    <div class="dr-field"><small>Declared value</small><b>${esc(declared)}</b></div>
+    <div class="dr-field"><small>Origin hub</small><b>${esc(originHub)}</b></div>
+   </div>
+   ${s.description ? `<div class="dr-field" style="margin-top:12px"><small>Description</small><b>${esc(s.description)}</b></div>` : ''}
+   <div class="dr-care">▣ HANDLE WITH CARE</div>
+  </div>
+
+  <div class="dr-band">Delivery &amp; payment details</div>
+  <div class="dr-panel">
+   <div class="dr-pay-row">
+    <div>
+     <div class="dr-track-label">Delivery fee</div>
+     <div class="dr-fee">${esc(fee)}</div>
+    </div>
+    <div style="text-align:right">
+     <div class="dr-track-label">Payment status</div>
+     <div class="dr-status-chip ${payDone ? 'is-done' : ''}">${esc(payLabel)}</div>
+    </div>
+   </div>
+   <div class="dr-note">
+    Thank you for shipping with <b>${esc(brand.name || 'TrackPort')}</b> via TrackPort.<br>
+    Follow this shipment any time at:<br>
+    <a href="${esc(trackUrl)}" target="_blank" rel="noopener">${esc(trackUrl)}</a>
+   </div>
+  </div>
+
+  <div class="dr-band">Authorization</div>
+  <div class="dr-panel">
+   <div class="dr-sign">
+    <div class="dr-sign-box">
+     <div class="dr-sign-title">Sender signature</div>
+     <div class="dr-sign-line">${esc(senderName === '—' ? '' : senderName)}</div>
+     <small>Date: ${esc(createdStr)}</small>
+    </div>
+    <div class="dr-sign-box">
+     <div class="dr-sign-title">Logistics management signature</div>
+     <div class="dr-sign-line">${esc(brand.name || 'TrackPort')}</div>
+     <small>Date: ${esc(createdStr)}</small>
+    </div>
+   </div>
+  </div>
+
+  <div class="dr-foot">
+   <div><b>TrackPort</b> shipments are handled under TrackPort terms and conditions.<br>
+   This receipt confirms the shipment record created on ${esc(createdFull)}.</div>
+   <div class="dr-seal">On time<br>delivery<br>guaranteed</div>
+  </div>
+ </article>`;
 }
+
+function pageShipmentReceipt(tn){
+  let key = tn == null ? '' : String(tn);
+  try { key = decodeURIComponent(key); } catch (_e) {}
+  key = key.replace(/^\/+/, '').trim();
+  let s = null;
+  try {
+    if (state && Array.isArray(state.shipments)) {
+      s = state.shipments.find(function(x){
+        return x && (x.trackingNumber === key || String(x.trackingNumber) === key);
+      }) || null;
+    }
+  } catch (_e) {}
+  if (!s) {
+    try {
+      if (typeof shipmentsDB !== 'undefined' && shipmentsDB) {
+        s = shipmentsDB[key] || null;
+        if (!s && typeof shipmentsDB === 'object') {
+          s = Object.values(shipmentsDB).find(function(x){
+            return x && (x.trackingNumber === key || String(x.trackingNumber) === key);
+          }) || null;
+        }
+      }
+    } catch (_e2) {}
+  }
+  if (!s) {
+    try { if (window.showToast) showToast('Shipment receipt not found for ' + (key || 'unknown'), true); } catch (_e) {}
+    if (typeof track === 'function') return track();
+    if (typeof pageNotFoundTracking === 'function') return pageNotFoundTracking(key);
+    return '<div class="screen"><div class="container"><div class="card empty"><strong>Receipt not found</strong><p>No shipment matches this tracking number.</p><button class="btn btn-accent" onclick="nav(\'track\')">Back to track</button></div></div></div>';
+  }
+  try { if (typeof normalizeShipmentRecordForTrackPort === 'function') normalizeShipmentRecordForTrackPort(s); } catch (_e) {}
+  const receiptNo = (typeof shipmentReceiptNumber === 'function') ? shipmentReceiptNumber(s) : ('RCPT-' + String(s.trackingNumber || '').slice(-8));
+  const head = (typeof topbar === 'function') ? topbar('Shipment Receipt', 'track') : ((typeof navbar === 'function') ? navbar('dashboard') : '');
+  const foot = (typeof navBar === 'function') ? navBar('track') : ((typeof footer === 'function') ? footer() : '');
+  let docHtml = '';
+  try { docHtml = shipmentReceiptDocHtml(s); } catch (err) {
+    console.warn('[shipmentReceiptDocHtml]', err);
+    docHtml = '<div class="card empty"><strong>Receipt layout error</strong><p>' + esc(String(err && err.message || err)) + '</p></div>';
+  }
+  return `<div class="screen"><div class="container">${head}
+ <div class="dr-stage-wrap" style="margin-top:10px">
+  <div class="dr-chrome no-print">
+   <h1>Shipment receipt</h1>
+   <p class="dr-chrome-sub">Receipt <span class="mono">${esc(receiptNo)}</span> · tracking <span class="mono">${esc(s.trackingNumber)}</span></p>
+   <div class="dr-chrome-actions">
+    <button type="button" class="dr-cta primary" onclick="window.print()">${typeof icon==='function'?icon('printer'):''} Print / Save PDF</button>
+    <button type="button" class="dr-cta" onclick="downloadShipmentReceiptImage('${esc(s.trackingNumber)}')">${typeof icon==='function'?icon('download'):''} Download image</button>
+    <button type="button" class="dr-cta" onclick="nav('shipment-'+encodeURIComponent('${esc(s.trackingNumber)}'))">${typeof icon==='function'?icon('eye'):''} Back to shipment</button>
+   </div>
+  </div>
+  <div id="dr-stage">${docHtml}</div>
+ </div>
+ ${foot}</div></div>`;
+}
+window.pageShipmentReceipt = pageShipmentReceipt;
+
 
 async function downloadShipmentReceiptImage(tn){
+  try{ if(typeof showPageLoader==='function') showPageLoader('Rendering receipt', 400); }catch(_e){}
   const target = document.getElementById('dr-doc');
-  if(!target){ showToast('Open the shipment receipt before downloading it', true); return; }
+  if(!target){
+    try{ if(typeof hidePageLoader==='function') hidePageLoader(true); }catch(_e){}
+    try{ if(window.showToast) showToast('Open the shipment receipt before downloading it', true); }catch(_e){}
+    return;
+  }
   try{
-    showToast('Rendering the 9:16 shipment receipt…');
-    await waitForRenderedImages(target);
-    const html2canvas = await ensureHtml2Canvas();
-    const source = await html2canvas(target, { scale:2, useCORS:true, allowTaint:false, backgroundColor:'#ffffff', logging:false });
-    const width = source.width;
-    const height = Math.ceil(width * 16 / 9);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
-    const scale = Math.min(1, width / source.width, height / source.height);
-    const drawWidth = Math.round(source.width * scale);
-    const drawHeight = Math.round(source.height * scale);
-    context.drawImage(source, Math.round((width-drawWidth)/2), 0, drawWidth, drawHeight);
-    await exportCanvas(canvas, `${String(tn||'shipment')}_delivery_receipt_9x16.png`, 'Shipment receipt downloaded');
+    try{ if(window.showToast) showToast('Rendering the shipment receipt…'); }catch(_e){}
+    if(typeof prepareRootForCapture === 'function') await prepareRootForCapture(target);
+    else if(typeof waitForRenderedImages === 'function') await waitForRenderedImages(target);
+    const html2canvas = await (window.ensureHtml2Canvas ? window.ensureHtml2Canvas() : (typeof ensureHtml2Canvas==='function' ? ensureHtml2Canvas() : Promise.reject(new Error('html2canvas missing'))));
+    const canvas = await html2canvas(target, { scale:2, useCORS:true, allowTaint:false, backgroundColor:'#ffffff', logging:false, imageTimeout:15000 });
+    const filename = String(tn||'shipment') + '_delivery_receipt.png';
+    if(typeof exportCanvas === 'function'){
+      await exportCanvas(canvas, filename, 'Shipment receipt downloaded');
+    } else {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = filename;
+      a.click();
+      try{ if(window.showToast) showToast('Shipment receipt downloaded'); }catch(_e){}
+    }
   }catch(error){
     console.warn('Shipment receipt download failed', error);
-    showToast('Could not generate the receipt image. Please try again.', true);
+    try{ if(window.showToast) showToast('Could not generate the receipt image. Try Print / Save PDF.', true); }catch(_e){}
+  }finally{
+    try{ if(typeof hidePageLoader==='function') hidePageLoader(); }catch(_e){}
   }
 }
+window.downloadShipmentReceiptImage = downloadShipmentReceiptImage;
+
 
 function pageTrackSearch(prefill, err){
   return `
