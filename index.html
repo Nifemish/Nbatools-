@@ -4635,11 +4635,14 @@ function normalizeShipmentForEmail(shipment){
     }
   };
 }
+/* Email gateway: Cloudflare Worker holds the Brevo API key (never in the browser) */
+const TRACKPORT_NOTIFY_URL = 'https://trackport-notify.nbatoolz.workers.dev';
+
 async function sendBrevoRecipientAlert(shipment, opts){
   opts = opts || {};
   const kind = opts.kind || 'created';
   const cfg = getBrevoConfig();
-  if(!cfg.enabled) return { skipped:true, reason:'disabled' };
+  if(cfg && cfg.enabled === false) return { skipped:true, reason:'disabled' };
   try{ shipment = normalizeShipmentForEmail(shipment); }catch(_e){}
   const toEmail = String(
     (shipment && shipment.recipient && (shipment.recipient.email || shipment.recipient.Email)) ||
@@ -4648,8 +4651,7 @@ async function sendBrevoRecipientAlert(shipment, opts){
     ''
   ).trim();
   if(!toEmail || !toEmail.includes('@')) return { skipped:true, reason:'no-recipient-email' };
-  if(!cfg.apiKey) return { skipped:true, reason:'no-api-key' };
-  if(!cfg.senderEmail || !cfg.senderEmail.includes('@')) return { skipped:true, reason:'no-sender-email' };
+  /* API key + sender live on the Worker — no client-side key required */
 
   const status = opts.status || (shipment && shipment.status) || 'Updated';
   const location = opts.location || (shipment && shipment.currentLocation) || '';
@@ -4683,16 +4685,12 @@ async function sendBrevoRecipientAlert(shipment, opts){
     ? ['Hi '+recipName+',', '', status==='Out for Delivery' ? 'Your package is out for delivery. Be ready to pick it up.' : ('Status update: '+status), location ? ('Location: '+location) : '', 'Product: '+productName, 'Tracking: '+tn, ctaLabel+': '+trackUrl, '', '— TrackPort'].filter(Boolean).join('\n')
     : ['Hi '+recipName+',', '', senderName+' sent you a package using TrackPort product shipment service.', 'Product: '+productName, 'Tracking: '+tn, 'Track now: '+trackUrl, '', '— TrackPort'].join('\n');
 
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+  const res = await fetch(TRACKPORT_NOTIFY_URL, {
     method: 'POST',
-    headers: {
-      'accept': 'application/json',
-      'api-key': cfg.apiKey,
-      'content-type': 'application/json'
-    },
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      sender: { name: cfg.senderName || 'Trackport', email: cfg.senderEmail },
-      to: [{ email: toEmail, name: (shipment && shipment.recipient && shipment.recipient.name) || undefined }],
+      toEmail: toEmail,
+      toName: (shipment && shipment.recipient && shipment.recipient.name) || undefined,
       subject: subject,
       htmlContent: htmlContent,
       textContent: textContent
@@ -4700,17 +4698,18 @@ async function sendBrevoRecipientAlert(shipment, opts){
   });
   let detail = '';
   try{ detail = await res.text(); }catch(_e){}
-  if(!res.ok){
-    const err = new Error('Brevo send failed ('+res.status+')');
-    err.detail = detail;
-    err.status = res.status;
-    console.warn('[TrackPort] Brevo error', res.status, detail);
-    throw err;
-  }
   let data = null;
   try{ data = detail ? JSON.parse(detail) : null; }catch(_e){}
+  if(!res.ok || (data && data.ok === false)){
+    const err = new Error('Notify failed ('+res.status+')');
+    err.detail = detail;
+    err.status = res.status;
+    console.warn('[TrackPort] notify worker error', res.status, detail);
+    throw err;
+  }
   return { ok:true, data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
 }
+window.TRACKPORT_NOTIFY_URL = TRACKPORT_NOTIFY_URL;
 async function notifyShipmentStatusChange(shipment, prevStatus, newStatus, location){
   if(!newStatus || newStatus===prevStatus) return { skipped:true, reason:'unchanged' };
   /* Only Out for Delivery triggers a movement email (plus create-time alert elsewhere) */
@@ -6361,7 +6360,7 @@ async function updateShipmentMovement(number){
      const notify=await notifyShipmentStatusChange(shipment, prevStatus, status, location);
      if(notify && notify.ok) mailNote=' · recipient notified';
      else if(notify && notify.reason==='no-recipient-email') mailNote='';
-     else if(notify && notify.reason==='no-api-key') mailNote=' · set Brevo in Settings to notify';
+     else if(notify && notify.reason==='no-recipient-email') mailNote='';
    }catch(_e){ mailNote=' · email notify failed'; }
  }
  toast('Shipment movement updated'+mailNote);
