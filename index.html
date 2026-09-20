@@ -895,6 +895,44 @@ h1,h2,h3,p{margin-top:0}.title{font-size:clamp(38px,7vw,72px);line-height:.96;le
 .sb-step-item.active .sb-step-label,.sb-step-item.done .sb-step-label{color:var(--ink)}
 .sb-panel{display:none}
 .sb-panel.active{display:block;animation:tpPageIn .22s cubic-bezier(.22,1,.36,1) both}
+.sb-product-upload{margin:4px 0 18px}
+.sb-product-upload .upload-zone,
+.sb-product-upload .preview-wrap{
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-direction:column;
+  min-height:140px;border:1.5px dashed var(--line);border-radius:18px;
+  background:var(--surface2);cursor:pointer;padding:18px;text-align:center;
+  transition:border-color .2s,background .2s,transform .2s;
+}
+.sb-product-upload .upload-zone:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface2));transform:translateY(-1px)}
+.sb-product-upload .upload-zone p{margin:0;font-size:13px;color:var(--muted);line-height:1.4}
+.sb-product-upload .upload-zone b{color:var(--ink)}
+.sb-product-upload .upload-zone .ico{font-size:28px;line-height:1}
+.sb-product-upload .preview-wrap{
+  position:relative;cursor:default;border-style:solid;padding:12px;
+}
+.sb-product-upload .preview-wrap img{
+  width:120px;height:120px;object-fit:cover;border-radius:16px;border:1px solid var(--line);
+  box-shadow:0 8px 22px color-mix(in srgb,var(--ink) 8%,transparent);
+}
+.sb-product-upload .preview-remove{
+  position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;
+  border:0;background:var(--ink);color:var(--bg);font-size:16px;cursor:pointer;
+  display:grid;place-items:center;line-height:1;
+}
+.sb-product-upload .preview-remove:hover{transform:scale(1.06)}
+.sb-review-product{
+  display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-bottom:14px;
+  border-bottom:1px solid var(--line);
+}
+.sb-review-product img{
+  width:64px;height:64px;border-radius:14px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto;
+}
+.sb-review-product .fallback{
+  width:64px;height:64px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:22px;flex:0 0 auto;color:var(--muted);
+}
+.sb-review-product .name{font-size:15px;font-weight:700;letter-spacing:-.02em}
+.sb-review-product .meta{font-size:12px;color:var(--muted);margin-top:3px}
 .sb-card{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow);padding:28px;margin-bottom:18px;
@@ -935,10 +973,36 @@ h1,h2,h3,p{margin-top:0}.title{font-size:clamp(38px,7vw,72px);line-height:.96;le
   display:flex;align-items:center;gap:12px;margin-bottom:8px;
 }
 .sb-carrier-mark{
-  width:40px;height:40px;border-radius:12px;background:var(--surface2);
-  display:grid;place-items:center;font-size:14px;font-weight:800;flex-shrink:0;
-  letter-spacing:-.02em;
+  width:44px;height:44px;border-radius:12px;background:#fff;
+  display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;
+  letter-spacing:-.02em;overflow:hidden;border:1px solid var(--line);
+  color:var(--ink);
 }
+.sb-carrier-mark img{
+  width:100%;height:100%;object-fit:contain;padding:5px;display:block;background:#fff;
+}
+.carrier-badge{
+  display:inline-flex;align-items:center;gap:8px;vertical-align:middle;
+}
+.carrier-badge .carrier-logo,.carrier-badge img.carrier-logo{
+  width:28px;height:28px;border-radius:8px;object-fit:contain;background:#fff;
+  border:1px solid var(--line);padding:3px;flex:0 0 auto;
+}
+.carrier-badge .carrier-logo-fallback{
+  width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+  font-size:10px;font-weight:800;color:#fff;flex:0 0 auto;
+}
+.carrier-badge .carrier-name{font-weight:700;letter-spacing:-.02em}
+.carrier-picker{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.carrier-option-card{
+  border:1px solid var(--line);border-radius:16px;padding:12px;background:var(--surface);
+  display:flex;align-items:center;gap:10px;cursor:pointer;transition:.2s;
+}
+.carrier-option-card:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.carrier-option-card.selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(183,242,58,.18)}
+.carrier-option-card img{width:36px;height:36px;object-fit:contain;border-radius:8px;background:#fff;border:1px solid var(--line);padding:3px}
+.carrier-option-card span{font-size:12px;font-weight:700;letter-spacing:-.015em;line-height:1.25}
+
 .sb-service-head strong{font-size:15px;display:block;letter-spacing:-.02em}
 .sb-service-head span{font-size:12px;color:var(--muted)}
 .sb-service-meta{
@@ -1097,9 +1161,67 @@ h1,h2,h3,p{margin-top:0}.title{font-size:clamp(38px,7vw,72px);line-height:.96;le
   display:flex;align-items:center;gap:10px;margin-bottom:12px;
 }
 .fb-airline-mark{
-  width:36px;height:36px;border-radius:11px;background:var(--surface2);
-  display:grid;place-items:center;font-size:16px;flex-shrink:0;
+  /* Horizontal logo frame — wider, shorter */
+  width:96px;height:36px;border-radius:10px;background:#fff;
+  display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;
+  overflow:hidden;border:1px solid var(--line);color:var(--ink);
+  position:relative;
 }
+.fb-airline-mark.has-logo{background:#fff}
+.fb-airline-mark img{
+  width:100%;height:100%;object-fit:contain;object-position:center;
+  display:block;background:#fff;padding:4px 8px;
+  /* Zoom past empty SVG padding */
+  transform:scale(1.35);
+}
+.airline-badge{
+  display:inline-flex;align-items:center;gap:8px;vertical-align:middle;
+}
+.airline-badge .airline-logo-shell{
+  width:72px;height:28px;border-radius:8px;overflow:hidden;background:#fff;
+  border:1px solid var(--line);display:grid;place-items:center;flex:0 0 auto;
+}
+.airline-badge .airline-logo{
+  width:100%;height:100%;object-fit:contain;object-position:center;
+  display:block;background:#fff;padding:3px 6px;transform:scale(1.35);
+}
+.airline-badge .airline-logo-fallback{
+  width:72px;height:28px;border-radius:8px;display:grid;place-items:center;
+  font-size:11px;font-weight:800;color:#fff;flex:0 0 auto;
+}
+.airline-badge .airline-name{font-weight:700;letter-spacing:-.02em}
+.flight-plane-mark{
+  overflow:hidden;background:#fff!important;
+  width:110px!important;height:42px!important;border-radius:12px!important;
+}
+.flight-plane-mark img{
+  width:100%;height:100%;object-fit:contain;object-position:center;
+  display:block;background:#fff;padding:4px 8px;transform:scale(1.4);
+}
+.ticket-brand{
+  display:flex!important;align-items:center;gap:10px;
+}
+.ticket-brand.has-logo:before{display:none!important;content:none!important}
+.ticket-airline-logo-shell{
+  width:100px;height:36px;border-radius:10px;overflow:hidden;background:#fff;
+  border:1px solid #d5ddd6;display:grid;place-items:center;flex:0 0 auto;
+}
+.ticket-airline-logo-shell img{
+  width:100%;height:100%;object-fit:contain;object-position:center;
+  display:block;padding:3px 7px;transform:scale(1.4);
+}
+.ticket-brand-name{font-size:12px;letter-spacing:.12em;font-weight:950;color:#1e2a22;text-transform:uppercase}
+.summary-top .fb-airline-mark{
+  width:100px;height:38px;border-radius:12px;flex-shrink:0;
+}
+.summary-top .fb-airline-mark img{
+  transform:scale(1.4);
+}
+.track-summary .flight-overview-card .summary-top{
+  align-items:center;
+}
+
+
 .fb-flight-airline strong{font-size:14px;display:block;letter-spacing:-.02em}
 .fb-flight-airline span{font-size:11px;color:var(--muted)}
 .fb-times{
@@ -1187,7 +1309,7 @@ h1,h2,h3,p{margin-top:0}.title{font-size:clamp(38px,7vw,72px);line-height:.96;le
   text-transform:uppercase;padding:4px 8px;border-radius:999px;
   background:#e8f8cd;color:#315010;margin-left:8px;
 }
-.flight-output{display:grid;gap:18px;margin-top:8px}.flight-output-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:4px}.flight-output-head h1{font-size:clamp(34px,5vw,58px);letter-spacing:-.065em;line-height:.94;margin:9px 0}.flight-output-head .tracking-chip{font-family:monospace;font-size:11px;padding:11px 13px;border-radius:13px;background:var(--surface2);color:var(--ink);white-space:nowrap}.flight-overview{padding:22px;background:var(--dark);color:#fff;border-radius:30px;position:relative;overflow:hidden}.flight-overview:after{content:"✦";position:absolute;right:28px;top:16px;color:var(--accent);font-size:70px;opacity:.16}.flight-overview-top{display:flex;align-items:flex-start;gap:14px;position:relative;z-index:1}.flight-plane-mark{width:55px;height:55px;border-radius:18px;background:var(--accent);color:#0a100b;display:grid;place-items:center;font-size:25px}.flight-airline{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:#9ba69f;font-weight:900}.flight-overview h2{font-size:31px;letter-spacing:-.055em;margin:5px 0 10px}.flight-overview .status{display:inline-flex}.flight-overview-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:24px;position:relative;z-index:1}.flight-overview-grid small,.flight-fact small{display:block;color:#89958d;text-transform:uppercase;font-size:9px;letter-spacing:.11em;font-weight:900;margin-bottom:6px}.flight-overview-grid strong{font-size:13px}.flight-ticket-stage{background:var(--dark);border-radius:30px;padding:clamp(16px,3vw,30px);box-shadow:var(--shadow);overflow:hidden}.boarding-pass{display:grid;grid-template-columns:minmax(0,1fr) 235px;background:#f7faf5;color:#111;border-radius:23px;overflow:hidden;box-shadow:0 18px 35px rgba(0,0,0,.25);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.ticket-main,.ticket-stub{padding:25px}.ticket-main{min-width:0}.ticket-stub{display:flex;flex-direction:column;justify-content:space-between;border-left:2px dashed #c8d0c8;background:#eaf0e8}.ticket-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ticket-brand{font-size:12px;letter-spacing:.16em;font-weight:950;color:#1e2a22}.ticket-brand:before{content:"T";display:inline-grid;place-items:center;width:23px;height:23px;border-radius:8px;background:#b7f23a;color:#0a100b;margin-right:8px;font-size:13px;letter-spacing:0}.ticket-class{font-size:11px;letter-spacing:.13em;font-weight:950;color:#607064;text-align:right}.ticket-rule{height:2px;background:#d8dfd6;margin:19px 0}.ticket-passenger{font-size:21px;font-weight:950;letter-spacing:-.045em;text-transform:uppercase}.ticket-route-row,.ticket-detail-row{display:grid;gap:12px;margin-top:22px}.ticket-route-row{grid-template-columns:repeat(4,1fr);padding:17px 0;border-top:1px solid #dce3da;border-bottom:1px solid #dce3da}.ticket-detail-row{grid-template-columns:repeat(5,1fr)}.ticket-field .label{font-size:9px;color:#778177;text-transform:uppercase;letter-spacing:.11em;font-weight:900;margin-bottom:6px}.ticket-field .value{font-family:monospace;font-weight:900;font-size:15px;word-break:break-word}.ticket-route-row .value{font-size:20px;letter-spacing:-.05em}.ticket-footer{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;border-top:1px solid #dce3da;margin-top:22px;padding-top:17px}.ticket-warning{font-size:9px;font-weight:950;letter-spacing:.05em;color:#566359}.ticket-numbers{font-family:monospace;font-size:11px;margin-top:11px;color:#2f3c32}.ticket-numbers span+span{margin-left:12px}.ticket-numbers span span{font-family:Inter,sans-serif;color:#7a847c;margin-right:4px}.ticket-barcode{width:110px;height:43px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 5px,#111 5px 6px,transparent 6px 9px);border:4px solid #f7faf5}.stub-name{font-size:16px;line-height:1.15;font-weight:950;text-transform:uppercase;margin:22px 0}.stub-route{display:grid;gap:5px;font-size:13px;font-weight:800;line-height:1.25}.stub-route span{font-size:9px;color:#778177;text-transform:uppercase;letter-spacing:.1em;margin-top:10px}.stub-flight-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid #cfd8cf;border-bottom:1px solid #cfd8cf;padding:15px 0;margin:18px 0}.stub-footer{border-top:1px solid #cfd8cf;padding-top:14px;font:900 10px monospace;color:#344138}.stub-footer .member{font:800 9px Inter,sans-serif;color:#657168;margin-top:9px}.flight-output-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.flight-output-actions .action-group{display:flex;gap:8px;flex-wrap:wrap}.flight-timeline-card{padding:24px}.flight-timeline-card h3{margin:0;font-size:22px;letter-spacing:-.04em}.flight-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:22px 0 27px;position:relative}.flight-steps:before{content:"";position:absolute;left:8%;right:8%;top:14px;height:3px;background:var(--line);z-index:0}.flight-step{position:relative;z-index:1;text-align:center;color:var(--muted);font-size:10px;font-weight:900}.flight-step .dot{width:29px;height:29px;border-radius:50%;margin:0 auto 8px;background:var(--surface);border:4px solid var(--line)}.flight-step.complete,.flight-step.active{color:var(--ink)}.flight-step.complete .dot,.flight-step.active .dot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 5px rgba(183,242,58,.12)}.flight-events{display:grid;gap:0}.flight-event{display:grid;grid-template-columns:15px 1fr;gap:12px;position:relative;padding-bottom:18px}.flight-event:last-child{padding-bottom:0}.flight-event:not(:last-child):before{content:"";position:absolute;left:6px;top:14px;bottom:0;width:2px;background:var(--line)}.flight-event .event-dot{width:13px;height:13px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--accent);margin-top:2px;z-index:1}.flight-event strong{font-size:14px}.flight-event time{display:block;color:var(--muted);font-size:10px;margin-top:4px}.flight-event p{font-size:12px;color:var(--muted);margin:5px 0 0}.flight-owner-panel{padding:24px}.flight-owner-panel h3{margin:0;font-size:21px;letter-spacing:-.04em}.flight-owner-panel .owner-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.flight-fact-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}.flight-fact{padding:15px;border-radius:18px;background:var(--surface2)}.flight-fact strong{font-size:13px;word-break:break-word}
+.flight-output{display:grid;gap:18px;margin-top:8px}.flight-output-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:4px}.flight-output-head h1{font-size:clamp(34px,5vw,58px);letter-spacing:-.065em;line-height:.94;margin:9px 0}.flight-output-head .tracking-chip{font-family:monospace;font-size:11px;padding:11px 13px;border-radius:13px;background:var(--surface2);color:var(--ink);white-space:nowrap}.flight-overview{padding:22px;background:var(--dark);color:#fff;border-radius:30px;position:relative;overflow:hidden}.flight-overview:after{content:"✦";position:absolute;right:28px;top:16px;color:var(--accent);font-size:70px;opacity:.16}.flight-overview-top{display:flex;align-items:flex-start;gap:14px;position:relative;z-index:1}.flight-plane-mark{width:110px;height:42px;border-radius:12px;background:#fff;color:#0a100b;display:grid;place-items:center;font-size:14px;overflow:hidden;border:1px solid rgba(255,255,255,.18)}.flight-airline{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:#9ba69f;font-weight:900}.flight-overview h2{font-size:31px;letter-spacing:-.055em;margin:5px 0 10px}.flight-overview .status{display:inline-flex}.flight-overview-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:24px;position:relative;z-index:1}.flight-overview-grid small,.flight-fact small{display:block;color:#89958d;text-transform:uppercase;font-size:9px;letter-spacing:.11em;font-weight:900;margin-bottom:6px}.flight-overview-grid strong{font-size:13px}.flight-ticket-stage{background:var(--dark);border-radius:30px;padding:clamp(16px,3vw,30px);box-shadow:var(--shadow);overflow:hidden}.boarding-pass{display:grid;grid-template-columns:minmax(0,1fr) 235px;background:#f7faf5;color:#111;border-radius:23px;overflow:hidden;box-shadow:0 18px 35px rgba(0,0,0,.25);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.ticket-main,.ticket-stub{padding:25px}.ticket-main{min-width:0}.ticket-stub{display:flex;flex-direction:column;justify-content:space-between;border-left:2px dashed #c8d0c8;background:#eaf0e8}.ticket-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.ticket-brand{font-size:12px;letter-spacing:.16em;font-weight:950;color:#1e2a22}.ticket-brand:before{content:"T";display:inline-grid;place-items:center;width:23px;height:23px;border-radius:8px;background:#b7f23a;color:#0a100b;margin-right:8px;font-size:13px;letter-spacing:0}.ticket-class{font-size:11px;letter-spacing:.13em;font-weight:950;color:#607064;text-align:right}.ticket-rule{height:2px;background:#d8dfd6;margin:19px 0}.ticket-passenger{font-size:21px;font-weight:950;letter-spacing:-.045em;text-transform:uppercase}.ticket-route-row,.ticket-detail-row{display:grid;gap:12px;margin-top:22px}.ticket-route-row{grid-template-columns:repeat(4,1fr);padding:17px 0;border-top:1px solid #dce3da;border-bottom:1px solid #dce3da}.ticket-detail-row{grid-template-columns:repeat(5,1fr)}.ticket-field .label{font-size:9px;color:#778177;text-transform:uppercase;letter-spacing:.11em;font-weight:900;margin-bottom:6px}.ticket-field .value{font-family:monospace;font-weight:900;font-size:15px;word-break:break-word}.ticket-route-row .value{font-size:20px;letter-spacing:-.05em}.ticket-footer{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;border-top:1px solid #dce3da;margin-top:22px;padding-top:17px}.ticket-warning{font-size:9px;font-weight:950;letter-spacing:.05em;color:#566359}.ticket-numbers{font-family:monospace;font-size:11px;margin-top:11px;color:#2f3c32}.ticket-numbers span+span{margin-left:12px}.ticket-numbers span span{font-family:Inter,sans-serif;color:#7a847c;margin-right:4px}.ticket-barcode{width:110px;height:43px;background:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 5px,#111 5px 6px,transparent 6px 9px);border:4px solid #f7faf5}.stub-name{font-size:16px;line-height:1.15;font-weight:950;text-transform:uppercase;margin:22px 0}.stub-route{display:grid;gap:5px;font-size:13px;font-weight:800;line-height:1.25}.stub-route span{font-size:9px;color:#778177;text-transform:uppercase;letter-spacing:.1em;margin-top:10px}.stub-flight-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid #cfd8cf;border-bottom:1px solid #cfd8cf;padding:15px 0;margin:18px 0}.stub-footer{border-top:1px solid #cfd8cf;padding-top:14px;font:900 10px monospace;color:#344138}.stub-footer .member{font:800 9px Inter,sans-serif;color:#657168;margin-top:9px}.flight-output-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.flight-output-actions .action-group{display:flex;gap:8px;flex-wrap:wrap}.flight-timeline-card{padding:24px}.flight-timeline-card h3{margin:0;font-size:22px;letter-spacing:-.04em}.flight-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin:22px 0 27px;position:relative}.flight-steps:before{content:"";position:absolute;left:8%;right:8%;top:14px;height:3px;background:var(--line);z-index:0}.flight-step{position:relative;z-index:1;text-align:center;color:var(--muted);font-size:10px;font-weight:900}.flight-step .dot{width:29px;height:29px;border-radius:50%;margin:0 auto 8px;background:var(--surface);border:4px solid var(--line)}.flight-step.complete,.flight-step.active{color:var(--ink)}.flight-step.complete .dot,.flight-step.active .dot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 5px rgba(183,242,58,.12)}.flight-events{display:grid;gap:0}.flight-event{display:grid;grid-template-columns:15px 1fr;gap:12px;position:relative;padding-bottom:18px}.flight-event:last-child{padding-bottom:0}.flight-event:not(:last-child):before{content:"";position:absolute;left:6px;top:14px;bottom:0;width:2px;background:var(--line)}.flight-event .event-dot{width:13px;height:13px;border-radius:50%;background:var(--accent);border:3px solid var(--surface);box-shadow:0 0 0 1px var(--accent);margin-top:2px;z-index:1}.flight-event strong{font-size:14px}.flight-event time{display:block;color:var(--muted);font-size:10px;margin-top:4px}.flight-event p{font-size:12px;color:var(--muted);margin:5px 0 0}.flight-owner-panel{padding:24px}.flight-owner-panel h3{margin:0;font-size:21px;letter-spacing:-.04em}.flight-owner-panel .owner-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}.flight-fact-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}.flight-fact{padding:15px;border-radius:18px;background:var(--surface2)}.flight-fact strong{font-size:13px;word-break:break-word}
 @media(max-width:800px){.auth-visual{min-height:34vh}.two,.three{grid-template-columns:1fr}.hero{min-height:370px}.hero-art{right:12px;bottom:18px;transform:scale(.8);transform-origin:right bottom}.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:span 2}.preview{position:relative;top:0}.airport{font-size:32px}}
 @media(max-width:800px){.flight-overview-grid{grid-template-columns:repeat(3,1fr)}.boarding-pass{grid-template-columns:1fr}.ticket-stub{border-left:0;border-top:2px dashed #c8d0c8}.flight-output-head{align-items:flex-start;flex-direction:column}.ticket-detail-row{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:450px){.screen{padding:calc(82px + env(safe-area-inset-top)) 16px calc(105px + env(safe-area-inset-bottom))}.topbar{height:calc(66px + env(safe-area-inset-top));padding-left:16px;padding-right:16px}.brand-wordmark{width:112px;height:26px}.topbar-title{display:none}.theme-toggle{width:42px;height:42px;padding:0;justify-content:center;font-size:0}.theme-toggle .theme-icon{font-size:18px}.header{padding:15px 0 23px}.title{font-size:51px}.hero{padding:22px;border-radius:27px}.hero h2{font-size:39px}.hero-art{opacity:.45}.record{padding:15px}.record .status{display:none}.form-card,.pad{padding:19px}.ticket-grid{grid-template-columns:repeat(2,1fr)}}
@@ -3729,6 +3851,7 @@ async function loginWithLocalFallback(email, pass){
 }
 async function signOutUser(){
  try{if(firebaseAuth)await firebaseAuth.signOut()}catch(error){console.warn('TrackPort sign out failed.',error)}
+ try{ if(typeof setAdminUnlocked==='function') setAdminUnlocked(false); }catch(_e){}
  state.user=null;window.trackQ='';window.trackRemote=null;save();
  try{ document.body.classList.remove('tp-menu-open'); }catch(_e){}
  nav('landing');
@@ -3873,6 +3996,86 @@ return `<div class="screen"><div class="container">${topbar('Create','home')}<di
 
 const SHIPMENT_STATUS_FLOW=['Order Created','Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
 const SHIPMENT_CARRIERS=['TrackPort Logistics','DHL Express','FedEx','UPS','Aramex','GIG Logistics','Chronopost','EMS'];
+/* Real carrier brand logos (hosting: postimg) */
+const CARRIER_BRANDS = {
+  'trackport': { name:'TrackPort Logistics', mark:'TP', color:'#1a2b4a', logo:'https://i.postimg.cc/CnkczpdT/file-000000006a6882108bfc58cfc081d916.png' },
+  'trackport logistics': { name:'TrackPort Logistics', mark:'TP', color:'#1a2b4a', logo:'https://i.postimg.cc/CnkczpdT/file-000000006a6882108bfc58cfc081d916.png' },
+  'dhl': { name:'DHL Express', mark:'DHL', color:'#FFCC00', logo:'https://i.postimg.cc/18k4Kx3b/Background-Eraser-20260907-151414520.png' },
+  'dhl express': { name:'DHL Express', mark:'DHL', color:'#FFCC00', logo:'https://i.postimg.cc/18k4Kx3b/Background-Eraser-20260907-151414520.png' },
+  'fedex': { name:'FedEx', mark:'FX', color:'#4D148C', logo:'https://i.postimg.cc/3y2NSLyx/Background-Eraser-20260907-151503022.png' },
+  'fedex delivery': { name:'FedEx Delivery', mark:'FX', color:'#4D148C', logo:'https://i.postimg.cc/sB5x6nBC/Background-Eraser-20260907-151446026.png' },
+  'fedex express': { name:'FedEx', mark:'FX', color:'#4D148C', logo:'https://i.postimg.cc/3y2NSLyx/Background-Eraser-20260907-151503022.png' },
+  'ups': { name:'UPS', mark:'UPS', color:'#351C15', logo:'https://i.postimg.cc/McyRFh4C/Background-Eraser-20260907-151357740.png' },
+  'aramex': { name:'Aramex', mark:'AX', color:'#E30613', logo:'https://i.postimg.cc/wtDMfW1w/Background-Eraser-20260907-151430708.png' },
+  'gig logistics': { name:'GIG Logistics', mark:'GIG', color:'#00A651', logo:'' },
+  'chronopost': { name:'Chronopost', mark:'CP', color:'#003DA5', logo:'' },
+  'ems': { name:'EMS', mark:'EMS', color:'#C8102E', logo:'' },
+  'usps': { name:'USPS', mark:'US', color:'#333366', logo:'' }
+};
+function carrierBrandKey(name){
+  return String(name||'').toLowerCase().trim();
+}
+function resolveCarrierBrand(name){
+  const key = carrierBrandKey(name);
+  if(CARRIER_BRANDS[key]) return { ...CARRIER_BRANDS[key], key };
+  // fuzzy match
+  for(const k of Object.keys(CARRIER_BRANDS)){
+    if(key.includes(k) || k.includes(key)) return { ...CARRIER_BRANDS[k], key:k };
+  }
+  let h = 0;
+  for(let i=0;i<key.length;i++) h = ((h<<5)-h)+key.charCodeAt(i)|0;
+  const hue = Math.abs(h) % 360;
+  const mark = String(name||'TP').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase() || 'TP';
+  return { name: String(name||'TrackPort Logistics'), mark, color: 'hsl('+hue+' 42% 32%)', logo: '', key };
+}
+function carrierLogoUrl(name){
+  const b = resolveCarrierBrand(name);
+  return b.logo || '';
+}
+function carrierMarkHtml(name, size){
+  size = size || 40;
+  const b = resolveCarrierBrand(name);
+  const style = `width:${size}px;height:${size}px;border-radius:${Math.max(8,Math.round(size*0.28))}px;`;
+  if(b.logo){
+    return `<span class="sb-carrier-mark" style="${style}" title="${esc(b.name)}"><img src="${esc(b.logo)}" alt="${esc(b.name)}" loading="lazy" onerror="this.style.display='none';this.parentNode.textContent='${esc(b.mark)}';"></span>`;
+  }
+  return `<span class="sb-carrier-mark" style="${style}background:${esc(b.color)};color:#fff;border-color:transparent" title="${esc(b.name)}">${esc(b.mark)}</span>`;
+}
+function carrierBadgeHtml(name, opts){
+  opts = opts || {};
+  const size = opts.size || 28;
+  const nameSize = opts.nameSize || 13;
+  const showName = opts.showName !== false;
+  const b = resolveCarrierBrand(name);
+  const logo = b.logo
+    ? `<img class="carrier-logo" src="${esc(b.logo)}" alt="${esc(b.name)}" style="width:${size}px;height:${size}px;border-radius:${Math.max(6,Math.round(size*0.28))}px" loading="lazy" onerror="this.outerHTML='<span class=\\'carrier-logo-fallback\\' style=\\'width:${size}px;height:${size}px;background:${esc(b.color)}\\'>${esc(b.mark)}</span>'">`
+    : `<span class="carrier-logo-fallback" style="width:${size}px;height:${size}px;background:${esc(b.color)};border-radius:${Math.max(6,Math.round(size*0.28))}px">${esc(b.mark)}</span>`;
+  const label = showName ? `<span class="carrier-name" style="font-size:${nameSize}px">${esc(b.name)}</span>` : '';
+  return `<span class="carrier-badge">${logo}${label}</span>`;
+}
+function carrierOptionsHtml(selected){
+  const sel = String(selected||'TrackPort Logistics');
+  return SHIPMENT_CARRIERS.map(c=>`<option value="${esc(c)}"${c===sel?' selected':''}>${esc(c)}</option>`).join('');
+}
+function carrierOptionCardsHtml(selected){
+  const sel = String(selected||'TrackPort Logistics');
+  return SHIPMENT_CARRIERS.map(c=>{
+    const b = resolveCarrierBrand(c);
+    const on = c===sel ? ' selected' : '';
+    const logo = b.logo
+      ? `<img src="${esc(b.logo)}" alt="${esc(c)}">`
+      : `<span class="sb-carrier-mark" style="width:36px;height:36px;background:${esc(b.color)};color:#fff;border:0">${esc(b.mark)}</span>`;
+    return `<label class="carrier-option-card${on}"><input type="radio" name="w_carrier_card" value="${esc(c)}" ${c===sel?'checked':''} style="display:none" onchange="(function(v){const s=document.getElementById('w_sh_carrier');if(s){s.value=v;}document.querySelectorAll('.carrier-option-card').forEach(el=>el.classList.toggle('selected',el.querySelector('input')&&el.querySelector('input').value===v));})(this.value)">${logo}<span>${esc(c)}</span></label>`;
+  }).join('');
+}
+window.CARRIER_BRANDS = CARRIER_BRANDS;
+window.resolveCarrierBrand = resolveCarrierBrand;
+window.carrierLogoUrl = carrierLogoUrl;
+window.carrierMarkHtml = carrierMarkHtml;
+window.carrierBadgeHtml = carrierBadgeHtml;
+window.carrierOptionsHtml = carrierOptionsHtml;
+window.carrierOptionCardsHtml = carrierOptionCardsHtml;
+
 function shipmentForm(){
  const today=new Date();
  const eta=new Date(today.getTime()+5*86400000);
@@ -3911,7 +4114,7 @@ function shipmentForm(){
      <div class="field"><label>RECIPIENT PHONE</label><input id="sb_recipient_phone" value="+1 310 555 0192" placeholder="+1 555 0100"></div>
     </div>
     <div class="field"><label>DESTINATION ADDRESS / CITY</label><input id="sb_dest" value="Los Angeles, CA" placeholder="City, State or full address" required></div>
-    <div class="field"><label>RECIPIENT EMAIL <span class="muted">(OPTIONAL)</span></label><input id="sb_recipient_email" type="email" value="jordan@example.com" placeholder="them@example.com"></div>
+    <div class="field"><label>RECIPIENT EMAIL <span class="muted">(for TRACK NOW alert)</span></label><input id="sb_recipient_email" type="email" value="jordan@example.com" placeholder="them@example.com"></div>
 
     <div class="sb-actions">
      <button type="button" class="btn btn-outline" onclick="nav('create')">Cancel</button>
@@ -3938,6 +4141,13 @@ function shipmentForm(){
     </div>
 
     <div class="field"><label>PRODUCT / PACKAGE NAME</label><input id="sb_product" value="Premium electronics kit" placeholder="e.g. Laptop accessories" required></div>
+    <div class="field sb-product-upload">
+     <label>PRODUCT PICTURE <span class="muted">(OPTIONAL · shown on tracking page)</span></label>
+     <div id="sb-product-image-area">
+      <label class="upload-zone" for="sb_product_image"><span class="ico">🖼️</span><p><b>Click to upload</b> a product photo<br><span class="muted">JPG, PNG or WEBP</span></p></label>
+      <input type="file" id="sb_product_image" accept="image/jpeg,image/png,image/webp,image/*" style="display:none;">
+     </div>
+    </div>
     <div class="grid two">
      <div class="field"><label>CATEGORY</label>
       <select id="sb_category">
@@ -4063,26 +4273,34 @@ function sbGoStep(n){
 function sbBuildMockRates(origin, dest, weight, pkgType, currency){
   const w = Math.max(0.1, Number(weight)||1);
   const carriers = [
-    { name:'FedEx', mark:'FX', methods:[
+    { name:'FedEx', methods:[
       { method:'Priority Overnight', days:1, base:48, speed:'fast' },
       { method:'Express', days:2, base:32, speed:'fast' },
       { method:'Ground', days:5, base:14, speed:'std' }
     ]},
-    { name:'UPS', mark:'UPS', methods:[
+    { name:'FedEx Delivery', methods:[
+      { method:'Home Delivery', days:3, base:20, speed:'std' },
+      { method:'Same Day City', days:1, base:36, speed:'fast' }
+    ]},
+    { name:'UPS', methods:[
       { method:'Next Day Air', days:1, base:46, speed:'fast' },
       { method:'2nd Day Air', days:2, base:28, speed:'fast' },
       { method:'Ground', days:4, base:13, speed:'std' }
     ]},
-    { name:'DHL Express', mark:'DHL', methods:[
+    { name:'DHL Express', methods:[
       { method:'Express Worldwide', days:2, base:42, speed:'fast' },
       { method:'Economy Select', days:5, base:22, speed:'std' }
     ]},
-    { name:'TrackPort Logistics', mark:'TP', methods:[
+    { name:'Aramex', methods:[
+      { method:'Priority', days:2, base:38, speed:'fast' },
+      { method:'Deferred', days:5, base:19, speed:'std' }
+    ]},
+    { name:'TrackPort Logistics', methods:[
       { method:'Priority', days:2, base:26, speed:'fast' },
       { method:'Express', days:3, base:18, speed:'std' },
       { method:'Standard', days:6, base:11, speed:'std' }
     ]},
-    { name:'USPS', mark:'US', methods:[
+    { name:'USPS', methods:[
       { method:'Priority Mail', days:3, base:16, speed:'std' },
       { method:'Ground Advantage', days:6, base:9, speed:'std' }
     ]}
@@ -4097,10 +4315,12 @@ function sbBuildMockRates(origin, dest, weight, pkgType, currency){
       const eta = new Date();
       eta.setDate(eta.getDate() + m.days);
       const etaLabel = eta.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+      const brand = (typeof resolveCarrierBrand==='function') ? resolveCarrierBrand(c.name) : { mark:'', logo:'' };
       list.push({
         id: `sb-rate-${id++}`,
         carrier: c.name,
-        mark: c.mark,
+        mark: brand.mark || '',
+        logo: brand.logo || '',
         method: m.method,
         days: m.days,
         speed: m.speed,
@@ -4132,6 +4352,7 @@ function sbSearchRates(){
     recipientPhone: (document.getElementById('sb_recipient_phone')?.value||'').trim(),
     recipientEmail: (document.getElementById('sb_recipient_email')?.value||'').trim()
   };
+  const productImage = (window.sbState && window.sbState.productImage) || '';
   window.sbState.package = {
     product,
     category: (document.getElementById('sb_category')?.value||'General').trim(),
@@ -4141,7 +4362,9 @@ function sbSearchRates(){
     dimensions: (document.getElementById('sb_dimensions')?.value||'').trim(),
     declaredValue: +(document.getElementById('sb_value')?.value)||null,
     currency,
-    pkgType
+    pkgType,
+    imageUrl: productImage || '',
+    productImage: productImage || ''
   };
   window.sbState.rates = sbBuildMockRates(origin, dest, weight, pkgType, currency);
   window.sbState.selectedService = null;
@@ -4179,7 +4402,7 @@ function sbRenderRates(){
     return `<div class="sb-service-card${selected?' selected':''}" data-sb-rate="${esc(r.id)}" onclick="sbSelectService('${esc(r.id)}')">
       <div class="sb-service-main">
         <div class="sb-service-head">
-          <div class="sb-carrier-mark">${esc(r.mark)}</div>
+          ${carrierMarkHtml(r.carrier, 44)}
           <div>
             <strong>${esc(r.carrier)}${r.best?'<span class="sb-badge-fast">Fastest value</span>':''}</strong>
             <span>${esc(r.method)}</span>
@@ -4229,7 +4452,18 @@ function sbRenderReview(){
       etaInput.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
   }catch(_e){}
+  const imgUrl = p.imageUrl || p.productImage || (window.sbState && window.sbState.productImage) || '';
+  const imgBlock = imgUrl
+    ? `<img src="${esc(imgUrl)}" alt="${esc(p.product||'Product')}">`
+    : `<div class="fallback">▣</div>`;
   box.innerHTML = `
+    <div class="sb-review-product">
+      ${imgBlock}
+      <div>
+        <div class="name">${esc(p.product||'—')}</div>
+        <div class="meta">${esc(p.category||'')} · Qty ${esc(String(p.quantity||1))} · ${esc(p.pkgType||'')}</div>
+      </div>
+    </div>
     <div class="sb-review-route">
       <div><div class="code">${esc(a.origin||'—')}</div><div class="city">From · ${esc(a.senderName||'')}</div></div>
       <div class="mid"><div class="icon">▣</div><small>${esc(s.method)} · ${s.days}d</small></div>
@@ -4256,13 +4490,272 @@ document.addEventListener('change', function(ev){
   }
 });
 
+
+/* ===== Brevo recipient alerts (free tier) ===== */
+const BREVO_CONFIG_KEY = 'tp_brevo_config';
+const BREVO_DEFAULTS = {
+  apiKey: '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',
+  senderEmail: 'trackport67@gmail.com',
+  senderName: 'Trackport',
+  enabled: true
+};
+function getBrevoConfig(){
+  try{
+    const raw = localStorage.getItem(BREVO_CONFIG_KEY);
+    if(raw){
+      const c = JSON.parse(raw);
+      return {
+        apiKey: String(c.apiKey||'').trim() || BREVO_DEFAULTS.apiKey,
+        senderEmail: String(c.senderEmail||'').trim() || BREVO_DEFAULTS.senderEmail,
+        senderName: String(c.senderName||'').trim() || BREVO_DEFAULTS.senderName,
+        enabled: c.enabled !== false
+      };
+    }
+  }catch(_e){}
+  return Object.assign({}, BREVO_DEFAULTS);
+}
+function saveBrevoConfig(cfg){
+  const next = {
+    apiKey: String(cfg.apiKey||'').trim() || BREVO_DEFAULTS.apiKey,
+    senderEmail: String(cfg.senderEmail||'').trim() || BREVO_DEFAULTS.senderEmail,
+    senderName: String(cfg.senderName||'').trim() || BREVO_DEFAULTS.senderName,
+    enabled: cfg.enabled !== false
+  };
+  localStorage.setItem(BREVO_CONFIG_KEY, JSON.stringify(next));
+  return next;
+}
+(function seedBrevoDefaults(){
+  try{
+    if(!localStorage.getItem(BREVO_CONFIG_KEY)){
+      localStorage.setItem(BREVO_CONFIG_KEY, JSON.stringify(BREVO_DEFAULTS));
+    }
+  }catch(_e){}
+})();
+function buildShipmentTrackUrl(tn, mode){
+  const id = encodeURIComponent(String(tn||''));
+  const origin = (typeof TRACKING_APP_ORIGIN!=='undefined' && TRACKING_APP_ORIGIN)
+    ? TRACKING_APP_ORIGIN
+    : 'https://app.trackport.workers.dev';
+  const path = (mode === 'pickup') ? '/#/pickup/' : '/#/track/';
+  return origin.replace(/\/$/,'') + path + id;
+}
+function shipmentStatusHeadline(status){
+  const s = String(status||'');
+  if(s==='Delivered') return 'Your package was delivered';
+  if(s==='Out for Delivery') return 'Your package is out for delivery';
+  if(s==='In Transit') return 'Your package is in transit';
+  if(s==='Arrived at Facility') return 'Your package arrived at a facility';
+  if(s==='Picked Up') return 'Your package was picked up';
+  if(s==='Order Created') return 'A package is on its way to you';
+  return 'Shipment status updated';
+}
+function shipmentRecipientAlertHtml(shipment, trackUrl, opts){
+  opts = opts || {};
+  const kind = opts.kind || 'created';
+  const status = opts.status || shipment.status || 'Updated';
+  const location = opts.location || shipment.currentLocation || '';
+  const ctaLabel = opts.ctaLabel || (kind==='status' && status==='Out for Delivery' ? 'PICK YOUR PACKAGE' : 'TRACK NOW');
+  const ctaText = ctaLabel + (String(ctaLabel).includes('→') ? '' : ' →');
+  const name = shipment.recipient?.name || shipment.recipient?.fullName || 'there';
+  const product = shipment.productName || shipment.product || 'a package';
+  const tn = shipment.trackingNumber || '';
+  const carrier = shipment.carrier || shipment.shipping?.carrier || 'TrackPort Logistics';
+  const method = shipment.method || shipment.shipping?.method || '';
+  const origin = shipment.origin || '';
+  const dest = shipment.destination || '';
+  const sender = shipment.sender?.name || shipment.sender?.fullName || 'A sender';
+  const headline = kind==='status' ? shipmentStatusHeadline(status) : 'A package is on its way to you';
+  const intro = kind==='status'
+    ? `There is a new update on your TrackPort shipment.`
+    : `<strong style="color:#fff;">${esc(sender)}</strong> created a shipment for you on TrackPort.`;
+  const statusRow = kind==='status' ? `
+            <tr><td style="padding:14px 16px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Status</td>
+                <td style="padding:14px 16px;color:#b7f23a;font-size:14px;font-weight:800;text-align:right;">${esc(status)}</td></tr>
+            ${location?`<tr><td style="padding:0 16px 14px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Location</td>
+                <td style="padding:0 16px 14px;color:#f3f7f2;font-size:13px;text-align:right;">${esc(location)}</td></tr>`:''}` : `
+            <tr><td style="padding:14px 16px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Product</td>
+                <td style="padding:14px 16px;color:#f3f7f2;font-size:14px;font-weight:700;text-align:right;">${esc(product)}</td></tr>`;
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0c1210;font-family:Inter,Segoe UI,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0c1210;padding:28px 12px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:560px;background:#111a16;border:1px solid #24302a;border-radius:18px;overflow:hidden;">
+        <tr><td style="padding:22px 24px 8px;">
+          <div style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9ba69f;font-weight:800;">TrackPort</div>
+          <h1 style="margin:10px 0 0;font-size:24px;line-height:1.25;color:#f3f7f2;letter-spacing:-.03em;">${esc(headline)}</h1>
+        </td></tr>
+        <tr><td style="padding:8px 24px 4px;color:#c5d0c8;font-size:15px;line-height:1.55;">
+          Hi ${esc(name)},<br><br>
+          ${intro}
+        </td></tr>
+        <tr><td style="padding:12px 24px;">
+          <table role="presentation" width="100%" style="background:#0c1210;border:1px solid #24302a;border-radius:14px;">
+            ${statusRow}
+            <tr><td style="padding:0 16px 14px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Tracking no.</td>
+                <td style="padding:0 16px 14px;color:#b7f23a;font-size:14px;font-weight:800;text-align:right;font-family:ui-monospace,monospace;">${esc(tn)}</td></tr>
+            <tr><td style="padding:0 16px 14px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Product</td>
+                <td style="padding:0 16px 14px;color:#f3f7f2;font-size:13px;text-align:right;">${esc(product)}</td></tr>
+            <tr><td style="padding:0 16px 14px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Route</td>
+                <td style="padding:0 16px 14px;color:#f3f7f2;font-size:13px;text-align:right;">${esc(origin)} → ${esc(dest)}</td></tr>
+            <tr><td style="padding:0 16px 14px;color:#9ba69f;font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Carrier</td>
+                <td style="padding:0 16px 14px;color:#f3f7f2;font-size:13px;text-align:right;">${esc(carrier)}${method?' · '+esc(method):''}</td></tr>
+          </table>
+        </td></tr>
+        <tr><td align="center" style="padding:8px 24px 28px;">
+          <a href="${trackUrl}" style="display:inline-block;background:#b7f23a;color:#0a100b;text-decoration:none;font-weight:900;font-size:14px;letter-spacing:.04em;padding:14px 28px;border-radius:999px;">${esc(ctaText)}</a>
+          <div style="margin-top:14px;font-size:12px;color:#7d8a82;line-height:1.5;">Or paste this link:<br><a href="${trackUrl}" style="color:#b7f23a;word-break:break-all;">${trackUrl}</a></div>
+        </td></tr>
+      </table>
+      <div style="max-width:560px;margin-top:14px;font-size:11px;color:#66736c;text-align:center;">Sent via TrackPort · Live tracking updates</div>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+function normalizeShipmentForEmail(shipment){
+  if(!shipment || typeof shipment!=='object') return shipment;
+  // Support both flat creator records and nested tracking-app shaped records
+  const recipient = shipment.recipient || {};
+  const sender = shipment.sender || {};
+  return {
+    ...shipment,
+    productName: shipment.productName || shipment.product || '',
+    carrier: shipment.carrier || shipment.shipping?.carrier || '',
+    method: shipment.method || shipment.shipping?.method || '',
+    origin: shipment.origin || sender.city || '',
+    destination: shipment.destination || recipient.city || '',
+    currentLocation: shipment.currentLocation || '',
+    status: shipment.status || '',
+    trackingNumber: shipment.trackingNumber || '',
+    recipient: {
+      name: recipient.name || recipient.fullName || '',
+      email: recipient.email || ''
+    },
+    sender: {
+      name: sender.name || sender.fullName || ''
+    }
+  };
+}
+async function sendBrevoRecipientAlert(shipment, opts){
+  opts = opts || {};
+  const kind = opts.kind || 'created';
+  const cfg = getBrevoConfig();
+  if(!cfg.enabled) return { skipped:true, reason:'disabled' };
+  shipment = normalizeShipmentForEmail(shipment);
+  const toEmail = String(shipment?.recipient?.email || opts.toEmail || '').trim();
+  if(!toEmail || !toEmail.includes('@')) return { skipped:true, reason:'no-recipient-email' };
+  if(!cfg.apiKey) return { skipped:true, reason:'no-api-key' };
+  if(!cfg.senderEmail || !cfg.senderEmail.includes('@')) return { skipped:true, reason:'no-sender-email' };
+
+  const status = opts.status || shipment.status || 'Updated';
+  const location = opts.location || shipment.currentLocation || '';
+  const trackUrl = buildShipmentTrackUrl(shipment.trackingNumber, (kind==='status' && (opts.ctaMode==='pickup' || status==='Out for Delivery')) ? 'pickup' : 'track');
+  const subject = kind==='status'
+    ? (status==='Out for Delivery'
+        ? `Out for delivery — pick up your package (${shipment.trackingNumber || 'TrackPort'})`
+        : `${status} — ${shipment.trackingNumber || 'TrackPort'}`)
+    : `A package is on its way — ${shipment.trackingNumber || 'TrackPort'}`;
+  const ctaLabel = opts.ctaLabel || (kind==='status' && status==='Out for Delivery' ? 'PICK YOUR PACKAGE' : 'TRACK NOW');
+  const htmlContent = shipmentRecipientAlertHtml(shipment, trackUrl, { kind, status, location, ctaLabel });
+  const textContent = kind==='status'
+    ? [
+        `Hi ${shipment.recipient?.name || 'there'},`,
+        '',
+        status==='Out for Delivery'
+          ? 'Your package is out for delivery. Be ready to pick it up.'
+          : `Status update: ${status}`,
+        location ? `Location: ${location}` : '',
+        `Product: ${shipment.productName || 'Package'}`,
+        `Tracking: ${shipment.trackingNumber || ''}`,
+        `${ctaLabel}: ${trackUrl}`,
+        '',
+        '— TrackPort'
+      ].filter(Boolean).join('\n')
+    : [
+        `Hi ${shipment.recipient?.name || 'there'},`,
+        '',
+        `${shipment.sender?.name || 'Someone'} created a shipment for you on TrackPort.`,
+        `Product: ${shipment.productName || 'Package'}`,
+        `Tracking: ${shipment.trackingNumber || ''}`,
+        `Track now: ${trackUrl}`,
+        '',
+        '— TrackPort'
+      ].join('\n');
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': cfg.apiKey,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { name: cfg.senderName || 'TrackPort', email: cfg.senderEmail },
+      to: [{ email: toEmail, name: shipment.recipient?.name || undefined }],
+      subject,
+      htmlContent,
+      textContent
+    })
+  });
+  if(!res.ok){
+    let detail = '';
+    try{ detail = await res.text(); }catch(_e){}
+    const err = new Error('Brevo send failed ('+res.status+')');
+    err.detail = detail;
+    throw err;
+  }
+  let data = null;
+  try{ data = await res.json(); }catch(_e){}
+  return { ok:true, data, trackUrl, kind, status };
+}
+async function notifyShipmentStatusChange(shipment, prevStatus, newStatus, location){
+  if(!newStatus || newStatus===prevStatus) return { skipped:true, reason:'unchanged' };
+  /* Only Out for Delivery triggers a movement email (plus create-time alert elsewhere) */
+  const allowed = ['Out for Delivery'];
+  if(!allowed.includes(String(newStatus))){
+    return { skipped:true, reason:'status-not-emailed', status:newStatus };
+  }
+  try{
+    return await sendBrevoRecipientAlertTwice(shipment, {
+      kind: 'status',
+      status: newStatus,
+      location: location || shipment.currentLocation || '',
+      ctaLabel: 'PICK YOUR PACKAGE',
+      ctaMode: 'pickup'
+    });
+  }catch(err){
+    console.warn('[TrackPort] status alert', err, err && err.detail);
+    return { ok:false, error:err };
+  }
+}
+/* Send the same alert twice: immediately, then again after 5s (create + Out for Delivery). */
+async function sendBrevoRecipientAlertTwice(shipment, opts){
+  opts = opts || {};
+  const first = await sendBrevoRecipientAlert(shipment, opts);
+  if(first && (first.skipped || first.ok === false)) return first;
+  const snapshot = JSON.parse(JSON.stringify(shipment || {}));
+  const optsCopy = Object.assign({}, opts);
+  setTimeout(function(){
+    sendBrevoRecipientAlert(snapshot, optsCopy).then(function(r){
+      console.info('[TrackPort] second email send', r && (r.ok || r.skipped || r.reason));
+    }).catch(function(err){
+      console.warn('[TrackPort] second email send failed', err, err && err.detail);
+    });
+  }, 5000);
+  return first;
+}
+window.getBrevoConfig = getBrevoConfig;
+window.saveBrevoConfig = saveBrevoConfig;
+window.sendBrevoRecipientAlert = sendBrevoRecipientAlert;
+window.sendBrevoRecipientAlertTwice = sendBrevoRecipientAlertTwice;
+window.notifyShipmentStatusChange = notifyShipmentStatusChange;
+window.buildShipmentTrackUrl = buildShipmentTrackUrl;
+
 async function createShipment(){
  const val=id=>(document.getElementById(id)?.value||'').trim();
  // Prefer wizard state
  const a = window.sbState && window.sbState.addresses;
  const p = window.sbState && window.sbState.package;
  const svc = window.sbState && window.sbState.selectedService;
- let product, origin, dest, category, quantity, description, carrier, method, weight, dimensions, fee, currency, senderName, senderPhone, recipientName, recipientPhone, status, eta;
+ let product, origin, dest, category, quantity, description, carrier, method, weight, dimensions, fee, currency, senderName, senderPhone, recipientName, recipientPhone, status, eta, productImage;
  if(a && p && svc){
    product = p.product || val('sb_product');
    origin = a.origin || val('sb_origin');
@@ -4282,6 +4775,7 @@ async function createShipment(){
    recipientPhone = a.recipientPhone || val('sb_recipient_phone');
    status = val('sb_status') || 'Order Created';
    eta = val('sb_eta');
+   productImage = p.productImage || p.imageUrl || (window.sbState && window.sbState.productImage) || '';
  } else {
    // Legacy single-form fallback
    product=val('s_product'); origin=val('s_origin'); dest=val('s_dest');
@@ -4292,6 +4786,7 @@ async function createShipment(){
    senderName=val('s_sender_name'); senderPhone=val('s_sender_phone');
    recipientName=val('s_recipient_name'); recipientPhone=val('s_recipient_phone');
    status=val('s_status')||'Order Created'; eta=val('s_eta');
+   productImage = (window.sbState && window.sbState.productImage) || '';
  }
  if(!product||!origin||!dest)return toast('Complete the package and route fields');
  const tn=tracking('SHP');
@@ -4308,6 +4803,9 @@ async function createShipment(){
   dimensions,
   fee,
   currency,
+  imageUrl: productImage || '',
+  productImage: productImage || '',
+  carrierLogo: (typeof carrierLogoUrl==='function' ? carrierLogoUrl(carrier) : '') || '',
   sender:{name:senderName,phone:senderPhone,city:origin,email:val('sb_sender_email')||''},
   recipient:{name:recipientName,phone:recipientPhone,city:dest,email:val('sb_recipient_email')||''},
   origin,destination:dest,
@@ -4318,8 +4816,26 @@ async function createShipment(){
   events:[]
  };
  x.events=[{status:x.status,location:origin,description:'Shipment record created',time:new Date().toLocaleString(),timestamp:new Date().toISOString()}];
- state.shipments.unshift(x);save();await persistCloudRecord(x,'shipment');toast('Shipment created');
- if(window.sbState){ window.sbState.selectedService=null; window.sbState.step=1; }
+ // Prefer recipient email from wizard addresses
+ if(a && a.recipientEmail && (!x.recipient.email)) x.recipient.email = a.recipientEmail;
+ if(a && a.senderEmail && (!x.sender.email)) x.sender.email = a.senderEmail;
+ state.shipments.unshift(x);save();await persistCloudRecord(x,'shipment');
+ // Notify recipient via Brevo (non-blocking for UX)
+ try{
+   if(x.recipient && x.recipient.email){
+     const notify = await sendBrevoRecipientAlertTwice(x);
+     if(notify && notify.ok) toast('Shipment created · recipient notified');
+     else if(notify && notify.reason==='no-api-key') toast('Shipment created · add Brevo API key in Settings to email recipients');
+     else if(notify && notify.reason==='no-sender-email') toast('Shipment created · set Brevo sender email in Settings');
+     else toast('Shipment created');
+   } else {
+     toast('Shipment created · no recipient email to notify');
+   }
+ }catch(err){
+   console.warn('[TrackPort] Brevo notify', err, err && err.detail);
+   toast('Shipment created · email notify failed (check Brevo settings)');
+ }
+ if(window.sbState){ window.sbState.selectedService=null; window.sbState.step=1; window.sbState.productImage=''; if(window.sbState.package){ window.sbState.package.imageUrl=''; window.sbState.package.productImage=''; } }
  nav('shipment-'+encodeURIComponent(tn));
 }
 
@@ -4337,6 +4853,111 @@ function flightAirlineOptions(selected){
  const chosen=(selected||'TrackPort Air').toLowerCase();
  return FLIGHT_AIRLINE_GROUPS.map(group=>`<optgroup label="${esc(group.region)}">${group.airlines.map(name=>`<option value="${esc(name)}"${name.toLowerCase()===chosen?' selected':''}>${esc(name)}</option>`).join('')}</optgroup>`).join('');
 }
+/* Airline brand logos via logo.wine SVG collection (https://www.logo.wine/Airlines) */
+const AIRLINE_BRANDS = {
+  'trackport air': { mark:'TP', color:'#0c1210', logo:'' },
+  'trackport': { mark:'TP', color:'#0c1210', logo:'' },
+  'emirates': { mark:'EK', color:'#D71921', logo:'https://www.logo.wine/a/logo/Emirates_(airline)/Emirates_(airline)-Logo.wine.svg' },
+  'qatar airways': { mark:'QR', color:'#5C0632', logo:'https://www.logo.wine/a/logo/Qatar_Airways/Qatar_Airways-Logo.wine.svg' },
+  'etihad airways': { mark:'EY', color:'#BD8B13', logo:'' },
+  'saudia': { mark:'SV', color:'#006C35', logo:'https://www.logo.wine/a/logo/Saudia/Saudia-Logo.wine.svg' },
+  'oman air': { mark:'WY', color:'#C8102E', logo:'https://www.logo.wine/a/logo/Oman_Air/Oman_Air-Logo.wine.svg' },
+  'flydubai': { mark:'FZ', color:'#FF6600', logo:'https://www.logo.wine/a/logo/Flydubai/Flydubai-Logo.wine.svg' },
+  'british airways': { mark:'BA', color:'#075AAA', logo:'https://www.logo.wine/a/logo/British_Airways/British_Airways-Logo.wine.svg' },
+  'lufthansa': { mark:'LH', color:'#05164D', logo:'https://www.logo.wine/a/logo/Lufthansa/Lufthansa-Logo.wine.svg' },
+  'air france': { mark:'AF', color:'#002157', logo:'https://www.logo.wine/a/logo/Air_France/Air_France-Logo.wine.svg' },
+  'klm royal dutch airlines': { mark:'KL', color:'#00A1DE', logo:'https://www.logo.wine/a/logo/KLM/KLM-Logo.wine.svg' },
+  'klm': { mark:'KL', color:'#00A1DE', logo:'https://www.logo.wine/a/logo/KLM/KLM-Logo.wine.svg' },
+  'ryanair': { mark:'FR', color:'#073590', logo:'https://www.logo.wine/a/logo/Ryanair/Ryanair-Logo.wine.svg' },
+  'easyjet': { mark:'U2', color:'#FF6600', logo:'https://www.logo.wine/a/logo/EasyJet/EasyJet-Logo.wine.svg' },
+  'turkish airlines': { mark:'TK', color:'#C70A0C', logo:'https://www.logo.wine/a/logo/Turkish_Airlines/Turkish_Airlines-Logo.wine.svg' },
+  'swiss international air lines': { mark:'LX', color:'#E60012', logo:'https://www.logo.wine/a/logo/Swiss_International_Air_Lines/Swiss_International_Air_Lines-Logo.wine.svg' },
+  'swiss': { mark:'LX', color:'#E60012', logo:'https://www.logo.wine/a/logo/Swiss_International_Air_Lines/Swiss_International_Air_Lines-Logo.wine.svg' },
+  'singapore airlines': { mark:'SQ', color:'#F9B000', logo:'https://www.logo.wine/a/logo/Singapore_Airlines/Singapore_Airlines-Logo.wine.svg' },
+  'cathay pacific': { mark:'CX', color:'#006564', logo:'https://www.logo.wine/a/logo/Cathay_Pacific/Cathay_Pacific-Logo.wine.svg' },
+  'japan airlines': { mark:'JL', color:'#C4001D', logo:'https://www.logo.wine/a/logo/Japan_Airlines/Japan_Airlines-Logo.wine.svg' },
+  'all nippon airways': { mark:'NH', color:'#003366', logo:'https://www.logo.wine/a/logo/All_Nippon_Airways/All_Nippon_Airways-Logo.wine.svg' },
+  'ana': { mark:'NH', color:'#003366', logo:'https://www.logo.wine/a/logo/All_Nippon_Airways/All_Nippon_Airways-Logo.wine.svg' },
+  'korean air': { mark:'KE', color:'#051B54', logo:'https://www.logo.wine/a/logo/Korean_Air/Korean_Air-Logo.wine.svg' },
+  'air india': { mark:'AI', color:'#DA0E29', logo:'https://www.logo.wine/a/logo/Air_India/Air_India-Logo.wine.svg' },
+  'indigo': { mark:'6E', color:'#39127A', logo:'https://www.logo.wine/a/logo/IndiGo/IndiGo-Logo.wine.svg' },
+  'malaysia airlines': { mark:'MH', color:'#004B87', logo:'' },
+  'american airlines': { mark:'AA', color:'#0078D2', logo:'https://www.logo.wine/a/logo/American_Airlines/American_Airlines-Logo.wine.svg' },
+  'delta air lines': { mark:'DL', color:'#003366', logo:'https://www.logo.wine/a/logo/Delta_Air_Lines/Delta_Air_Lines-Logo.wine.svg' },
+  'delta': { mark:'DL', color:'#003366', logo:'https://www.logo.wine/a/logo/Delta_Air_Lines/Delta_Air_Lines-Logo.wine.svg' },
+  'united airlines': { mark:'UA', color:'#002244', logo:'https://www.logo.wine/a/logo/United_Airlines_Holdings/United_Airlines_Holdings-Logo.wine.svg' },
+  'united': { mark:'UA', color:'#002244', logo:'https://www.logo.wine/a/logo/United_Airlines_Holdings/United_Airlines_Holdings-Logo.wine.svg' },
+  'southwest airlines': { mark:'WN', color:'#304CB2', logo:'https://www.logo.wine/a/logo/Southwest_Airlines/Southwest_Airlines-Logo.wine.svg' },
+  'air canada': { mark:'AC', color:'#F01428', logo:'https://www.logo.wine/a/logo/Air_Canada/Air_Canada-Logo.wine.svg' },
+  'jetblue airways': { mark:'B6', color:'#00205B', logo:'https://www.logo.wine/a/logo/JetBlue/JetBlue-Logo.wine.svg' },
+  'jetblue': { mark:'B6', color:'#00205B', logo:'https://www.logo.wine/a/logo/JetBlue/JetBlue-Logo.wine.svg' },
+  'ethiopian airlines': { mark:'ET', color:'#5C0632', logo:'https://www.logo.wine/a/logo/Ethiopian_Airlines/Ethiopian_Airlines-Logo.wine.svg' },
+  'kenya airways': { mark:'KQ', color:'#C8102E', logo:'https://www.logo.wine/a/logo/Kenya_Airways/Kenya_Airways-Logo.wine.svg' },
+  'rwandair': { mark:'WB', color:'#00ADEF', logo:'https://www.logo.wine/a/logo/RwandAir/RwandAir-Logo.wine.svg' },
+  'egyptair': { mark:'MS', color:'#00205B', logo:'https://www.logo.wine/a/logo/EgyptAir/EgyptAir-Logo.wine.svg' },
+  'royal air maroc': { mark:'AT', color:'#C8102E', logo:'https://www.logo.wine/a/logo/Royal_Air_Maroc/Royal_Air_Maroc-Logo.wine.svg' },
+  'south african airways': { mark:'SA', color:'#0033A0', logo:'https://www.logo.wine/a/logo/South_African_Airways/South_African_Airways-Logo.wine.svg' },
+  'air mauritius': { mark:'MK', color:'#E30613', logo:'https://www.logo.wine/a/logo/Air_Mauritius/Air_Mauritius-Logo.wine.svg' },
+  'arik air': { mark:'W3', color:'#E30613', logo:'https://www.logo.wine/a/logo/Arik_Air/Arik_Air-Logo.wine.svg' },
+  'air peace': { mark:'P4', color:'#0066B3', logo:'' },
+  'qantas': { mark:'QF', color:'#E0001B', logo:'https://www.logo.wine/a/logo/Qantas/Qantas-Logo.wine.svg' }
+};
+function resolveAirlineBrand(name){
+  const key = String(name||'').toLowerCase().trim();
+  if(AIRLINE_BRANDS[key]) return { name: String(name||''), ...AIRLINE_BRANDS[key], key };
+  for(const k of Object.keys(AIRLINE_BRANDS)){
+    if(key.includes(k) || k.includes(key)) return { name: String(name||''), ...AIRLINE_BRANDS[k], key:k };
+  }
+  let h = 0;
+  for(let i=0;i<key.length;i++) h = ((h<<5)-h)+key.charCodeAt(i)|0;
+  const hue = Math.abs(h) % 360;
+  const mark = String(name||'TP').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase() || 'TP';
+  return { name: String(name||'Airline'), mark, color: 'hsl('+hue+' 42% 32%)', logo: '', key };
+}
+function airlineLogoUrl(name){
+  return resolveAirlineBrand(name).logo || '';
+}
+function airlineMarkHtml(name, size){
+  /* size = height; width is ~2.6× for horizontal logo frame */
+  const h = size || 36;
+  const w = Math.round(h * 2.65);
+  const b = resolveAirlineBrand(name);
+  const radius = Math.max(8, Math.round(h * 0.28));
+  const style = `width:${w}px;height:${h}px;border-radius:${radius}px;`;
+  if(b.logo){
+    return `<span class="fb-airline-mark has-logo" style="${style}" title="${esc(b.name||name)}"><img src="${esc(b.logo)}" alt="${esc(b.name||name)}" loading="lazy" onerror="this.parentNode.classList.remove('has-logo');this.remove();this.parentNode.textContent='${esc(b.mark)}';"></span>`;
+  }
+  return `<span class="fb-airline-mark" style="${style}background:${esc(b.color)};color:#fff;border-color:transparent" title="${esc(b.name||name)}">${esc(b.mark)}</span>`;
+}
+function airlineBadgeHtml(name, opts){
+  opts = opts || {};
+  const h = opts.size || 28;
+  const w = Math.round(h * 2.55);
+  const nameSize = opts.nameSize || 13;
+  const showName = opts.showName !== false;
+  const b = resolveAirlineBrand(name);
+  const radius = Math.max(6, Math.round(h * 0.28));
+  const logo = b.logo
+    ? `<span class="airline-logo-shell" style="width:${w}px;height:${h}px;border-radius:${radius}px"><img class="airline-logo" src="${esc(b.logo)}" alt="${esc(b.name||name)}" loading="lazy" onerror="this.parentNode.outerHTML='<span class=\\'airline-logo-fallback\\' style=\\'width:${w}px;height:${h}px;background:${esc(b.color)};border-radius:${radius}px\\'>${esc(b.mark)}</span>'"></span>`
+    : `<span class="airline-logo-fallback" style="width:${w}px;height:${h}px;background:${esc(b.color)};border-radius:${radius}px">${esc(b.mark)}</span>`;
+  const label = showName ? `<span class="airline-name" style="font-size:${nameSize}px">${esc(b.name||name)}</span>` : '';
+  return `<span class="airline-badge">${logo}${label}</span>`;
+}
+function airlineTicketBrandHtml(name){
+  const b = resolveAirlineBrand(name);
+  const label = esc(String(b.name || name || 'Airline').toUpperCase());
+  if(b.logo){
+    return `<div class="ticket-brand has-logo"><span class="ticket-airline-logo-shell"><img src="${esc(b.logo)}" alt="${label}" loading="lazy" onerror="this.parentNode.style.display='none'"></span><span class="ticket-brand-name">${label}</span></div>`;
+  }
+  return `<div class="ticket-brand"><span class="ticket-brand-name">${label}</span></div>`;
+}
+window.AIRLINE_BRANDS = AIRLINE_BRANDS;
+window.resolveAirlineBrand = resolveAirlineBrand;
+window.airlineLogoUrl = airlineLogoUrl;
+window.airlineMarkHtml = airlineMarkHtml;
+window.airlineBadgeHtml = airlineBadgeHtml;
+window.airlineTicketBrandHtml = airlineTicketBrandHtml;
+
 const FLIGHT_ROUTE_CATALOG=[
  {match:['lagos'],stops:[{id:'lagos-mmia',name:'Murtala Muhammed International Airport, Lagos',kind:'Airport'},{id:'lagos-lekki',name:'Lekki Conservation Centre, Lagos',kind:'Park'}]},
  {match:['abuja'],stops:[{id:'abuja-airport',name:'Nnamdi Azikiwe International Airport, Abuja',kind:'Airport'},{id:'abuja-park',name:'Millennium Park, Abuja',kind:'Park'}]},
@@ -4600,12 +5221,15 @@ function fbBuildMockFlights(origin, dest, date, cabin){
   const o = fbParseAirport(origin);
   const d = fbParseAirport(dest);
   const airlines = [
-    { name: 'Delta Air Lines', code: 'DL', mark: 'Δ' },
-    { name: 'American Airlines', code: 'AA', mark: 'AA' },
-    { name: 'United Airlines', code: 'UA', mark: 'UA' },
-    { name: 'JetBlue Airways', code: 'B6', mark: 'B6' },
-    { name: 'TrackPort Air', code: 'TP', mark: '✦' },
-    { name: 'Emirates', code: 'EK', mark: 'EK' }
+    { name: 'Delta Air Lines', code: 'DL' },
+    { name: 'American Airlines', code: 'AA' },
+    { name: 'United Airlines', code: 'UA' },
+    { name: 'JetBlue Airways', code: 'B6' },
+    { name: 'British Airways', code: 'BA' },
+    { name: 'TrackPort Air', code: 'TP' },
+    { name: 'Emirates', code: 'EK' },
+    { name: 'Qatar Airways', code: 'QR' },
+    { name: 'Lufthansa', code: 'LH' }
   ];
   const slots = [
     { dep: '06:15', arr: '09:40', dur: '5h 25m', stops: 'Nonstop' },
@@ -4620,10 +5244,12 @@ function fbBuildMockFlights(origin, dest, date, cabin){
     const air = airlines[i % airlines.length];
     const priceJitter = (i%3)*24 + (i%2)*11;
     const flightNo = `${air.code} ${1000 + (i*17)%900}`;
+    const brand = (typeof resolveAirlineBrand==='function') ? resolveAirlineBrand(air.name) : { mark: air.code, logo: '' };
     return {
       id: `fb-${i}-${air.code}`,
       airline: air.name,
-      airlineMark: air.mark,
+      airlineMark: brand.mark || air.code,
+      airlineLogo: brand.logo || '',
       flightNo,
       origin: origin,
       originCode: o.code,
@@ -4692,7 +5318,7 @@ function fbRenderResults(){
     return `<div class="fb-flight-card${selected?' selected':''}" data-fb-flight="${esc(f.id)}" onclick="fbSelectFlight('${esc(f.id)}')">
       <div class="fb-flight-main">
         <div class="fb-flight-airline">
-          <div class="fb-airline-mark">${esc(f.airlineMark)}</div>
+          ${(typeof airlineMarkHtml==='function')?airlineMarkHtml(f.airline,34):`<div class="fb-airline-mark">${esc(f.airlineMark||'')}</div>`}
           <div>
             <strong>${esc(f.airline)}${f.best?'<span class="fb-badge-best">Best</span>':''}</strong>
             <span>${esc(f.flightNo)} · ${esc(f.stops)} · ${esc(f.cabin)}</span>
@@ -4822,10 +5448,12 @@ async function createFlight(){
  } else if(!normTime){
    normTime='00:00';
  }
+ const airlineLogo = (typeof airlineLogoUrl==='function' ? airlineLogoUrl(airline) : '') || (sel && sel.airlineLogo) || '';
  const x={
    trackingNumber:tn,
    passenger,
    airline,
+   airlineLogo,
    flightNo:no,
    origin:o.city,
    originCode:o.code,
@@ -5284,8 +5912,8 @@ function flightTicketPanel(f,showOwner){
  const owner=showOwner&&!!state.user;
  return `<div class="flight-output">
  <div class="flight-output-head"><div><div class="eyebrow">Flight ticket output</div><h1>${esc(f.flightNo||'Flight ticket')}</h1><p class="sub">A shareable boarding record with a live TrackPort tracking identity.</p></div><div class="tracking-chip">${esc(f.trackingNumber)}</div></div>
- <div class="flight-overview"><div class="flight-overview-top"><div class="flight-plane-mark">✈</div><div><div class="flight-airline">${esc(f.airline||'TrackPort Air')}</div><h2>${esc(f.passenger||'Passenger')}</h2>${flightStatusBadge(f.status)}</div></div><div class="flight-overview-grid"><div><small>Route</small><strong>${esc(vm.from.code)} → ${esc(vm.to.code)}</strong></div><div><small>Departure</small><strong>${esc(vm.ticketDate)}</strong></div><div><small>Time</small><strong>${esc(vm.ticketTime)}</strong></div><div><small>Seat</small><strong>${esc(f.seat||'—')}</strong></div><div><small>Terminal / gate</small><strong>${esc(f.terminal||'—')} / ${esc(f.gate||'—')}</strong></div><div><small>Current location</small><strong>${esc(f.currentLocation||latest?.location||f.origin||'—')}</strong></div></div></div>
- <div class="flight-ticket-stage"><div class="boarding-pass"><div class="ticket-main"><div class="ticket-header"><div class="ticket-brand">${esc(f.airline||'TRACKPORT AIR')}</div><div class="ticket-class">${esc(vm.ticketClass)}</div></div><div class="ticket-rule"></div><div class="ticket-passenger">${esc(f.passenger||'Passenger')}</div><div class="ticket-route-row"><div class="ticket-field"><div class="label">Flight</div><div class="value">${esc(f.flightNo||'—')}</div></div><div class="ticket-field"><div class="label">From</div><div class="value">${esc(vm.from.code)}</div></div><div class="ticket-field"><div class="label">To</div><div class="value">${esc(vm.to.code)}</div></div><div class="ticket-field"><div class="label">Date</div><div class="value">${esc(vm.ticketDate)}</div></div></div><div class="ticket-detail-row"><div class="ticket-field"><div class="label">Terminal</div><div class="value">${esc(f.terminal||'—')}</div></div><div class="ticket-field"><div class="label">Gate</div><div class="value">${esc(f.gate||'—')}</div></div><div class="ticket-field"><div class="label">Boarding time</div><div class="value">${esc(vm.ticketTime)}</div><div class="date-sub">${esc(vm.ticketDate)}</div></div><div class="ticket-field"><div class="label">Seat</div><div class="value">${esc(f.seat||'—')}</div></div><div class="ticket-field"><div class="label">Group</div><div class="value">${esc(f.boardingGroup||'—')}</div></div></div><div class="ticket-footer"><div><div class="ticket-warning">GATE CLOSES 10 MINS BEFORE DEPARTURE</div><div class="ticket-numbers"><span>${esc(vm.sequence)}</span><span><span>ETNo</span>${esc(vm.etNo)}</span></div></div><div class="ticket-barcode" aria-label="Boarding pass barcode"></div></div></div><div class="ticket-stub"><div class="ticket-class">${esc(vm.ticketClass)}</div><div class="stub-name">${esc(f.passenger||'Passenger')}</div><div class="stub-route"><span>From</span>${esc(vm.from.city)}<span>To</span>${esc(vm.to.city)}</div><div class="stub-flight-row"><div><div class="label">Flight</div><div class="value">${esc(f.flightNo||'—')}</div></div><div><div class="label">Seat</div><div class="value">${esc(f.seat||'—')}</div></div></div><div class="ticket-field"><div class="label">Date</div><div class="value">${esc(vm.ticketDate)}</div></div><div class="stub-footer">${esc(vm.sequence)} &nbsp; ETNo &nbsp; ${esc(vm.etNo)}<div class="member">TRACKPORT · LIVE RECORD</div></div></div></div></div>
+ <div class="flight-overview"><div class="flight-overview-top">${(f.airlineLogo||(typeof airlineLogoUrl==='function'&&airlineLogoUrl(f.airline)))?`<div class="flight-plane-mark" style="background:#fff;padding:0;overflow:hidden;width:110px;height:42px;border-radius:12px"><img src="${esc(f.airlineLogo||airlineLogoUrl(f.airline))}" alt="${esc(f.airline||'')}" style="width:100%;height:100%;object-fit:contain;object-position:center;padding:4px 8px;transform:scale(1.4);display:block"></div>`:`<div class="flight-plane-mark">✦</div>`}<div><div class="flight-airline" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0">${(typeof airlineBadgeHtml==='function')?airlineBadgeHtml(f.airline||'TrackPort Air',{size:20,nameSize:11}):esc(f.airline||'TrackPort Air')}</div><h2>${esc(f.passenger||'Passenger')}</h2>${flightStatusBadge(f.status)}</div></div><div class="flight-overview-grid"><div><small>Route</small><strong>${esc(vm.from.code)} → ${esc(vm.to.code)}</strong></div><div><small>Departure</small><strong>${esc(vm.ticketDate)}</strong></div><div><small>Time</small><strong>${esc(vm.ticketTime)}</strong></div><div><small>Seat</small><strong>${esc(f.seat||'—')}</strong></div><div><small>Terminal / gate</small><strong>${esc(f.terminal||'—')} / ${esc(f.gate||'—')}</strong></div><div><small>Current location</small><strong>${esc(f.currentLocation||latest?.location||f.origin||'—')}</strong></div></div></div>
+ <div class="flight-ticket-stage"><div class="boarding-pass"><div class="ticket-main"><div class="ticket-header">${(typeof airlineTicketBrandHtml==='function')?airlineTicketBrandHtml(f.airline||'TrackPort Air'):`<div class="ticket-brand">${esc(f.airline||'TRACKPORT AIR')}</div>`}<div class="ticket-class">${esc(vm.ticketClass)}</div></div><div class="ticket-rule"></div><div class="ticket-passenger">${esc(f.passenger||'Passenger')}</div><div class="ticket-route-row"><div class="ticket-field"><div class="label">Flight</div><div class="value">${esc(f.flightNo||'—')}</div></div><div class="ticket-field"><div class="label">From</div><div class="value">${esc(vm.from.code)}</div></div><div class="ticket-field"><div class="label">To</div><div class="value">${esc(vm.to.code)}</div></div><div class="ticket-field"><div class="label">Date</div><div class="value">${esc(vm.ticketDate)}</div></div></div><div class="ticket-detail-row"><div class="ticket-field"><div class="label">Terminal</div><div class="value">${esc(f.terminal||'—')}</div></div><div class="ticket-field"><div class="label">Gate</div><div class="value">${esc(f.gate||'—')}</div></div><div class="ticket-field"><div class="label">Boarding time</div><div class="value">${esc(vm.ticketTime)}</div><div class="date-sub">${esc(vm.ticketDate)}</div></div><div class="ticket-field"><div class="label">Seat</div><div class="value">${esc(f.seat||'—')}</div></div><div class="ticket-field"><div class="label">Group</div><div class="value">${esc(f.boardingGroup||'—')}</div></div></div><div class="ticket-footer"><div><div class="ticket-warning">GATE CLOSES 10 MINS BEFORE DEPARTURE</div><div class="ticket-numbers"><span>${esc(vm.sequence)}</span><span><span>ETNo</span>${esc(vm.etNo)}</span></div></div><div class="ticket-barcode" aria-label="Boarding pass barcode"></div></div></div><div class="ticket-stub"><div class="ticket-class">${esc(vm.ticketClass)}</div><div class="stub-name">${esc(f.passenger||'Passenger')}</div><div class="stub-route"><span>From</span>${esc(vm.from.city)}<span>To</span>${esc(vm.to.city)}</div><div class="stub-flight-row"><div><div class="label">Flight</div><div class="value">${esc(f.flightNo||'—')}</div></div><div><div class="label">Seat</div><div class="value">${esc(f.seat||'—')}</div></div></div><div class="ticket-field"><div class="label">Date</div><div class="value">${esc(vm.ticketDate)}</div></div><div class="stub-footer">${esc(vm.sequence)} &nbsp; ETNo &nbsp; ${esc(vm.etNo)}<div class="member">TRACKPORT · LIVE RECORD</div></div></div></div></div>
  <div class="flight-output-actions"><div class="action-group"><button class="btn btn-primary" onclick="copyText('${esc(f.trackingNumber)}')">Copy tracking</button><button class="btn btn-soft" onclick="shareRecord('${esc(f.trackingNumber)}')">Share link</button></div><div class="action-group"><button class="btn btn-outline" onclick="window.print()">Print ticket</button><button class="btn btn-accent" onclick="downloadFlightTicketImage('${esc(f.trackingNumber)}')">Download image</button></div></div>
  ${routeMapCardHtml('flight-map-'+String(f.trackingNumber||'record').replace(/[^a-zA-Z0-9]/g,''),(f.routeStops&&f.routeStops.length?f.routeStops:buildFlightRouteStops(f.origin,f.destination)),f.currentLocationId||'',flightMapLocationOf(f),'Live flight route',`${esc(f.airline||'Airline')} · ${esc(f.flightNo||'Flight')}`)}
  ${owner?`<div class="card flight-owner-panel"><div class="section-row" style="margin:0"><div><h3>Flight movement</h3><p class="muted" style="font-size:12px;margin:5px 0 0">Update the public tracking timeline without changing the ticket details.</p></div>${flightStatusBadge(f.status)}</div><div class="grid two" style="margin-top:18px"><div class="field"><label>PROGRESSION</label><select id="flight_progression">${FLIGHT_STATUS_FLOW.map(status=>`<option value="${esc(status)}"${status===f.status?' selected':''}>${esc(status)}</option>`).join('')}</select></div><div class="field"><label>CURRENT LOCATION</label><select id="flight_route_stop">${flightRouteOptionsHtml(f.routeStops||buildFlightRouteStops(f.origin,f.destination),f.currentLocationId||'')}</select></div></div><input id="flight_custom_location" style="margin-top:0" value="${esc(latest?.location||f.currentLocation||'')}" placeholder="Custom movement label (optional)"><div class="grid two" style="margin-top:15px"><div class="field"><label>LATITUDE <span class="muted">(-90 TO 90)</span></label><input id="flight_latitude" type="number" step="any" min="-90" max="90" value="${esc(flightMapLocationOf(f)?.latitude??'')}" placeholder="6.5244"></div><div class="field"><label>LONGITUDE <span class="muted">(-180 TO 180)</span></label><input id="flight_longitude" type="number" step="any" min="-180" max="180" value="${esc(flightMapLocationOf(f)?.longitude??'')}" placeholder="3.3792"></div></div><div class="owner-actions"><button class="btn btn-soft" onclick="useCurrentLocation('flight_latitude','flight_longitude')">◉ Use my location</button><button class="btn btn-accent" onclick="updateFlightMovement('${esc(f.trackingNumber)}')">Update movement →</button></div></div>`:''}
@@ -5319,7 +5947,39 @@ async function downloadFlightTicketImage(number){
  canvas.width=W*scale;canvas.height=H*scale;const ctx=canvas.getContext('2d');ctx.scale(scale,scale);
  ctx.fillStyle='#0c1210';ctx.fillRect(0,0,W,H);ctx.fillStyle='#b7f23a';ctx.font='900 16px Inter, sans-serif';ctx.fillText('TRACKPORT · FLIGHT TICKET',42,38);
  const x=42,y=68,w=W-84,h=475,stub=265;ctx.fillStyle='#f7faf5';ctx.beginPath();ctx.roundRect(x,y,w,h,24);ctx.fill();ctx.fillStyle='#eaf0e8';ctx.fillRect(x+w-stub,y,stub,h);ctx.strokeStyle='#c8d0c8';ctx.setLineDash([8,7]);ctx.beginPath();ctx.moveTo(x+w-stub,y);ctx.lineTo(x+w-stub,y+h);ctx.stroke();ctx.setLineDash([]);
- ctx.fillStyle='#1e2a22';ctx.font='900 18px Inter, sans-serif';ctx.fillText(String(flight.airline||'TRACKPORT AIR').toUpperCase(),x+28,y+42);ctx.textAlign='right';ctx.fillStyle='#607064';ctx.font='900 14px Inter, sans-serif';ctx.fillText(vm.ticketClass,x+w-stub-28,y+42);ctx.textAlign='left';
+ // Airline logo (zoomed to crop empty SVG padding) + name
+ const airlineName=String(flight.airline||'TRACKPORT AIR').toUpperCase();
+ const logoUrl=(flight.airlineLogo)||(typeof airlineLogoUrl==='function'?airlineLogoUrl(flight.airline):'')||'';
+ let textX=x+28;
+ if(logoUrl){
+  try{
+   await new Promise((resolve)=>{
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+     try{
+      const boxW=92, boxH=34;
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.roundRect(x+28,y+18,boxW,boxH,9);ctx.fill();
+      ctx.strokeStyle='#d5ddd6';ctx.lineWidth=1;ctx.stroke();
+      // horizontal frame + zoom past SVG padding
+      const zw=boxW*1.45, zh=boxH*1.45;
+      ctx.save();
+      ctx.beginPath();ctx.roundRect(x+28,y+18,boxW,boxH,9);ctx.clip();
+      ctx.drawImage(img, x+28-(zw-boxW)/2, y+18-(zh-boxH)/2, zw, zh);
+      ctx.restore();
+      textX=x+28+boxW+12;
+     }catch(_e){}
+     resolve();
+    };
+    img.onerror=()=>resolve();
+    img.src=logoUrl;
+    setTimeout(resolve,1200);
+   });
+  }catch(_e){}
+ }
+ ctx.fillStyle='#1e2a22';ctx.font='900 18px Inter, sans-serif';ctx.fillText(airlineName,textX,y+42);ctx.textAlign='right';ctx.fillStyle='#607064';ctx.font='900 14px Inter, sans-serif';ctx.fillText(vm.ticketClass,x+w-stub-28,y+42);ctx.textAlign='left';
+
  ctx.strokeStyle='#d8dfd6';ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(x+28,y+66);ctx.lineTo(x+w-stub-28,y+66);ctx.stroke();ctx.fillStyle='#111';ctx.font='900 26px Inter, sans-serif';ctx.fillText(String(flight.passenger||'Passenger').toUpperCase(),x+28,y+105);
  const field=(label,value,fx,fy,size=20)=>{ctx.fillStyle='#778177';ctx.font='900 11px Inter, sans-serif';ctx.fillText(label.toUpperCase(),fx,fy);ctx.fillStyle='#111';ctx.font=`900 ${size}px monospace`;ctx.fillText(String(value||'—'),fx,fy+25)};
  field('Flight',flight.flightNo,x+28,y+147);field('From',vm.from.code,x+210,y+147);field('To',vm.to.code,x+360,y+147);field('Date',vm.ticketDate,x+505,y+147,17);
@@ -5404,7 +6064,7 @@ function shipmentReceiptDocHtml(s){
  const originHub=sender.city||s.origin||'—';
  const senderAddr=[sender.address,sender.city,sender.state,sender.country].filter(Boolean).join(', ')||sender.city||s.origin||'—';
  const recipientAddr=[recipient.address,recipient.city,recipient.state,recipient.country].filter(Boolean).join(', ')||recipient.city||s.destination||'—';
- const trackUrl=`https://trackport.github.io/TrackPort-tracking/#/track/${encodeURIComponent(tn)}`;
+ const trackUrl=`https://app.trackport.workers.dev/#/track/${encodeURIComponent(tn)}`;
 
  return `<article class="dr-doc" id="dr-doc">
   <div class="dr-top">
@@ -5638,9 +6298,13 @@ function shipmentDetailPanel(s,showOwner){
  const owner=showOwner&&!!state.user;
  const originCode=(s.origin||'—').slice(0,3).toUpperCase();
  const destCode=(s.destination||'—').slice(0,3).toUpperCase();
+ const productPic = s.productImage || s.imageUrl || '';
+ const markHtml = productPic
+  ? `<div class="shipment-mark" style="padding:0;overflow:hidden;background:transparent"><img src="${esc(productPic)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>`
+  : `<div class="shipment-mark">▣</div>`;
  return `<div class="shipment-output premium-shipment-output">
  <div class="shipment-output-head"><div><div class="eyebrow">Shipment output</div><h1>${esc(s.productName||'Shipment')}</h1><p class="sub">A shareable shipping record with a live TrackPort tracking identity.</p></div><div class="tracking-chip">${esc(s.trackingNumber)}</div></div>
- <div class="shipment-overview"><div class="shipment-overview-top"><div class="shipment-mark">▣</div><div><div class="shipment-carrier">${esc(s.carrier||'TrackPort Logistics')}</div><h2>${esc(s.productName||'Package')}</h2>${shipmentStatusBadge(s.status)}</div></div>
+ <div class="shipment-overview"><div class="shipment-overview-top">${markHtml}<div><div class="shipment-carrier" style="display:flex;align-items:center;gap:8px">${(typeof carrierBadgeHtml==='function')?carrierBadgeHtml(s.carrier||'TrackPort Logistics',{size:22,nameSize:11}):esc(s.carrier||'TrackPort Logistics')}</div><h2>${esc(s.productName||'Package')}</h2>${shipmentStatusBadge(s.status)}</div></div>
  <div class="shipment-overview-grid">
   <div><small>Route</small><strong>${esc(originCode)} → ${esc(destCode)}</strong></div>
   <div><small>Method</small><strong>${esc(s.method||'Standard')}</strong></div>
@@ -5675,14 +6339,28 @@ function detailMarkup(x,type){
 async function updateShipmentMovement(number){
  const shipment=state.shipments.find(item=>item.trackingNumber===number);
  if(!shipment)return toast('Shipment record not found');
+ const prevStatus=shipment.status;
  const status=document.getElementById('ship_progression')?.value||shipment.status;
  const location=(document.getElementById('ship_location')?.value||'').trim()||shipment.origin||'';
  shipment.status=status;shipment.currentLocation=location;shipment.events=shipment.events||[];
  shipment.events.push({status,location,description:status==='Order Created'?'Shipment movement updated':'Shipment progression updated',time:new Date().toLocaleString(),timestamp:new Date().toISOString()});
- save();await persistCloudRecord(shipment,'shipment');toast('Shipment movement updated');render();
+ save();await persistCloudRecord(shipment,'shipment');
+ let mailNote='';
+ if(status && status!==prevStatus){
+   try{
+     const notify=await notifyShipmentStatusChange(shipment, prevStatus, status, location);
+     if(notify && notify.ok) mailNote=' · recipient notified';
+     else if(notify && notify.reason==='no-recipient-email') mailNote='';
+     else if(notify && notify.reason==='no-api-key') mailNote=' · set Brevo in Settings to notify';
+   }catch(_e){ mailNote=' · email notify failed'; }
+ }
+ toast('Shipment movement updated'+mailNote);
+ render();
 }
 function copyText(t){navigator.clipboard?.writeText(t);toast('Tracking number copied')}
-function shareUrl(t){return location.href.split('#')[0]+'#track/'+encodeURIComponent(t)}
+const TRACKING_APP_ORIGIN='https://app.trackport.workers.dev';
+function shareUrl(t){return TRACKING_APP_ORIGIN+'/#/track/'+encodeURIComponent(String(t||''))}
+window.shareUrl=shareUrl;window.TRACKING_APP_ORIGIN=TRACKING_APP_ORIGIN;
 function copyShareLink(t){navigator.clipboard?.writeText(shareUrl(t));toast('Share link copied')}
 async function shareRecord(t){const url=shareUrl(t);try{if(navigator.share)await navigator.share({title:'TrackPort tracking',text:t,url});else copyShareLink(t)}catch{copyShareLink(t)}}
 
@@ -6074,12 +6752,225 @@ function ssnResult(record){
   </div>
  </div></div>${navBar('create')}</div></div>`;
 }
+
+/* ===== Hardcore admin console (admin@trackport.com only) ===== */
+const TP_ADMIN_EMAIL = 'admin@trackport.com';
+const TP_ADMIN_PIN = '2520';
+const TP_ADMIN_SESSION_KEY = 'tp_admin_unlocked_v1';
+function isHardcoreAdmin(){
+  const email = String(state.user?.email || '').trim().toLowerCase();
+  return email === TP_ADMIN_EMAIL;
+}
+function isAdminUnlocked(){
+  if(!isHardcoreAdmin()) return false;
+  try{ return sessionStorage.getItem(TP_ADMIN_SESSION_KEY) === '1'; }catch(_e){ return false; }
+}
+function setAdminUnlocked(on){
+  try{
+    if(on) sessionStorage.setItem(TP_ADMIN_SESSION_KEY, '1');
+    else sessionStorage.removeItem(TP_ADMIN_SESSION_KEY);
+  }catch(_e){}
+}
+function adminRequireOrGate(){
+  if(!isHardcoreAdmin()){
+    toast('Admin access denied');
+    nav('settings');
+    return false;
+  }
+  return true;
+}
+function adminUnlockFromForm(){
+  if(!isHardcoreAdmin()) return toast('Admin access denied');
+  const input = document.getElementById('admin_pin_input');
+  const pin = String(input && input.value || '').trim();
+  if(pin !== TP_ADMIN_PIN){
+    toast('Incorrect admin code');
+    if(input){ input.value=''; input.focus(); }
+    return;
+  }
+  setAdminUnlocked(true);
+  toast('Admin dashboard unlocked');
+  nav('admin');
+}
+function adminLock(){
+  setAdminUnlocked(false);
+  toast('Admin session locked');
+  nav('settings');
+}
+function adminAllRecords(){
+  const users = loadLocalUsers();
+  const shipments = Array.isArray(state.shipments) ? state.shipments : [];
+  const flights = Array.isArray(state.flights) ? state.flights : [];
+  const receipts = Array.isArray(state.receipts) ? state.receipts : [];
+  return { users, shipments, flights, receipts };
+}
+function adminRecordsForUser(email){
+  const e = String(email||'').toLowerCase();
+  const { shipments, flights, receipts } = adminAllRecords();
+  const match = (r)=>{
+    const uid = String(r.userId || r.ownerEmail || r.owner || '').toLowerCase();
+    return uid === e || uid.includes(e);
+  };
+  return {
+    shipments: shipments.filter(match),
+    flights: flights.filter(match),
+    receipts: receipts.filter(match)
+  };
+}
+function adminDeleteLocalUser(email){
+  if(!isHardcoreAdmin() || !isAdminUnlocked()) return toast('Admin access denied');
+  const e = String(email||'').toLowerCase();
+  if(e === TP_ADMIN_EMAIL) return toast('Cannot remove the hardcore admin account');
+  if(!confirm('Remove registered user '+e+' from this device registry?')) return;
+  const list = loadLocalUsers().filter(u => String(u.email||'').toLowerCase() !== e);
+  saveLocalUsers(list);
+  toast('User removed from registry');
+  render();
+}
+function adminDeleteShipment(tn){
+  if(!isHardcoreAdmin() || !isAdminUnlocked()) return toast('Admin access denied');
+  if(!confirm('Delete shipment '+tn+'?')) return;
+  state.shipments = (state.shipments||[]).filter(s => s.trackingNumber !== tn);
+  save();
+  toast('Shipment deleted');
+  render();
+}
+function adminDeleteFlight(tn){
+  if(!isHardcoreAdmin() || !isAdminUnlocked()) return toast('Admin access denied');
+  if(!confirm('Delete flight '+tn+'?')) return;
+  state.flights = (state.flights||[]).filter(f => f.trackingNumber !== tn);
+  save();
+  toast('Flight deleted');
+  render();
+}
+function adminDeleteReceipt(id){
+  if(!isHardcoreAdmin() || !isAdminUnlocked()) return toast('Admin access denied');
+  if(!confirm('Delete receipt '+id+'?')) return;
+  state.receipts = (state.receipts||[]).filter(r => r.id !== id);
+  save();
+  toast('Receipt deleted');
+  render();
+}
+function adminClearUserRecords(email){
+  if(!isHardcoreAdmin() || !isAdminUnlocked()) return toast('Admin access denied');
+  const e = String(email||'').toLowerCase();
+  if(!confirm('Delete all local shipments, flights and receipts owned by '+e+'?')) return;
+  const own = (r)=>{
+    const uid = String(r.userId || r.ownerEmail || r.owner || '').toLowerCase();
+    return uid === e || uid.includes(e);
+  };
+  state.shipments = (state.shipments||[]).filter(r=>!own(r));
+  state.flights = (state.flights||[]).filter(r=>!own(r));
+  state.receipts = (state.receipts||[]).filter(r=>!own(r));
+  save();
+  toast('User records cleared on this device');
+  render();
+}
+function adminGatePage(){
+  if(!isHardcoreAdmin()){
+    return `<div class="screen"><div class="container">${topbar('Admin','settings')}<div class="card pad" style="margin-top:18px"><h2>Access denied</h2><p class="muted">This area is restricted.</p><button class="btn btn-soft" onclick="nav('settings')">Back to Settings</button></div>${navBar('tools')}</div></div>`;
+  }
+  return `<div class="screen"><div class="container">${topbar('Admin unlock','settings')}
+    <div class="header"><div><div class="eyebrow">Security</div><h1 class="page-title">Admin unlock.</h1><p class="sub">Enter the hardcore admin code to open the control console. This prompt only appears on the admin account.</p></div></div>
+    <div class="card pad" style="max-width:420px">
+      <div class="field"><label>Admin code</label>
+        <input id="admin_pin_input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••" maxlength="8">
+      </div>
+      <button class="btn btn-accent full" onclick="adminUnlockFromForm()">Unlock dashboard</button>
+      <button class="btn btn-soft full" style="margin-top:10px" onclick="nav('settings')">Cancel</button>
+    </div>
+  ${navBar('tools')}</div></div>`;
+}
+function adminDashboard(){
+  if(!isHardcoreAdmin()) return adminGatePage();
+  if(!isAdminUnlocked()) return adminGatePage();
+  const { users, shipments, flights, receipts } = adminAllRecords();
+  const q = String(window._adminUserFilter || '').toLowerCase();
+  const filteredUsers = users.filter(u=>{
+    if(!q) return true;
+    return String(u.email||'').toLowerCase().includes(q) || String(u.name||'').toLowerCase().includes(q);
+  });
+  const selected = String(window._adminSelectedUser || '').toLowerCase();
+  const detail = selected ? adminRecordsForUser(selected) : null;
+  const userRows = filteredUsers.length ? filteredUsers.map(u=>{
+    const email = String(u.email||'').toLowerCase();
+    const rec = adminRecordsForUser(email);
+    const active = email === selected;
+    return `<div class="record" style="cursor:pointer;${active?'border-color:var(--accent);box-shadow:0 0 0 2px rgba(183,242,58,.2)':''}" onclick="window._adminSelectedUser='${esc(email)}';render()">
+      <div class="record-icon">👤</div>
+      <div class="record-main">
+        <strong>${esc(u.name || email || 'User')}</strong>
+        <span>${esc(email)}${email===TP_ADMIN_EMAIL?' · Hardcore admin':''}</span>
+        <span style="display:block;margin-top:4px;font-size:11px;color:var(--muted)">${rec.shipments.length} shipments · ${rec.flights.length} flights · ${rec.receipts.length} receipts</span>
+      </div>
+      <button class="btn btn-soft" style="flex-shrink:0" onclick="event.stopPropagation();adminDeleteLocalUser('${esc(email)}')">Remove</button>
+    </div>`;
+  }).join('') : `<div class="empty"><div class="ei">👤</div><p>No registered users on this device yet.</p></div>`;
+
+  let detailHtml = `<div class="card pad"><p class="muted" style="margin:0">Select a user to inspect and manage their records.</p></div>`;
+  if(detail && selected){
+    const shipRows = detail.shipments.map(s=>`<div class="record"><div class="record-icon">📦</div><div class="record-main"><strong>${esc(s.trackingNumber||'')}</strong><span>${esc(s.productName||s.status||'Shipment')}</span></div><button class="btn btn-outline" onclick="adminDeleteShipment('${esc(s.trackingNumber||'')}')">Delete</button></div>`).join('') || '<p class="muted">No shipments</p>';
+    const flightRows = detail.flights.map(f=>`<div class="record"><div class="record-icon">✈</div><div class="record-main"><strong>${esc(f.trackingNumber||'')}</strong><span>${esc(f.status||'Flight')}</span></div><button class="btn btn-outline" onclick="adminDeleteFlight('${esc(f.trackingNumber||'')}')">Delete</button></div>`).join('') || '<p class="muted">No flights</p>';
+    const receiptRows = detail.receipts.map(r=>`<div class="record"><div class="record-icon">$</div><div class="record-main"><strong>${esc(r.id||'')}</strong><span>${esc(r.customerName||'Receipt')}</span></div><button class="btn btn-outline" onclick="adminDeleteReceipt('${esc(r.id||'')}')">Delete</button></div>`).join('') || '<p class="muted">No receipts</p>';
+    detailHtml = `
+      <div class="card pad">
+        <div class="section-row" style="margin-top:0"><h3>${esc(selected)}</h3>
+          <button class="btn btn-outline" onclick="adminClearUserRecords('${esc(selected)}')">Clear all their records</button>
+        </div>
+        <div class="section-row"><h3 style="font-size:16px">Shipments</h3></div>
+        <div class="grid" style="gap:10px">${shipRows}</div>
+        <div class="section-row"><h3 style="font-size:16px">Flights</h3></div>
+        <div class="grid" style="gap:10px">${flightRows}</div>
+        <div class="section-row"><h3 style="font-size:16px">Receipts</h3></div>
+        <div class="grid" style="gap:10px">${receiptRows}</div>
+      </div>`;
+  }
+
+  return `<div class="screen"><div class="container">${topbar('Admin','settings')}
+    <div class="header"><div><div class="eyebrow">Control center</div><h1 class="page-title">Admin dashboard.</h1><p class="sub">Manage registered users and their TrackPort records on this workspace. Visible only to ${esc(TP_ADMIN_EMAIL)}.</p></div>
+      <div class="header-actions"><button class="btn btn-soft" onclick="adminLock()">Lock admin</button></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><small>Users</small><strong>${users.length}</strong></div>
+      <div class="stat"><small>Shipments</small><strong>${shipments.length}</strong></div>
+      <div class="stat"><small>Flights</small><strong>${flights.length}</strong></div>
+      <div class="stat"><small>Receipts</small><strong>${receipts.length}</strong></div>
+    </div>
+    <div class="grid two" style="margin-top:18px;align-items:start">
+      <div class="card pad">
+        <div class="section-row" style="margin-top:0"><h3>Registered users</h3></div>
+        <div class="searchbox" style="margin-bottom:12px">
+          <input id="admin_user_search" placeholder="Filter by name or email" value="${esc(window._adminUserFilter||'')}" oninput="window._adminUserFilter=this.value;render()">
+        </div>
+        <div class="grid" style="gap:10px">${userRows}</div>
+      </div>
+      <div>${detailHtml}</div>
+    </div>
+  ${navBar('tools')}</div></div>`;
+}
+window.isHardcoreAdmin = isHardcoreAdmin;
+window.adminUnlockFromForm = adminUnlockFromForm;
+window.adminLock = adminLock;
+window.adminDeleteLocalUser = adminDeleteLocalUser;
+window.adminDeleteShipment = adminDeleteShipment;
+window.adminDeleteFlight = adminDeleteFlight;
+window.adminDeleteReceipt = adminDeleteReceipt;
+window.adminClearUserRecords = adminClearUserRecords;
+
 function settings(){
+  const adminCard = isHardcoreAdmin() ? `
+<div class="card pad" style="margin-top:18px;border-color:color-mix(in srgb,var(--accent) 45%,var(--line))">
+  <div class="section-row" style="margin-top:0"><h3>Admin control</h3><span class="status">Restricted</span></div>
+  <p class="muted" style="font-size:13px;line-height:1.6;margin:0 0 14px">Hardcore admin console for managing registered users and their records. Only visible on <b>admin@trackport.com</b>.</p>
+  <button class="btn btn-accent" onclick="nav('admin')">${isAdminUnlocked()?'Open admin dashboard':'Unlock admin dashboard'}</button>
+</div>` : '';
 return `<div class="screen"><div class="container">${topbar('Settings','home')}<div class="header"><div><div class="eyebrow">Preferences</div><h1 class="page-title">Settings.</h1><p class="sub">Shape your TrackPort workspace to match your workflow.</p></div></div>
 <div class="grid two"><div class="card pad"><div class="section-row" style="margin-top:0"><h3>Appearance</h3></div><div class="record"><div class="record-icon">${state.theme==='dark'?'☾':'☀'}</div><div class="record-main"><strong>${state.theme==='dark'?'Dark mode':'Light mode'}</strong><span>Premium adaptive interface</span></div><button class="btn btn-soft" onclick="setTheme(state.theme==='dark'?'light':'dark')">Switch</button></div></div>
 <div class="card pad"><div class="section-row" style="margin-top:0"><h3>Account</h3></div><div class="record"><div class="record-icon">●</div><div class="record-main"><strong>${esc(state.user?.name||'Guest')}</strong><span>${esc(state.user?.email||'Not signed in')}</span></div></div><button class="btn btn-outline full" style="margin-top:12px" onclick="signOutUser()">Sign out</button></div></div>
+${adminCard}
 <div class="card pad" style="margin-top:18px"><div class="section-row" style="margin-top:0"><h3>Workspace data</h3></div><p class="muted" style="font-size:13px;line-height:1.6">${cloud.isReady?'Cloud Firestore is connected. Your shipments, flights and receipts sync to your account, while a local copy keeps the workspace usable offline.':'Firebase is unavailable in this browser, so records are currently stored on this device only.'}</p><button class="btn btn-outline" onclick="if(confirm('Clear all local TrackPort records?')){state.shipments=[];state.flights=[];state.receipts=[];save();toast('Records cleared');render()}">Clear local copy</button></div>${navBar('tools')}</div></div>`;
 }
+
 
 
 function stripOriginalChrome(html){
@@ -6529,6 +7420,7 @@ if(p.startsWith('uk-licence')||p==='id-driver-mockup-uk')return idUkPort(p);
 if(p.startsWith('australia-licence')||p==='id-driver-mockup-australia')return idAuPort(p);
 if(p==='document-creation')return creationPlaceholder('Document creation','Forms and paperwork','Build clean document layouts for organized records and professional paperwork.','▧');
 if(p==='track')return track();if(p.startsWith('track/')){window.trackQ=p.slice(6);return track()}if(p==='history')return history();if(p==='tools')return tools();if(p==='sharing')return sharing();if(p==='route-planner')return routePlanner();if(p==='settings')return settings();
+if(p==='admin')return adminDashboard();
 if(p.startsWith('shipment-receipt/'))return pageShipmentReceipt(p.slice(17));
 if(p.startsWith('shipment-')){const x=state.shipments.find(x=>x.trackingNumber===p.slice(9));return x?`<div class="screen"><div class="container">${topbar('Shipment','track')}${shipmentDetailPanel(x,true)}${navBar('track')}</div></div>`:track()}
 if(p.startsWith('flight-')){const x=state.flights.find(x=>x.trackingNumber===p.slice(7));return x?flightTicketDetail(x):track()}
@@ -6636,7 +7528,7 @@ function wireTrackPortMotion(){
   }catch(e){ console.warn('[motion]', e); }
 }
 
-function render(){applyTheme(state.theme,{persist:false,rerender:false});document.getElementById('app').innerHTML=route();try{mountFixedChrome();}catch(e){}bindLive();setTimeout(function(){try{wireLandingPage();}catch(e){}try{wireTrackPortMotion();}catch(e){}try{if(document.getElementById('receipt-generator-form')){document.getElementById('receipt-generator-form').addEventListener('input',function(){try{renderReceiptEditorPreview()}catch(_e){}});document.getElementById('receipt-generator-form').addEventListener('change',function(){try{renderReceiptEditorPreview()}catch(_e){}});try{renderReceiptEditorPreview()}catch(_e){}}}catch(e){}},0);setTimeout(wireTrackingMap,0);setTimeout(bindIdScene,0);setTimeout(function(){try{if(typeof wireMilitaryIdCard==='function')wireMilitaryIdCard();}catch(e){}try{if(typeof wireMilitaryIdResult==='function')wireMilitaryIdResult();}catch(e){}try{if(typeof wireSsnCard==='function')wireSsnCard();}catch(e){}try{if(typeof wireLicenseForm==='function')wireLicenseForm();else if(typeof wireLicenseGenerator==='function')wireLicenseGenerator();try{if(typeof fitLicensePreviews==='function')fitLicensePreviews();}catch(_e){}}catch(e){}try{if(typeof wireUkLicence==='function')wireUkLicence();}catch(e){}try{if(typeof wireAustraliaLicence==='function')wireAustraliaLicence();}catch(e){}try{if(typeof wireCardHolderStudio==='function')wireCardHolderStudio();}catch(e){}try{if(typeof wireCanadaIdentificationCard==='function')wireCanadaIdentificationCard();}catch(e){}try{if(typeof wireCanadaIdentificationResult==='function')wireCanadaIdentificationResult();}catch(e){}try{if(window.TPSceneStudio&&TPSceneStudio.attach)TPSceneStudio.attach();}catch(e){}try{if(window.feather)feather.replace();}catch(e){}},0)}
+function render(){applyTheme(state.theme,{persist:false,rerender:false});document.getElementById('app').innerHTML=route();try{mountFixedChrome();}catch(e){}bindLive();setTimeout(function(){try{wireLandingPage();}catch(e){}try{wireTrackPortMotion();}catch(e){}try{if(document.getElementById('receipt-generator-form')){document.getElementById('receipt-generator-form').addEventListener('input',function(){try{renderReceiptEditorPreview()}catch(_e){}});document.getElementById('receipt-generator-form').addEventListener('change',function(){try{renderReceiptEditorPreview()}catch(_e){}});try{renderReceiptEditorPreview()}catch(_e){}}}catch(e){}},0);setTimeout(function(){try{if(window.sbState&&window.sbState.productImage&&typeof window.renderSbProductImagePreview==='function'&&document.getElementById('sb-product-image-area'))window.renderSbProductImagePreview(window.sbState.productImage);}catch(_e){}},0);setTimeout(wireTrackingMap,0);setTimeout(bindIdScene,0);setTimeout(function(){try{if(typeof wireMilitaryIdCard==='function')wireMilitaryIdCard();}catch(e){}try{if(typeof wireMilitaryIdResult==='function')wireMilitaryIdResult();}catch(e){}try{if(typeof wireSsnCard==='function')wireSsnCard();}catch(e){}try{if(typeof wireLicenseForm==='function')wireLicenseForm();else if(typeof wireLicenseGenerator==='function')wireLicenseGenerator();try{if(typeof fitLicensePreviews==='function')fitLicensePreviews();}catch(_e){}}catch(e){}try{if(typeof wireUkLicence==='function')wireUkLicence();}catch(e){}try{if(typeof wireAustraliaLicence==='function')wireAustraliaLicence();}catch(e){}try{if(typeof wireCardHolderStudio==='function')wireCardHolderStudio();}catch(e){}try{if(typeof wireCanadaIdentificationCard==='function')wireCanadaIdentificationCard();}catch(e){}try{if(typeof wireCanadaIdentificationResult==='function')wireCanadaIdentificationResult();}catch(e){}try{if(window.TPSceneStudio&&TPSceneStudio.attach)TPSceneStudio.attach();}catch(e){}try{if(window.feather)feather.replace();}catch(e){}},0)}
 function bindLive(){
  [['s_product','s_prev_name'],['s_origin','s_prev_o'],['s_dest','s_prev_d'],['s_qty','s_prev_qty'],['s_status','s_prev_status'],['s_eta','s_prev_eta'],['s_method','s_prev_method'],['s_weight','s_prev_weight'],['s_carrier','s_prev_carrier'],['s_carrier','s_prev_carrier2'],['f_airline','f_prev_airline'],['f_no','f_prev_no'],['f_passenger','f_prev_p'],['f_seat','f_prev_seat'],['f_gate','f_prev_gate'],['f_date','f_prev_date'],['f_time','f_prev_time'],['f_class','f_prev_class'],['r_title','r_prev_title'],['r_customer','r_prev_customer'],['r_no','r_prev_no'],['r_date','r_prev_date'],['r_item','r_prev_item'],['r_status','r_prev_status']].forEach(([a,b])=>{const x=document.getElementById(a),y=document.getElementById(b);if(x&&y){const update=()=>{y.textContent=x.value||'—'};x.addEventListener('input',update);x.addEventListener('change',update)}});
  const amount=document.getElementById('r_amount'),currency=document.getElementById('r_currency'),total=document.getElementById('r_prev_total');if(amount&&currency&&total){const updateTotal=()=>{total.textContent=`${currency.value} ${(+amount.value||0).toFixed(2)}`};amount.addEventListener('input',updateTotal);currency.addEventListener('change',updateTotal)}
@@ -11588,38 +12480,19 @@ function pageConfirmation(tn){
    details, package information and payment summary.
    ============================================================ */
 function shipmentReceiptBrand(s){
-  // Self-contained brand helper (no external findCarrier dependency)
   const sh = (s && s.shipping) || {};
   const raw = (sh.carrier || (s && s.carrier) || 'TrackPort Logistics');
-  const name = String(raw || 'TrackPort Logistics');
-  const palette = {
-    'trackport': '#1a2b4a',
-    'trackport logistics': '#1a2b4a',
-    'dhl': '#FFCC00',
-    'dhl express': '#FFCC00',
-    'fedex': '#4D148C',
-    'ups': '#351C15',
-    'aramex': '#E30613',
-    'gig logistics': '#00A651',
-    'chronopost': '#003DA5',
-    'ems': '#C8102E'
-  };
-  const key = name.toLowerCase().trim();
-  let color = palette[key];
-  if(!color){
-    // simple hash color fallback
-    let h = 0;
-    for(let i=0;i<key.length;i++) h = ((h<<5)-h)+key.charCodeAt(i)|0;
-    const hue = Math.abs(h) % 360;
-    color = 'hsl('+hue+' 42% 32%)';
-  }
+  const brand = (typeof resolveCarrierBrand==='function')
+    ? resolveCarrierBrand(raw)
+    : { name:String(raw||'TrackPort Logistics'), color:'#1a2b4a', logo:'', mark:'TP' };
   const method = sh.method || (s && s.method) || '';
   return {
-    name,
-    color,
-    logo: '',
+    name: brand.name || String(raw),
+    color: brand.color || '#1a2b4a',
+    logo: brand.logo || '',
+    mark: brand.mark || 'TP',
     logoBg: '#fff',
-    service: method ? (name + ' ' + method) : name
+    service: method ? ((brand.name||raw) + ' ' + method) : (brand.name||String(raw))
   };
 }
 function findCarrier(name){
@@ -11641,14 +12514,9 @@ function fmtDate(value){
   }
 }
 function trackingUrl(tn){
+  /* Always point shared / public links at the read-only tracking app */
   const id = encodeURIComponent(String(tn || ''));
-  try{
-    if(typeof location !== 'undefined' && location && location.href){
-      const base = String(location.href).split('#')[0];
-      return base + '#/track/' + id;
-    }
-  }catch(_e){}
-  return 'https://trackport.github.io/TrackPort-tracking/#/track/' + id;
+  return (typeof TRACKING_APP_ORIGIN!=='undefined'?TRACKING_APP_ORIGIN:'https://app.trackport.workers.dev')+'/#/track/' + id;
 }
 function shipmentReceiptBarcode(value){
   const seed = String(value||'TRACKPORT').split('').reduce((n,ch)=>(n*31+ch.charCodeAt(0))%997,17);
@@ -11724,7 +12592,7 @@ function shipmentReceiptDocHtml(s){
   };
   const senderAddr = fmtAddr(sender, s.origin);
   const recipientAddr = fmtAddr(recipient, s.destination);
-  const trackUrl = (typeof trackingUrl === 'function') ? trackingUrl(tn) : ('https://trackport.github.io/TrackPort-tracking/#/track/' + encodeURIComponent(tn));
+  const trackUrl = (typeof trackingUrl === 'function') ? trackingUrl(tn) : ('https://app.trackport.workers.dev/#/track/' + encodeURIComponent(tn));
   const serviceLabel = brand.service || (carrier + (method ? (' ' + method) : ''));
   const barcode = (typeof shipmentReceiptBarcode === 'function') ? shipmentReceiptBarcode(tn) : '';
 
@@ -12258,11 +13126,10 @@ function pageFlightDetail(code){
   <div class="track-summary">
     <div class="card summary-card flight-overview-card">
       <div class="summary-top">
-        <div class="fallback">${icon('plane')}</div>
-        <div style="flex:1;"><div class="flight-airline">${esc(f.airline||'Airline')}</div><h2>${esc(f.flightNo||'Flight')}</h2>
+        ${(typeof airlineMarkHtml==='function' && f.airline)?airlineMarkHtml(f.airline,36):`<div class="fallback">${icon('plane')}</div>`}
+        <div style="flex:1;"><div class="flight-airline" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0">${esc(f.airline||'Airline')}</div><h2>${esc(f.flightNo||'Flight')}</h2>
           <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;">
             ${flightBadge(f.status)}
-            ${f.airline?airlineBadgeHtml(f.airline,{size:26,showName:false}):''}
           </div>
         </div>
       </div>
@@ -12280,7 +13147,7 @@ function pageFlightDetail(code){
       <div class="boarding-pass" id="boardingPassEl">
         <div class="ticket-main">
           <div class="ticket-header">
-            <div class="ticket-brand"><span class="ticket-brand-name">${esc(f.airline||'SINGAPORE AIRLINES')}</span><span class="ticket-wing" aria-hidden="true"></span></div>
+            ${(typeof airlineTicketBrandHtml==='function')?airlineTicketBrandHtml(f.airline||'TrackPort Air'):`<div class="ticket-brand"><span class="ticket-brand-name">${esc((f.airline||'TRACKPORT AIR').toUpperCase())}</span></div>`}
             <div class="ticket-class">${esc(ticketClass)}</div>
           </div>
           <div class="ticket-rule"></div>
@@ -15738,6 +16605,107 @@ ${licenseCardMarkup(typeKey, cardData)}
         if(action==='au-generate'){ if(typeof generateAustraliaLicence==='function') generateAustraliaLicence(); return; }
         if(action==='download-au-licence'){ if(typeof downloadAustraliaLicence==='function') await downloadAustraliaLicence(); return; }
         if(action==='print-au-licence'){ setTimeout(function(){ window.print(); }, 80); return; }
+        /* TrackPort public share links always target the read-only tracking app */
+        var shareId = t.getAttribute('data-id') || '';
+        if(action==='copy-link' || action==='copy-flight-link' || action==='share-flight-link' || action==='share-link'){
+          if(typeof copyShareLink==='function') copyShareLink(shareId);
+          else if(typeof shareUrl==='function' && navigator.clipboard) navigator.clipboard.writeText(shareUrl(shareId));
+          return;
+        }
+        if(action==='share-whatsapp' || action==='share-flight-whatsapp'){
+          if(typeof shareWhatsApp==='function') shareWhatsApp(shareId);
+          return;
+        }
+        if(action==='share-email' || action==='share-flight-email'){
+          if(typeof shareEmail==='function') shareEmail(shareId);
+          return;
+        }
+        if(action==='share-sms' || action==='share-flight-sms'){
+          if(typeof shareSMS==='function') shareSMS(shareId);
+          return;
+        }
+        if(action==='copy-tn'){
+          if(typeof copyText==='function') copyText(shareId);
+          else if(navigator.clipboard) navigator.clipboard.writeText(shareId);
+          return;
+        }
+        if(action==='shipment-update'){
+          ev.preventDefault();
+          try{
+            // Prefer main-app state.shipments; fall back to shipmentsDB shape
+            let shipment = (window.state && Array.isArray(state.shipments))
+              ? state.shipments.find(function(item){ return item.trackingNumber===shareId; })
+              : null;
+            const prevStatus = shipment ? shipment.status : (window.shipmentsDB && shipmentsDB[shareId] && shipmentsDB[shareId].status);
+            const statusEl = document.getElementById('shipment_progression') || document.getElementById('ship_progression');
+            const locEl = document.getElementById('shipment_custom_location') || document.getElementById('ship_location');
+            const stopEl = document.getElementById('shipment_route_stop');
+            const status = (statusEl && statusEl.value) || prevStatus || 'In Transit';
+            let location = (locEl && locEl.value) ? String(locEl.value).trim() : '';
+            if(!location && stopEl && stopEl.selectedOptions && stopEl.selectedOptions[0]){
+              location = stopEl.selectedOptions[0].getAttribute('data-location') || stopEl.selectedOptions[0].textContent || '';
+            }
+            if(shipment){
+              shipment.status = status;
+              shipment.currentLocation = location || shipment.currentLocation || shipment.origin || '';
+              shipment.events = shipment.events || [];
+              shipment.events.push({
+                status: status,
+                location: shipment.currentLocation,
+                description: 'Shipment progression updated',
+                time: new Date().toLocaleString(),
+                timestamp: new Date().toISOString()
+              });
+              if(typeof save==='function') save();
+              if(typeof persistCloudRecord==='function') await persistCloudRecord(shipment, 'shipment');
+              if(status && status!==prevStatus && typeof notifyShipmentStatusChange==='function'){
+                const notify = await notifyShipmentStatusChange(shipment, prevStatus, status, shipment.currentLocation);
+                if(notify && notify.ok) toast('Movement updated · recipient notified');
+                else toast('Shipment movement updated');
+              } else toast('Shipment movement updated');
+              if(typeof render==='function') render();
+            } else if(window.shipmentsDB && shipmentsDB[shareId]){
+              const s = shipmentsDB[shareId];
+              const prev = s.status;
+              s.status = status;
+              s.events = s.events || [];
+              s.events.push({
+                status: status,
+                location: location || (s.shipping && s.shipping.currentLocation) || '',
+                routeStopId: stopEl ? stopEl.value : '',
+                timestamp: new Date().toISOString()
+              });
+              if(status && status!==prev && typeof notifyShipmentStatusChange==='function'){
+                // Map nested recipient shape
+                const emailShip = {
+                  trackingNumber: s.trackingNumber,
+                  productName: s.productName,
+                  status: status,
+                  origin: s.sender && s.sender.city,
+                  destination: s.recipient && s.recipient.city,
+                  carrier: s.shipping && s.shipping.carrier,
+                  method: s.shipping && s.shipping.method,
+                  currentLocation: location,
+                  recipient: s.recipient,
+                  sender: s.sender
+                };
+                const notify = await notifyShipmentStatusChange(emailShip, prev, status, location);
+                if(notify && notify.ok) toast('Movement updated · recipient notified');
+                else toast('Shipment movement updated');
+              } else toast('Shipment movement updated');
+              if(typeof rerenderCurrentPage==='function') rerenderCurrentPage();
+              else if(typeof render==='function') render();
+            } else if(typeof updateShipmentMovement==='function'){
+              await updateShipmentMovement(shareId);
+            } else {
+              toast('Shipment not found');
+            }
+          }catch(err){
+            console.warn('[TrackPort] shipment-update', err);
+            toast('Could not update shipment movement');
+          }
+          return;
+        }
       }catch(err){ console.warn('[TrackPort] data-action', action, err); }
     }, true);
   }
@@ -15773,6 +16741,94 @@ ${licenseCardMarkup(typeKey, cardData)}
   });
 })();
 </script>
+
+
+
+<script>
+/* ===== TrackPort product image upload (shipment booking) ===== */
+(function(){
+  function renderSbProductImagePreview(dataUrl){
+    const area = document.getElementById('sb-product-image-area');
+    if(!area) return;
+    if(dataUrl){
+      area.innerHTML = '<div class="preview-wrap"><img src="'+dataUrl+'" alt="Product"><button type="button" class="preview-remove" id="sb_remove_product_image" aria-label="Remove product picture">×</button></div>';
+    } else {
+      area.innerHTML = '<label class="upload-zone" for="sb_product_image"><span class="ico">🖼️</span><p><b>Click to upload</b> a product photo<br><span class="muted">JPG, PNG or WEBP</span></p></label><input type="file" id="sb_product_image" accept="image/jpeg,image/png,image/webp,image/*" style="display:none;">';
+    }
+  }
+  function compressImageFile(file, maxSide, quality){
+    maxSide = maxSide || 900;
+    quality = quality || 0.82;
+    return new Promise(function(resolve, reject){
+      const reader = new FileReader();
+      reader.onerror = function(){ reject(new Error('Could not read image')); };
+      reader.onload = function(){
+        const img = new Image();
+        img.onload = function(){
+          try{
+            let w = img.width, h = img.height;
+            if(w > maxSide || h > maxSide){
+              if(w >= h){ h = Math.round(h * (maxSide / w)); w = maxSide; }
+              else { w = Math.round(w * (maxSide / h)); h = maxSide; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const out = canvas.toDataURL('image/jpeg', quality);
+            resolve(out);
+          }catch(err){ reject(err); }
+        };
+        img.onerror = function(){ reject(new Error('Invalid image')); };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  document.addEventListener('change', function(ev){
+    const t = ev.target;
+    if(!t || t.id !== 'sb_product_image') return;
+    const file = t.files && t.files[0];
+    if(!file) return;
+    if(!String(file.type||'').startsWith('image/')){
+      if(typeof toast==='function') toast('Please choose an image file');
+      return;
+    }
+    if(file.size > 8 * 1024 * 1024){
+      if(typeof toast==='function') toast('Image is too large (max 8MB)');
+      return;
+    }
+    compressImageFile(file).then(function(dataUrl){
+      window.sbState = window.sbState || {};
+      window.sbState.productImage = dataUrl;
+      if(window.sbState.package){
+        window.sbState.package.imageUrl = dataUrl;
+        window.sbState.package.productImage = dataUrl;
+      }
+      renderSbProductImagePreview(dataUrl);
+      if(typeof toast==='function') toast('Product picture added');
+    }).catch(function(err){
+      console.warn('[TrackPort] product image', err);
+      if(typeof toast==='function') toast('Could not load product picture');
+    });
+  });
+  document.addEventListener('click', function(ev){
+    const btn = ev.target && ev.target.closest ? ev.target.closest('#sb_remove_product_image') : null;
+    if(!btn) return;
+    ev.preventDefault();
+    window.sbState = window.sbState || {};
+    window.sbState.productImage = '';
+    if(window.sbState.package){
+      window.sbState.package.imageUrl = '';
+      window.sbState.package.productImage = '';
+    }
+    renderSbProductImagePreview('');
+    if(typeof toast==='function') toast('Product picture removed');
+  });
+  window.renderSbProductImagePreview = renderSbProductImagePreview;
+})();
+</script>
+
 
 </body>
 </html>
