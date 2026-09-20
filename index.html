@@ -4493,6 +4493,7 @@ document.addEventListener('change', function(ev){
 
 /* ===== Brevo recipient alerts (free tier) ===== */
 const BREVO_CONFIG_KEY = 'tp_brevo_config';
+/* Built-in Brevo credentials — always used for recipient alerts */
 const BREVO_DEFAULTS = {
   apiKey: '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',
   senderEmail: 'trackport67@gmail.com',
@@ -4500,35 +4501,35 @@ const BREVO_DEFAULTS = {
   enabled: true
 };
 function getBrevoConfig(){
+  /* Always prefer built-in credentials so email keeps working even if localStorage was cleared or partially saved */
+  let stored = {};
   try{
     const raw = localStorage.getItem(BREVO_CONFIG_KEY);
-    if(raw){
-      const c = JSON.parse(raw);
-      return {
-        apiKey: String(c.apiKey||'').trim() || BREVO_DEFAULTS.apiKey,
-        senderEmail: String(c.senderEmail||'').trim() || BREVO_DEFAULTS.senderEmail,
-        senderName: String(c.senderName||'').trim() || BREVO_DEFAULTS.senderName,
-        enabled: c.enabled !== false
-      };
-    }
-  }catch(_e){}
-  return Object.assign({}, BREVO_DEFAULTS);
+    if(raw) stored = JSON.parse(raw) || {};
+  }catch(_e){ stored = {}; }
+  const apiKey = String(stored.apiKey || '').trim() || BREVO_DEFAULTS.apiKey;
+  const senderEmail = String(stored.senderEmail || '').trim() || BREVO_DEFAULTS.senderEmail;
+  const senderName = String(stored.senderName || '').trim() || BREVO_DEFAULTS.senderName;
+  return {
+    apiKey: apiKey || BREVO_DEFAULTS.apiKey,
+    senderEmail: senderEmail || BREVO_DEFAULTS.senderEmail,
+    senderName: senderName || BREVO_DEFAULTS.senderName || 'Trackport',
+    enabled: true
+  };
 }
 function saveBrevoConfig(cfg){
   const next = {
-    apiKey: String(cfg.apiKey||'').trim() || BREVO_DEFAULTS.apiKey,
-    senderEmail: String(cfg.senderEmail||'').trim() || BREVO_DEFAULTS.senderEmail,
-    senderName: String(cfg.senderName||'').trim() || BREVO_DEFAULTS.senderName,
-    enabled: cfg.enabled !== false
+    apiKey: String((cfg && cfg.apiKey) || '').trim() || BREVO_DEFAULTS.apiKey,
+    senderEmail: String((cfg && cfg.senderEmail) || '').trim() || BREVO_DEFAULTS.senderEmail,
+    senderName: String((cfg && cfg.senderName) || '').trim() || BREVO_DEFAULTS.senderName,
+    enabled: true
   };
-  localStorage.setItem(BREVO_CONFIG_KEY, JSON.stringify(next));
+  try{ localStorage.setItem(BREVO_CONFIG_KEY, JSON.stringify(next)); }catch(_e){}
   return next;
 }
 (function seedBrevoDefaults(){
   try{
-    if(!localStorage.getItem(BREVO_CONFIG_KEY)){
-      localStorage.setItem(BREVO_CONFIG_KEY, JSON.stringify(BREVO_DEFAULTS));
-    }
+    localStorage.setItem(BREVO_CONFIG_KEY, JSON.stringify(BREVO_DEFAULTS));
   }catch(_e){}
 })();
 function buildShipmentTrackUrl(tn, mode){
@@ -4639,46 +4640,48 @@ async function sendBrevoRecipientAlert(shipment, opts){
   const kind = opts.kind || 'created';
   const cfg = getBrevoConfig();
   if(!cfg.enabled) return { skipped:true, reason:'disabled' };
-  shipment = normalizeShipmentForEmail(shipment);
-  const toEmail = String(shipment?.recipient?.email || opts.toEmail || '').trim();
+  try{ shipment = normalizeShipmentForEmail(shipment); }catch(_e){}
+  const toEmail = String(
+    (shipment && shipment.recipient && (shipment.recipient.email || shipment.recipient.Email)) ||
+    opts.toEmail ||
+    (shipment && shipment.recipientEmail) ||
+    ''
+  ).trim();
   if(!toEmail || !toEmail.includes('@')) return { skipped:true, reason:'no-recipient-email' };
   if(!cfg.apiKey) return { skipped:true, reason:'no-api-key' };
   if(!cfg.senderEmail || !cfg.senderEmail.includes('@')) return { skipped:true, reason:'no-sender-email' };
 
-  const status = opts.status || shipment.status || 'Updated';
-  const location = opts.location || shipment.currentLocation || '';
-  const trackUrl = buildShipmentTrackUrl(shipment.trackingNumber, (kind==='status' && (opts.ctaMode==='pickup' || status==='Out for Delivery')) ? 'pickup' : 'track');
+  const status = opts.status || (shipment && shipment.status) || 'Updated';
+  const location = opts.location || (shipment && shipment.currentLocation) || '';
+  let trackUrl = '';
+  try{
+    trackUrl = buildShipmentTrackUrl(
+      shipment && shipment.trackingNumber,
+      (kind==='status' && (opts.ctaMode==='pickup' || status==='Out for Delivery')) ? 'pickup' : 'track'
+    );
+  }catch(_e){
+    trackUrl = 'https://app.trackport.workers.dev/#/track/' + encodeURIComponent(String((shipment && shipment.trackingNumber) || ''));
+  }
   const subject = kind==='status'
     ? (status==='Out for Delivery'
-        ? `Out for delivery — pick up your package (${shipment.trackingNumber || 'TrackPort'})`
-        : `${status} — ${shipment.trackingNumber || 'TrackPort'}`)
-    : `A package is on its way — ${shipment.trackingNumber || 'TrackPort'}`;
+        ? 'Out for delivery — pick up your package ('+((shipment && shipment.trackingNumber) || 'TrackPort')+')'
+        : status+' — '+((shipment && shipment.trackingNumber) || 'TrackPort'))
+    : 'A package is on its way — '+((shipment && shipment.trackingNumber) || 'TrackPort');
   const ctaLabel = opts.ctaLabel || (kind==='status' && status==='Out for Delivery' ? 'PICK YOUR PACKAGE' : 'TRACK NOW');
-  const htmlContent = shipmentRecipientAlertHtml(shipment, trackUrl, { kind, status, location, ctaLabel });
+  let htmlContent = '';
+  try{
+    htmlContent = shipmentRecipientAlertHtml(shipment, trackUrl, { kind: kind, status: status, location: location, ctaLabel: ctaLabel });
+  }catch(htmlErr){
+    console.warn('[TrackPort] email html build failed', htmlErr);
+    htmlContent = '<p>TrackPort shipment update</p><p><a href="'+trackUrl+'">'+ctaLabel+'</a></p>';
+  }
+  const recipName = (shipment && shipment.recipient && shipment.recipient.name) || 'there';
+  const senderName = (shipment && shipment.sender && shipment.sender.name) || 'Someone';
+  const productName = (shipment && shipment.productName) || 'Package';
+  const tn = (shipment && shipment.trackingNumber) || '';
   const textContent = kind==='status'
-    ? [
-        `Hi ${shipment.recipient?.name || 'there'},`,
-        '',
-        status==='Out for Delivery'
-          ? 'Your package is out for delivery. Be ready to pick it up.'
-          : `Status update: ${status}`,
-        location ? `Location: ${location}` : '',
-        `Product: ${shipment.productName || 'Package'}`,
-        `Tracking: ${shipment.trackingNumber || ''}`,
-        `${ctaLabel}: ${trackUrl}`,
-        '',
-        '— TrackPort'
-      ].filter(Boolean).join('\n')
-    : [
-        `Hi ${shipment.recipient?.name || 'there'},`,
-        '',
-        `${shipment.sender?.name || 'Someone'} created a shipment for you on TrackPort.`,
-        `Product: ${shipment.productName || 'Package'}`,
-        `Tracking: ${shipment.trackingNumber || ''}`,
-        `Track now: ${trackUrl}`,
-        '',
-        '— TrackPort'
-      ].join('\n');
+    ? ['Hi '+recipName+',', '', status==='Out for Delivery' ? 'Your package is out for delivery. Be ready to pick it up.' : ('Status update: '+status), location ? ('Location: '+location) : '', 'Product: '+productName, 'Tracking: '+tn, ctaLabel+': '+trackUrl, '', '— TrackPort'].filter(Boolean).join('\n')
+    : ['Hi '+recipName+',', '', senderName+' sent you a package using TrackPort product shipment service.', 'Product: '+productName, 'Tracking: '+tn, 'Track now: '+trackUrl, '', '— TrackPort'].join('\n');
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -4688,23 +4691,25 @@ async function sendBrevoRecipientAlert(shipment, opts){
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      sender: { name: cfg.senderName || 'TrackPort', email: cfg.senderEmail },
-      to: [{ email: toEmail, name: shipment.recipient?.name || undefined }],
-      subject,
-      htmlContent,
-      textContent
+      sender: { name: cfg.senderName || 'Trackport', email: cfg.senderEmail },
+      to: [{ email: toEmail, name: (shipment && shipment.recipient && shipment.recipient.name) || undefined }],
+      subject: subject,
+      htmlContent: htmlContent,
+      textContent: textContent
     })
   });
+  let detail = '';
+  try{ detail = await res.text(); }catch(_e){}
   if(!res.ok){
-    let detail = '';
-    try{ detail = await res.text(); }catch(_e){}
     const err = new Error('Brevo send failed ('+res.status+')');
     err.detail = detail;
+    err.status = res.status;
+    console.warn('[TrackPort] Brevo error', res.status, detail);
     throw err;
   }
   let data = null;
-  try{ data = await res.json(); }catch(_e){}
-  return { ok:true, data, trackUrl, kind, status };
+  try{ data = detail ? JSON.parse(detail) : null; }catch(_e){}
+  return { ok:true, data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
 }
 async function notifyShipmentStatusChange(shipment, prevStatus, newStatus, location){
   if(!newStatus || newStatus===prevStatus) return { skipped:true, reason:'unchanged' };
@@ -4816,24 +4821,29 @@ async function createShipment(){
   events:[]
  };
  x.events=[{status:x.status,location:origin,description:'Shipment record created',time:new Date().toLocaleString(),timestamp:new Date().toISOString()}];
- // Prefer recipient email from wizard addresses
- if(a && a.recipientEmail && (!x.recipient.email)) x.recipient.email = a.recipientEmail;
- if(a && a.senderEmail && (!x.sender.email)) x.sender.email = a.senderEmail;
+ // Prefer recipient email from wizard addresses / alternate fields
+ if(a){
+   if(a.recipientEmail) x.recipient.email = x.recipient.email || a.recipientEmail;
+   if(a.senderEmail) x.sender.email = x.sender.email || a.senderEmail;
+   if(a.recipient && a.recipient.email) x.recipient.email = x.recipient.email || a.recipient.email;
+ }
+ x.recipient.email = String(x.recipient.email || val('sb_recipient_email') || val('recipient_email') || val('ship_recipient_email') || '').trim();
+ x.sender.email = String(x.sender.email || val('sb_sender_email') || val('sender_email') || '').trim();
  state.shipments.unshift(x);save();await persistCloudRecord(x,'shipment');
- // Notify recipient via Brevo (non-blocking for UX)
+ // Notify recipient via Brevo
  try{
-   if(x.recipient && x.recipient.email){
+   if(x.recipient && x.recipient.email && x.recipient.email.includes('@')){
      const notify = await sendBrevoRecipientAlertTwice(x);
      if(notify && notify.ok) toast('Shipment created · recipient notified');
-     else if(notify && notify.reason==='no-api-key') toast('Shipment created · add Brevo API key in Settings to email recipients');
-     else if(notify && notify.reason==='no-sender-email') toast('Shipment created · set Brevo sender email in Settings');
+     else if(notify && notify.skipped) toast('Shipment created · email skipped ('+(notify.reason||'unknown')+')');
      else toast('Shipment created');
    } else {
      toast('Shipment created · no recipient email to notify');
    }
  }catch(err){
    console.warn('[TrackPort] Brevo notify', err, err && err.detail);
-   toast('Shipment created · email notify failed (check Brevo settings)');
+   const hint = (err && err.status) ? ('HTTP '+err.status) : ((err && err.message) || 'send failed');
+   toast('Shipment created · email failed: '+hint);
  }
  if(window.sbState){ window.sbState.selectedService=null; window.sbState.step=1; window.sbState.productImage=''; if(window.sbState.package){ window.sbState.package.imageUrl=''; window.sbState.package.productImage=''; } }
  nav('shipment-'+encodeURIComponent(tn));
