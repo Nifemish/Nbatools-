@@ -1,0 +1,17 @@
+{
+  "name": "TrackPort",
+  "short_name": "TrackPort",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "theme_color": "#0b0e0d",
+  "background_color": "#080b0a",
+  "description": "TrackPort — ship, track and deliver.",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src":"/trackport-icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
+    {"src":"/trackport-icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}
