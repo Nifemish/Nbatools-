@@ -4056,7 +4056,8 @@ function nav(page){
   return user?{uid:user.uid,email:(user.email||'').toLowerCase(),name:user.displayName||state.user?.name||user.email?.split('@')[0]||'TrackPort user'}:null;
  }
  function cloudSnapshot(){return{shipments:state.shipments,flights:state.flights,receipts:state.receipts}}
- async function persistCloudRecord(record,type){
+ async function persistCloudRecord(record,type,opts){
+  opts = opts || {};
   const user=cloudUser();
   if(!user||!cloud.isReady)return true;
   try{
@@ -4065,7 +4066,7 @@ function nav(page){
    return true;
   }catch(error){
    console.warn('TrackPort cloud save failed; keeping a local copy.',error);
-   toast('Cloud save unavailable — kept on this device');
+   if(!opts.silent) toast('Cloud save unavailable — kept on this device');
    return false;
   }
  }
@@ -5777,13 +5778,16 @@ function tpPhase3StatusMessage(status){
   };
   return map[status] || ('Your shipment status is now '+status+'.');
 }
-async function notifyShipmentStatusChange(shipment, prevStatus, newStatus, location){
-  if(!newStatus || newStatus===prevStatus) return { skipped:true, reason:'unchanged' };
+async function notifyShipmentStatusChange(shipment, prevStatus, newStatus, location, opts){
+  opts = opts || {};
+  const forceResend = !!opts.forceResend;
+  if(!newStatus) return { skipped:true, reason:'unchanged' };
+  if(!forceResend && newStatus===prevStatus) return { skipped:true, reason:'unchanged' };
   /* Phase 3: all meaningful shipment milestones are eligible. Flights never enter this path. */
   const allowed = ['Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
   if(!allowed.includes(String(newStatus))) return { skipped:true, reason:'status-not-emailed', status:newStatus };
   const state3=tpPhase3NotificationState(shipment);
-  if(state3.sentStatuses[String(newStatus)]) return { skipped:true, reason:'already-sent', status:newStatus };
+  if(!forceResend && state3.sentStatuses[String(newStatus)]) return { skipped:true, reason:'already-sent', status:newStatus };
   try{
     const result=await sendBrevoRecipientAlert(shipment, {
       kind: 'status',
@@ -5796,6 +5800,7 @@ async function notifyShipmentStatusChange(shipment, prevStatus, newStatus, locat
       state3.sentStatuses[String(newStatus)] = new Date().toISOString();
       shipment.lastNotificationStatus=newStatus;
       shipment.lastNotificationAt=new Date().toISOString();
+      try{ if(typeof save==='function') save(); }catch(_e){}
     }
     return result;
   }catch(err){
@@ -7597,14 +7602,18 @@ async function updateShipmentMovement(number){
  const location=(document.getElementById('ship_location')?.value||'').trim()||shipment.origin||'';
  shipment.status=status;shipment.currentLocation=location;shipment.events=shipment.events||[];
  shipment.events.push({status,location,description:status==='Order Created'?'Shipment movement updated':'Shipment progression updated',time:new Date().toLocaleString(),timestamp:new Date().toISOString()});
- save();await persistCloudRecord(shipment,'shipment');
+ save();
+ try{ await persistCloudRecord(shipment,'shipment',{ silent:true }); }catch(_e){}
  let mailNote='';
- if(status && status!==prevStatus){
+ /* Always attempt recipient email for milestone statuses when operator taps Update movement */
+ const emailable = ['Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
+ if(status && emailable.includes(String(status))){
    try{
-     const notify=await notifyShipmentStatusChange(shipment, prevStatus, status, location);
+     const notify=await notifyShipmentStatusChange(shipment, prevStatus, status, location, { forceResend:true });
      if(notify && notify.ok) mailNote=' · recipient notified';
-     else if(notify && notify.reason==='no-recipient-email') mailNote='';
-     else if(notify && notify.reason==='no-recipient-email') mailNote='';
+     else if(notify && notify.reason==='no-recipient-email') mailNote=' · no recipient email';
+     else if(notify && notify.skipped) mailNote='';
+     else if(notify && notify.ok===false) mailNote=' · email notify failed';
    }catch(_e){ mailNote=' · email notify failed'; }
  }
  toast('Shipment movement updated'+mailNote);
