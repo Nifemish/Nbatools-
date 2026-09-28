@@ -5593,8 +5593,94 @@ function normalizeShipmentForEmail(shipment){
     }
   };
 }
-/* Email gateway: Cloudflare Worker holds the Brevo API key (never in the browser) */
-const TRACKPORT_NOTIFY_URL = 'https://trackport-notify.nbatoolz.workers.dev';
+/* Email gateway URL — override with Gmail Apps Script web app via tpSetupGmail() */
+const TRACKPORT_NOTIFY_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxcJNPJkEfQY_oCmElQpUJ-0RLLK7Nkvd166f8Re5Zsft8e18b7HJ_33e8VnZ7FukwK/exec';
+const TRACKPORT_NOTIFY_URL_KEY = 'tp_notify_url_v1';
+const TRACKPORT_EMAIL_PROVIDER_KEY = 'tp_email_provider_v1';
+function getNotifyUrl(){
+  try{
+    const stored = String(localStorage.getItem(TRACKPORT_NOTIFY_URL_KEY) || '').trim();
+    if(stored) return stored;
+  }catch(_e){}
+  return TRACKPORT_NOTIFY_URL_DEFAULT;
+}
+function getEmailProvider(){
+  try{
+    return String(localStorage.getItem(TRACKPORT_EMAIL_PROVIDER_KEY) || '').trim() || 'gmail';
+  }catch(_e){ return 'gmail'; }
+}
+/**
+ * Switch outbound mail to Gmail (no custom domain, no watermark).
+ * Uses a Google Apps Script web app as a free Gmail SMTP-style gateway.
+ *
+ * Setup (once):
+ * 1. https://script.google.com → New project
+ * 2. Paste the code from window.TRACKPORT_GMAIL_APPS_SCRIPT
+ * 3. Deploy → New deployment → Web app
+ *    - Execute as: Me
+ *    - Who has access: Anyone
+ * 4. Copy the web app URL, then run: tpSetupGmail()
+ * 5. Paste that URL when prompted
+ *
+ * Gmail limits still apply (~100–500/day). Enable 2FA + use your Google account.
+ */
+function tpSetupGmail(){
+  const current = getNotifyUrl();
+  const url = window.prompt(
+    'Paste your Google Apps Script Web App URL (Deploy → Web app).\nThis sends mail through your Gmail with no watermark and no custom domain.',
+    current.indexOf('script.google.com') >= 0 ? current : ''
+  );
+  if(url === null) return getNotifyUrl();
+  const cleaned = String(url || '').trim();
+  if(!cleaned){
+    try{
+      localStorage.removeItem(TRACKPORT_NOTIFY_URL_KEY);
+      localStorage.setItem(TRACKPORT_EMAIL_PROVIDER_KEY, 'brevo');
+    }catch(_e){}
+    try{ toast('Reverted to default notify gateway'); }catch(_e){}
+    return TRACKPORT_NOTIFY_URL_DEFAULT;
+  }
+  try{
+    localStorage.setItem(TRACKPORT_NOTIFY_URL_KEY, cleaned);
+    localStorage.setItem(TRACKPORT_EMAIL_PROVIDER_KEY, 'gmail');
+  }catch(_e){}
+  try{ toast('Gmail gateway saved — shipment emails will use your Gmail'); }catch(_e){}
+  return cleaned;
+}
+window.tpSetupGmail = tpSetupGmail;
+window.getNotifyUrl = getNotifyUrl;
+window.TRACKPORT_GMAIL_APPS_SCRIPT = [
+  '/** TrackPort → Gmail gateway (Apps Script) */',
+  'function doPost(e) {',
+  '  try {',
+  '    var data = {};',
+  '    try { data = JSON.parse(e.postData && e.postData.contents || "{}"); } catch (err) { data = {}; }',
+  '    var to = String(data.toEmail || "").trim();',
+  '    var subject = String(data.subject || "TrackPort update");',
+  '    var html = String(data.htmlContent || "");',
+  '    var text = String(data.textContent || "");',
+  '    if (!to || to.indexOf("@") < 0) {',
+  '      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "missing toEmail" }))',
+  '        .setMimeType(ContentService.MimeType.JSON);',
+  '    }',
+  '    GmailApp.sendEmail(to, subject, text || "TrackPort shipment update", {',
+  '      htmlBody: html || undefined,',
+  '      name: String(data.fromName || "TrackPort")',
+  '    });',
+  '    return ContentService.createTextOutput(JSON.stringify({ ok: true, via: "gmail-apps-script" }))',
+  '      .setMimeType(ContentService.MimeType.JSON);',
+  '  } catch (err) {',
+  '    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err && err.message || err) }))',
+  '      .setMimeType(ContentService.MimeType.JSON);',
+  '  }',
+  '}',
+  'function doGet() {',
+  '  return ContentService.createTextOutput(JSON.stringify({ ok: true, service: "TrackPort Gmail gateway" }))',
+  '    .setMimeType(ContentService.MimeType.JSON);',
+  '}'
+].join("\n");
+/* Back-compat alias */
+const TRACKPORT_NOTIFY_URL = TRACKPORT_NOTIFY_URL_DEFAULT;
 
 async function sendBrevoRecipientAlert(shipment, opts){
   opts = opts || {};
@@ -5665,6 +5751,8 @@ async function sendBrevoRecipientAlert(shipment, opts){
     subject: subject,
     htmlContent: htmlContent,
     textContent: textContent,
+    fromName: 'TrackPort',
+    provider: getEmailProvider(),
     /* Disable Brevo click/open tracking so CTAs are not rewritten to sendibt*.com
        (those redirects were failing with "This link is temporarily unavailable"). */
     headers: {
@@ -5681,7 +5769,19 @@ async function sendBrevoRecipientAlert(shipment, opts){
   async function postJson(url, headers, body, ms){
     const ctl = (typeof AbortController!=='undefined') ? new AbortController() : null;
     const timer = ctl ? setTimeout(function(){ try{ ctl.abort(); }catch(_e){} }, ms || 20000) : null;
+    const isGoogleScript = /script\.google\.com|script\.googleusercontent\.com/i.test(String(url||''));
     try{
+      /* Apps Script web apps: use text/plain (avoids CORS preflight) and follow the 302 result URL */
+      if(isGoogleScript){
+        const res = await fetch(url, {
+          method:'POST',
+          headers: { 'Content-Type':'text/plain;charset=utf-8' },
+          body: JSON.stringify(body),
+          redirect: 'follow',
+          signal: ctl ? ctl.signal : undefined
+        });
+        return res;
+      }
       return await fetch(url, {
         method:'POST',
         headers: headers,
@@ -5702,7 +5802,7 @@ async function sendBrevoRecipientAlert(shipment, opts){
   let lastStatus = 0, lastDetail = '', res = null;
   for(let attempt=0; attempt<2; attempt++){
     try{
-      res = await postJson(TRACKPORT_NOTIFY_URL, { 'content-type':'application/json' }, payload, 20000);
+      res = await postJson(getNotifyUrl(), { 'content-type':'application/json' }, payload, 20000);
     }catch(netErr){
       lastStatus = 0; lastDetail = (netErr && netErr.message) || 'network error'; res = null;
       if(attempt===0){ await new Promise(r=>setTimeout(r, 1200)); continue; }
@@ -5712,8 +5812,13 @@ async function sendBrevoRecipientAlert(shipment, opts){
     try{ detail = await res.text(); }catch(_e){}
     let data = null;
     try{ data = detail ? JSON.parse(detail) : null; }catch(_e){}
+    const isGoogleScript = /script\.google\.com|script\.googleusercontent\.com/i.test(String(getNotifyUrl()||''));
     if(res.ok && !(data && data.ok === false)){
-      return { ok:true, via:'gateway', data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
+      return { ok:true, via: isGoogleScript ? 'gmail-apps-script' : 'gateway', data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
+    }
+    /* Apps Script sometimes returns HTML error page after redirect even when mail was queued — accept explicit ok:true only */
+    if(isGoogleScript && data && data.ok === true){
+      return { ok:true, via:'gmail-apps-script', data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
     }
     lastStatus = res.status; lastDetail = detail;
     const retryable = (res.status===429 || res.status>=500);
@@ -5721,9 +5826,9 @@ async function sendBrevoRecipientAlert(shipment, opts){
     await new Promise(r=>setTimeout(r, 1200));
   }
 
-  /* 2) Direct Brevo fallback, only when the operator stored their own key. */
+  /* 2) Direct Brevo fallback — skip when using Gmail gateway (Brevo often suspended). */
   const directKey = String(cfg.apiKey || '').trim();
-  if(directKey){
+  if(directKey && getEmailProvider() !== 'gmail'){
     try{
       const dres = await postJson('https://api.brevo.com/v3/smtp/email', {
         'content-type':'application/json',
@@ -5759,7 +5864,8 @@ async function sendBrevoRecipientAlert(shipment, opts){
   throw err;
   return { ok:true, data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
 }
-window.TRACKPORT_NOTIFY_URL = TRACKPORT_NOTIFY_URL;
+window.TRACKPORT_NOTIFY_URL = TRACKPORT_NOTIFY_URL_DEFAULT;
+window.TRACKPORT_NOTIFY_URL_DEFAULT = TRACKPORT_NOTIFY_URL_DEFAULT;
 function tpPhase3NotificationState(shipment){
   shipment = shipment || {};
   shipment.notificationState = shipment.notificationState || {};
