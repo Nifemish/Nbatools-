@@ -50,6 +50,37 @@
 })();
 </script>
 
+<script>
+/* TrackPort: resolve email CTA deep links BEFORE the app boots, so recipients land on the
+   tracking result / pick-up / receipt page instead of the marketing landing page. */
+(function(){
+  try{
+    var ALLOWED=['track','pickup','shipment-receipt'];
+    var qs=new URLSearchParams(location.search||'');
+    var go=(qs.get('go')||qs.get('r')||qs.get('route')||'').trim();
+    var id=(qs.get('id')||qs.get('track')||qs.get('tn')||qs.get('trackingNumber')||'').trim();
+    var route='';
+    if(go){
+      go=go.replace(/^[#/]+|\/+$/g,'');
+      try{ go=decodeURIComponent(go); }catch(e){}
+      var packed=go.match(/^(track|pickup|shipment-receipt)[\/:|_-](.+)$/i);
+      if(packed){ route=packed[1].toLowerCase(); if(!id) id=packed[2].trim(); }
+      else if(ALLOWED.indexOf(go.toLowerCase())>=0){ route=go.toLowerCase(); }
+    }
+    var h=(location.hash||'').replace(/^#\/?/,'');
+    var hashDeep=/^(track|pickup|shipment-receipt)\/.+/i.test(h);
+    if(!hashDeep && id){
+      route=route||'track';
+      var target='#/'+route+'/'+encodeURIComponent(id);
+      window.__tpDeepLink=target;
+      try{ history.replaceState(null,'',location.pathname+target); }catch(e){ location.hash=target; }
+    } else if(hashDeep){
+      window.__tpDeepLink='#/'+h;
+    }
+  }catch(e){}
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght,YOPQ@100..900,300&family=Tenor+Sans&display=swap" rel="stylesheet">
@@ -5665,8 +5696,13 @@ function buildPublicDeepLink(route, identifier){
   const origin = (typeof TRACKING_APP_ORIGIN!=='undefined' && TRACKING_APP_ORIGIN)
     ? TRACKING_APP_ORIGIN
     : 'https://app.trackport.workers.dev';
-  const destination = String(route||'track').replace(/^\/+|\/+$/g,'') + '/' + String(identifier||'').trim();
-  return origin.replace(/\/$/,'') + '/?go=' + encodeURIComponent(destination);
+  const clean = String(route||'track').replace(/^\/+|\/+$/g,'');
+  const id = String(identifier||'').trim();
+  if(!id) return origin.replace(/\/$/,'') + '/#/' + clean;
+  /* Single query value (slash left unescaped so click trackers keep it intact) plus a
+     hash deep link, so the app opens the exact page even if the query is stripped. */
+  return origin.replace(/\/$/,'') + '/?go=' + clean + '/' + encodeURIComponent(id)
+       + '#/' + clean + '/' + encodeURIComponent(id);
 }
 function buildShipmentTrackUrl(tn, mode){
   return buildPublicDeepLink(mode === 'pickup' ? 'pickup' : 'track', tn);
@@ -5968,7 +6004,7 @@ async function sendBrevoRecipientAlert(shipment, opts){
       (kind==='status' && (opts.ctaMode==='pickup' || status==='Out for Delivery')) ? 'pickup' : 'track'
     );
   }catch(_e){
-    trackUrl = 'https://app.trackport.workers.dev/?go=track&id=' + encodeURIComponent(String((shipment && shipment.trackingNumber) || ''));
+    { const _tn = encodeURIComponent(String((shipment && shipment.trackingNumber) || '')); trackUrl = 'https://app.trackport.workers.dev/?go=track/' + _tn + '#/track/' + _tn; }
   }
   const subject = kind==='status'
     ? (status==='Out for Delivery'
@@ -7663,20 +7699,18 @@ function shipmentReceiptDocHtml(s){
  const originHub=sender.city||s.origin||'—';
  const senderAddr=[sender.address,sender.city,sender.state,sender.country].filter(Boolean).join(', ')||sender.city||s.origin||'—';
  const recipientAddr=[recipient.address,recipient.city,recipient.state,recipient.country].filter(Boolean).join(', ')||recipient.city||s.destination||'—';
- const trackUrl=`https://app.trackport.workers.dev/?go=track&id=${encodeURIComponent(tn)}`;
+ const trackUrl=(typeof buildPublicDeepLink==='function')?buildPublicDeepLink('track',tn):`https://app.trackport.workers.dev/?go=track/${encodeURIComponent(tn)}#/track/${encodeURIComponent(tn)}`;
 
  return `<article class="dr-doc" id="dr-doc">
   <div class="dr-top">
-   <div class="dr-top-brand">
-    <span class="mark">T</span>
-    <span class="word">TRACKPORT</span>
+   <div class="dr-top-brand">${(function(){try{var cb=(typeof resolveCarrierBrand==='function')?resolveCarrierBrand(carrier):null;var isTP=!cb||/trackport/i.test(String(carrier||''));if(isTP)return '<span class="mark">T</span><span class="word">TRACKPORT</span>';if(cb.logo)return '<img src="'+esc(cb.logo)+'" alt="'+esc(cb.name)+'" crossorigin="anonymous" style="height:44px;max-width:150px;object-fit:contain;display:block" onerror="this.outerHTML=\'<span class=&quot;word&quot;>'+esc(String(cb.name).toUpperCase())+'</span>\'">';return '<span class="mark" style="background:'+esc(cb.color)+';color:#fff">'+esc(cb.mark)+'</span><span class="word">'+esc(String(cb.name).toUpperCase())+'</span>';}catch(_e){return '<span class="mark">T</span><span class="word">TRACKPORT</span>';}})()}
    </div>
    <div class="dr-top-mid">
     <h1>Delivery Receipt</h1>
     <p>Your package, confirmed</p>
    </div>
    <div class="dr-top-right">
-    <strong>TrackPort</strong>
+    <strong>${esc(carrier || 'TrackPort')}</strong>
     Receipt no. ${esc(receiptNo)}<br>
     Issued ${esc(createdStr)}
    </div>
@@ -9075,9 +9109,14 @@ function idAuPort(p){
 }
 
 
+function isPublicDeepLinkPath(path){
+ const p=String(path||'').replace(/^#?\/+/,'');
+ return p==='track'||p.startsWith('track/')||p==='pickup'||p.startsWith('pickup/')||p==='shipment-receipt'||p.startsWith('shipment-receipt/');
+}
+window.isPublicDeepLinkPath=isPublicDeepLinkPath;
 function route(){
 const p=decodeURIComponent(location.hash.slice(1)||'landing').replace(/^\/+/, '');
-const isPublicDeepLink = p==='track' || p.startsWith('track/') || p==='pickup' || p.startsWith('pickup/') || p.startsWith('shipment-receipt/');
+const isPublicDeepLink = isPublicDeepLinkPath(p);
 if(!state.user && !['landing','welcome','login','register'].includes(p) && !isPublicDeepLink)return landingPage();
 if(p==='landing'||p===''||p==='home-marketing')return landingPage();
 if(p==='welcome')return welcome();if(p==='login')return auth('login');if(p==='register')return auth('register');
@@ -9284,13 +9323,15 @@ async function boot(){
      await applyAuthUser(user);
      if(prev!==user.uid){
       const p=(location.hash.slice(1)||'').replace(/^\/+/,'');
-      if(['landing','welcome','login','register',''].includes(p)) nav('home');
+      if(typeof isPublicDeepLinkPath==='function' && isPublicDeepLinkPath(p)) render();
+      else if(['landing','welcome','login','register',''].includes(p)) nav('home');
       else render();
      }
     } else if(state.user && !String(state.user.uid||'').startsWith('local-')){
      state.user=null; save();
      const p=(location.hash.slice(1)||'').replace(/^\/+/,'');
-     if(p && !['landing','welcome','login','register'].includes(p)) nav('landing');
+     if(typeof isPublicDeepLinkPath==='function' && isPublicDeepLinkPath(p)) render();
+     else if(p && !['landing','welcome','login','register'].includes(p)) nav('landing');
      else render();
     }
    });
@@ -9317,6 +9358,7 @@ async function boot(){
      try{ history.replaceState(null, '', location.pathname + target); }catch(_e){ location.hash = target; }
    }
   }catch(_e){}
+ if(!location.hash && window.__tpDeepLink) location.hash = String(window.__tpDeepLink).replace(/^#/,'');
  if(!location.hash) location.hash = state.user ? 'home' : 'landing';
  setTimeout(()=>{ document.getElementById('loader')?.remove(); render(); }, 3500);
 }
@@ -14293,16 +14335,14 @@ function shipmentReceiptDocHtml(s){
 
   return `<article class="dr-doc" id="dr-doc">
   <div class="dr-top">
-   <div class="dr-top-brand">
-    <span class="mark">T</span>
-    <span class="word">TRACKPORT</span>
+   <div class="dr-top-brand">${(function(){try{var cb=(typeof resolveCarrierBrand==='function')?resolveCarrierBrand(carrier):null;var isTP=!cb||/trackport/i.test(String(carrier||''));if(isTP)return '<span class="mark">T</span><span class="word">TRACKPORT</span>';if(cb.logo)return '<img src="'+esc(cb.logo)+'" alt="'+esc(cb.name)+'" crossorigin="anonymous" style="height:44px;max-width:150px;object-fit:contain;display:block" onerror="this.outerHTML=\'<span class=&quot;word&quot;>'+esc(String(cb.name).toUpperCase())+'</span>\'">';return '<span class="mark" style="background:'+esc(cb.color)+';color:#fff">'+esc(cb.mark)+'</span><span class="word">'+esc(String(cb.name).toUpperCase())+'</span>';}catch(_e){return '<span class="mark">T</span><span class="word">TRACKPORT</span>';}})()}
    </div>
    <div class="dr-top-mid">
     <h1>Delivery Receipt</h1>
     <p>Your package, confirmed</p>
    </div>
    <div class="dr-top-right">
-    <strong>TrackPort</strong>
+    <strong>${esc(carrier || 'TrackPort')}</strong>
     Receipt no. ${esc(receiptNo)}<br>
     Issued ${esc(createdStr)}
    </div>
