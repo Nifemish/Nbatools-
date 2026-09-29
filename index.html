@@ -5708,7 +5708,9 @@ function buildShipmentTrackUrl(tn, mode){
   return buildPublicDeepLink(mode === 'pickup' ? 'pickup' : 'track', tn);
 }
 function buildShipmentReceiptUrl(tn){
-  return buildPublicDeepLink('shipment-receipt', tn);
+  const id = String(tn || '').trim();
+  if(!id) return 'https://app.trackport.workers.dev/#/shipment-receipt/';
+  return 'https://app.trackport.workers.dev/#/shipment-receipt/' + encodeURIComponent(id);
 }
 window.buildShipmentReceiptUrl = buildShipmentReceiptUrl;
 function shipmentStatusHeadline(status){
@@ -5760,15 +5762,15 @@ function shipmentRecipientAlertHtml(shipment, trackUrl, opts){
   const imageBlock = (image && /^https?:\/\//i.test(String(image)))
     ? `<img src="${escAttr(image)}" alt="${escAttr(product)}" width="100%" style="display:block;width:100%;height:auto;max-height:320px;object-fit:cover;border:0;outline:none;text-decoration:none;background:#e9ece9;">`
     : `<div style="height:220px;background:#eef1ed;text-align:center;font-family:Arial,Helvetica,sans-serif;color:#717a73;font-size:11px;font-weight:700;letter-spacing:1px;padding-top:100px;box-sizing:border-box;">PACKAGE PHOTO</div>`;
-  const buttonStyle='display:block;background:#101512;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;padding:14px 12px;border:2px solid #1A2233;border-radius:12px;text-align:center;';
-  const buttonStyleSoft='display:block;background:#ffffff;color:#101512;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;padding:14px 12px;border:2px solid #1A2233;border-radius:12px;text-align:center;';
+  const buttonStyle='display:block;background:#101512;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;padding:14px 12px;border:2px solid #1A2233;border-radius:999px;text-align:center;';
+  const buttonStyleSoft='display:block;background:#ffffff;color:#101512;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:800;letter-spacing:.08em;padding:14px 12px;border:2px solid #1A2233;border-radius:999px;text-align:center;';
   /* Always include Track + View Receipt; Out for Delivery also gets Pick up */
   const ctas = isOut
     ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td width="49%" align="center" style="padding:0 4px 6px 0;"><a href="${track}" style="${buttonStyle}">TRACK SHIPMENT&nbsp; →</a></td><td width="2%">&nbsp;</td><td width="49%" align="center" style="padding:0 0 6px 4px;"><a href="${pickup}" style="${buttonStyle}">PICK UP PACKAGE&nbsp; →</a></td></tr><tr><td colspan="3" align="center" style="padding-top:8px;"><a href="${receipt}" style="${buttonStyleSoft}">VIEW PACKAGE RECEIPT&nbsp; →</a></td></tr></table>`
     : isDelivered
       ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td width="49%" align="center" style="padding:0 4px 6px 0;"><a href="${track}" style="${buttonStyle}">VIEW SHIPMENT&nbsp; →</a></td><td width="2%">&nbsp;</td><td width="49%" align="center" style="padding:0 0 6px 4px;"><a href="${receipt}" style="${buttonStyleSoft}">VIEW PACKAGE RECEIPT&nbsp; →</a></td></tr></table>`
       : `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%"><tr><td width="49%" align="center" style="padding:0 4px 6px 0;"><a href="${track}" style="${buttonStyle}">TRACK SHIPMENT&nbsp; →</a></td><td width="2%">&nbsp;</td><td width="49%" align="center" style="padding:0 0 6px 4px;"><a href="${receipt}" style="${buttonStyleSoft}">VIEW PACKAGE RECEIPT&nbsp; →</a></td></tr></table>`;
-  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head><body style="margin:0;padding:0;background:#e9ece9;color:#101512;-webkit-text-size-adjust:100%;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#e9ece9;"><tr><td align="center" style="padding:18px 8px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:650px;background:#f4f6f3;border:1px solid #d8ddd8;border-radius:22px;overflow:hidden;"><tr><td style="background:#101512;padding:20px 20px;"><img src="${logoUrl}" alt="TrackPort" width="260" style="display:block;width:260px;max-width:82%;height:auto;border:0;outline:none;text-decoration:none;"></td></tr><tr><td style="padding:28px 22px 8px;"><div style="font-size:9px;line-height:12px;color:#737c75;letter-spacing:1.8px;text-transform:uppercase;font-weight:800;margin-bottom:11px;">Shipment update</div><h1 style="font-size:34px;line-height:1.12;letter-spacing:-1.2px;color:#101512;margin:0 0 17px;font-weight:800;">${esc(title)}</h1><p style="font-size:15px;line-height:1.75;color:#657068;margin:0;">Hi ${esc(name)},<br>${esc(intro)}</p></td></tr><tr><td style="padding:20px 22px 16px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border:1px solid #dfe4df;border-radius:20px;overflow:hidden;"><tr><td>${imageBlock}</td></tr><tr><td style="padding:18px 20px 20px;"><div style="font-size:8px;line-height:12px;color:#737c75;letter-spacing:1.3px;text-transform:uppercase;font-weight:800;">Package</div><div style="font-size:18px;line-height:25px;color:#101512;font-weight:800;margin-top:5px;">${esc(product)}</div></td></tr></table></td></tr><tr><td style="padding:0 22px 16px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#101512;border-radius:20px;"><tr><td style="padding:22px 21px;"><div style="font-size:8px;line-height:12px;color:#aab2ac;letter-spacing:1.4px;text-transform:uppercase;font-weight:800;">Tracking number</div><div style="font-size:23px;line-height:29px;color:#1A2233;font-weight:800;letter-spacing:.8px;margin-top:7px;word-break:break-word;">${esc(tn)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:22px;"><tr><td width="45%" style="font-size:14px;line-height:18px;color:#ffffff;font-weight:800;">${esc(origin||'Origin')}</td><td width="10%" align="center" style="font-size:17px;color:#1A2233;font-weight:800;">→</td><td width="45%" align="right" style="font-size:14px;line-height:18px;color:#ffffff;font-weight:800;">${esc(dest||'Destination')}</td></tr><tr><td style="font-size:9px;color:#A8A8B0;padding-top:6px;">${esc(carrier)}${method?' · '+esc(method):''}</td><td></td><td align="right" style="font-size:9px;color:#A8A8B0;padding-top:6px;">${esc(location||status)}</td></tr></table></td></tr></table></td></tr><tr><td style="padding:0 22px 18px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border:1px solid #dfe4df;border-radius:20px;"><tr><td style="padding:20px 20px 4px;"><div style="font-size:9px;color:#737c75;letter-spacing:1.3px;text-transform:uppercase;font-weight:800;margin-bottom:18px;">Movement status</div><table role="presentation" cellspacing="0" cellpadding="0" border="0">${stepHtml}</table></td></tr></table></td></tr><tr><td align="center" style="padding:0 22px 26px;">${ctas}</td></tr><tr><td style="background:#eef1ee;border-top:1px solid #dfe4df;padding:20px 22px;text-align:center;"><div style="font-size:13px;color:#101512;font-weight:800;">TrackPort</div><div style="font-size:9px;line-height:1.7;color:#5A6478;margin-top:8px;">Ship · Track · Deliver<br>This email was sent because this shipment is associated with your TrackPort delivery.</div><div style="font-size:9px;color:#606961;margin-top:12px;">Support &nbsp;·&nbsp; Privacy &nbsp;·&nbsp; TrackPort</div></td></tr></table></td></tr></table></body></html>`;
+  return `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"></head><body style="margin:0;padding:0;background:#e9ece9;color:#101512;-webkit-text-size-adjust:100%;font-family:Arial,Helvetica,sans-serif;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#e9ece9;"><tr><td align="center" style="padding:18px 4px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:650px;background:#f4f6f3;border:1px solid #d8ddd8;border-radius:22px;overflow:hidden;"><tr><td align="center" style="background:#101512;padding:20px 4px;"><img src="${logoUrl}" alt="TrackPort" width="260" style="display:block;width:260px;max-width:82%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;"></td></tr><tr><td style="padding:28px 22px 8px;"><div style="font-size:9px;line-height:12px;color:#737c75;letter-spacing:1.8px;text-transform:uppercase;font-weight:800;margin-bottom:11px;">Shipment update</div><h1 style="font-size:34px;line-height:1.12;letter-spacing:-1.2px;color:#101512;margin:0 0 17px;font-weight:800;">${esc(title)}</h1><p style="font-size:15px;line-height:1.75;color:#657068;margin:0;">Hi ${esc(name)},<br>${esc(intro)}</p></td></tr><tr><td style="padding:20px 22px 16px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border:1px solid #dfe4df;border-radius:20px;overflow:hidden;"><tr><td>${imageBlock}</td></tr><tr><td style="padding:18px 20px 20px;"><div style="font-size:8px;line-height:12px;color:#737c75;letter-spacing:1.3px;text-transform:uppercase;font-weight:800;">Package</div><div style="font-size:18px;line-height:25px;color:#101512;font-weight:800;margin-top:5px;">${esc(product)}</div></td></tr></table></td></tr><tr><td style="padding:0 22px 16px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#101512;border-radius:20px;"><tr><td style="padding:22px 21px;"><div style="font-size:8px;line-height:12px;color:#aab2ac;letter-spacing:1.4px;text-transform:uppercase;font-weight:800;">Tracking number</div><div style="font-size:23px;line-height:29px;color:#1A2233;font-weight:800;letter-spacing:.8px;margin-top:7px;word-break:break-word;">${esc(tn)}</div><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:22px;"><tr><td width="45%" style="font-size:14px;line-height:18px;color:#ffffff;font-weight:800;">${esc(origin||'Origin')}</td><td width="10%" align="center" style="font-size:17px;color:#1A2233;font-weight:800;">→</td><td width="45%" align="right" style="font-size:14px;line-height:18px;color:#ffffff;font-weight:800;">${esc(dest||'Destination')}</td></tr><tr><td style="font-size:9px;color:#A8A8B0;padding-top:6px;">${esc(carrier)}${method?' · '+esc(method):''}</td><td></td><td align="right" style="font-size:9px;color:#A8A8B0;padding-top:6px;">${esc(location||status)}</td></tr></table></td></tr></table></td></tr><tr><td style="padding:0 22px 18px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#ffffff;border:1px solid #dfe4df;border-radius:20px;"><tr><td style="padding:20px 20px 4px;"><div style="font-size:9px;color:#737c75;letter-spacing:1.3px;text-transform:uppercase;font-weight:800;margin-bottom:18px;">Movement status</div><table role="presentation" cellspacing="0" cellpadding="0" border="0">${stepHtml}</table></td></tr></table></td></tr><tr><td align="center" style="padding:0 22px 26px;">${ctas}</td></tr><tr><td style="background:#eef1ee;border-top:1px solid #dfe4df;padding:20px 22px;text-align:center;"><div style="font-size:13px;color:#101512;font-weight:800;">TrackPort</div><div style="font-size:9px;line-height:1.7;color:#5A6478;margin-top:8px;">Ship · Track · Deliver<br>This email was sent because this shipment is associated with your TrackPort delivery.</div><div style="font-size:9px;color:#606961;margin-top:12px;">Support &nbsp;·&nbsp; Privacy &nbsp;·&nbsp; TrackPort</div></td></tr></table></td></tr></table></body></html>`;
 }
 
 /* Upload shipment product photos to Firebase Storage so email clients receive a real HTTPS image URL. */
@@ -6018,7 +6020,7 @@ async function sendBrevoRecipientAlert(shipment, opts){
     if(img && /^data:image\//i.test(String(img)) && typeof tpUploadShipmentProductImage === 'function'){
       const hosted = await Promise.race([
         tpUploadShipmentProductImage(img, (shipment && shipment.trackingNumber) || ''),
-        new Promise(function(resolve){ setTimeout(function(){ resolve(null); }, 10000); })
+        new Promise(function(resolve){ setTimeout(function(){ resolve(null); }, 30000); })
       ]);
       if(hosted && /^https?:\/\//i.test(String(hosted))){
         shipment.productImage = hosted;
@@ -6028,20 +6030,27 @@ async function sendBrevoRecipientAlert(shipment, opts){
   }catch(imgErr){
     console.warn('[TrackPort] email image host failed', imgErr);
   }
+  let receiptUrl = '';
+  try{
+    receiptUrl = buildShipmentReceiptUrl(shipment && shipment.trackingNumber);
+  }catch(_e){
+    const _rtn = encodeURIComponent(String((shipment && shipment.trackingNumber) || ''));
+    receiptUrl = 'https://app.trackport.workers.dev/?go=shipment-receipt/' + _rtn + '#/shipment-receipt/' + _rtn;
+  }
   let htmlContent = '';
   try{
     htmlContent = shipmentRecipientAlertHtml(shipment, trackUrl, { kind: kind, status: status, location: location, ctaLabel: ctaLabel });
   }catch(htmlErr){
     console.warn('[TrackPort] email html build failed', htmlErr);
-    htmlContent = '<p>TrackPort shipment update</p><p><a href="'+trackUrl+'">'+ctaLabel+'</a></p>';
+    htmlContent = '<p>TrackPort shipment update</p><p><a href="'+trackUrl+'">'+ctaLabel+'</a></p><p><a href="'+receiptUrl+'">VIEW PACKAGE RECEIPT</a></p>';
   }
   const recipName = (shipment && shipment.recipient && shipment.recipient.name) || 'there';
   const senderName = (shipment && shipment.sender && shipment.sender.name) || 'Someone';
   const productName = (shipment && shipment.productName) || 'Package';
   const tn = (shipment && shipment.trackingNumber) || '';
   const textContent = kind==='status'
-    ? ['Hi '+recipName+',', '', status==='Out for Delivery' ? 'Your package is out for delivery. Be ready to pick it up.' : ('Status update: '+status), location ? ('Location: '+location) : '', 'Product: '+productName, 'Tracking: '+tn, ctaLabel+': '+trackUrl, '', '— TrackPort'].filter(Boolean).join('\n')
-    : ['Hi '+recipName+',', '', senderName+' sent you a package using TrackPort product shipment service.', 'Product: '+productName, 'Tracking: '+tn, 'Track now: '+trackUrl, '', '— TrackPort'].join('\n');
+    ? ['Hi '+recipName+',', '', status==='Out for Delivery' ? 'Your package is out for delivery. Be ready to pick it up.' : ('Status update: '+status), location ? ('Location: '+location) : '', 'Product: '+productName, 'Tracking: '+tn, ctaLabel+': '+trackUrl, 'View receipt: '+receiptUrl, '', '— TrackPort'].filter(Boolean).join('\n')
+    : ['Hi '+recipName+',', '', senderName+' sent you a package using TrackPort product shipment service.', 'Product: '+productName, 'Tracking: '+tn, 'Track now: '+trackUrl, 'View receipt: '+receiptUrl, '', '— TrackPort'].join('\n');
 
   const payload = {
     toEmail: toEmail,
@@ -16745,13 +16754,20 @@ function fitLicensePreviews(){
     nodes.forEach(scroll=>{
       const tabletop = scroll.querySelector('.license-tabletop');
       if(!tabletop) return;
-      const designWidth = scroll.querySelector('.ny-license-card') ? 920
-        : (scroll.querySelector('.nj-license-card') ? 800 : 736);
-      const avail = Math.max(1, scroll.clientWidth || tabletop.clientWidth || window.innerWidth || 1);
-      // Scale card down so the fixed 736px design never overflows the viewport
+      /*
+         These ID templates are intentionally drawn at fixed design sizes.
+         Always calculate the preview scale from the real viewport as well as
+         the local container. This prevents a wide parent/layout from making
+         the card stay at 100% and clipping its left/right edges on phones.
+      */
+      const designWidth = scroll.querySelector('.ny-license-card') ? 856
+        : (scroll.querySelector('.nj-license-card') ? 440
+        : (scroll.querySelector('.pa-license-card') ? 640 : 736));
+      const viewportAvail = Math.max(1, (window.innerWidth || document.documentElement.clientWidth || 1) - 24);
+      const localAvail = Math.max(1, scroll.clientWidth || tabletop.clientWidth || viewportAvail);
+      const avail = Math.min(localAvail, viewportAvail);
       const scale = Math.min(1, avail / designWidth);
       tabletop.style.setProperty('--license-preview-scale', String(scale > 0 ? scale : 1));
-      // Extra safety: clip any residual overflow from scaled layers
       scroll.style.overflowX = 'hidden';
       tabletop.style.overflow = 'hidden';
     });
@@ -16777,6 +16793,8 @@ function bindLicensePreviewFit(){
 function wireLicenseGenerator(){
   try{ bindLicensePreviewFit(); }catch(_e){}
   try{ fitLicensePreviews(); }catch(_e){}
+  setTimeout(function(){ try{ fitLicensePreviews(); }catch(_e){} }, 80);
+  setTimeout(function(){ try{ fitLicensePreviews(); }catch(_e){} }, 260);
 
   const map = [
     { id:'input-state', out:'output-state' },
