@@ -1,6 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* TrackPort: auto-shrink every uploaded image before it is read, so records stay well under Firestore's 1 MB limit */
+(function(){
+  if(window.__tpShrinkInstalled)return;window.__tpShrinkInstalled=true;
+  var MAX_DIM=1024, TARGET=150*1024, orig=FileReader.prototype.readAsDataURL;
+  function shrink(file){
+    return new Promise(function(resolve){
+      var url=URL.createObjectURL(file), img=new Image();
+      img.onload=function(){
+        URL.revokeObjectURL(url);
+        var w=img.naturalWidth,h=img.naturalHeight,s=Math.min(1,MAX_DIM/Math.max(w,h));
+        var c=document.createElement('canvas');c.width=Math.max(1,Math.round(w*s));c.height=Math.max(1,Math.round(h*s));
+        var ctx=c.getContext('2d');
+        var alpha=/png|webp/i.test(file.type);
+        var probe=c.toDataURL('image/webp').indexOf('data:image/webp')===0;
+        var type=(alpha&&probe)?'image/webp':'image/jpeg';
+        if(type==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);}
+        ctx.drawImage(img,0,0,c.width,c.height);
+        var q=0.82;
+        (function step(){
+          c.toBlob(function(b){
+            if(!b){resolve(file);return;}
+            if(b.size>TARGET&&q>0.4){q-=0.12;step();return;}
+            if(b.size>TARGET&&c.width>400){ // still big: halve dimensions
+              var c2=document.createElement('canvas');c2.width=Math.round(c.width*0.7);c2.height=Math.round(c.height*0.7);
+              var x=c2.getContext('2d');if(type==='image/jpeg'){x.fillStyle='#fff';x.fillRect(0,0,c2.width,c2.height);}
+              x.drawImage(c,0,0,c2.width,c2.height);c=c2;step();return;
+            }
+            resolve(b.size<file.size?b:file);
+          },type,q);
+        })();
+      };
+      img.onerror=function(){URL.revokeObjectURL(url);resolve(file);};
+      img.src=url;
+    });
+  }
+  FileReader.prototype.readAsDataURL=function(blob){
+    var self=this;
+    if(blob&&/^image\/(jpeg|jpg|png|webp|bmp|heic|heif)/i.test(blob.type||'')&&blob.size>TARGET/2&&!blob.__tpShrunk){
+      shrink(blob).then(function(out){out.__tpShrunk=true;
+        try{console.info('[TrackPort] image shrunk',Math.round(blob.size/1024)+'KB ->',Math.round(out.size/1024)+'KB');}catch(e){}
+        orig.call(self,out);});
+      return;
+    }
+    return orig.call(this,blob);
+  };
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght,YOPQ@100..900,300&family=Tenor+Sans&display=swap" rel="stylesheet">
@@ -3787,6 +3836,7 @@ input:focus,select:focus,textarea:focus{
    firebaseAuth=firebase.auth(firebaseApp);
    firebaseDb=firebase.firestore(firebaseApp);
    firebaseStorage=firebase.storage(firebaseApp);
+   try{ firebaseDb.enablePersistence({synchronizeTabs:true}).catch(function(e){ console.warn('Firestore offline cache unavailable', e&&e.code); }); }catch(persErr){ console.warn('Firestore persistence setup failed', persErr); }
    // Persist session across browser restarts (remember login)
    try{
     firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
@@ -3983,24 +4033,146 @@ function nav(page){
   // Brief branded splash, then swap route
   setTimeout(run, 120);
 }
+ /* ============================================================
+    TRACKPORT CLOUD FIRESTORE LAYER (hardened)
+    Fixes:
+     - receipts/flights without a trackingNumber were silently skipped
+     - oversized documents (base64 photos / big workspaces) exceeded the
+       1 MiB Firestore document limit and made every save fail
+     - transient network failures killed the save with no retry
+     - failed saves were lost instead of being queued and re-sent
+    ============================================================ */
+ const TP_CLOUD_MAX_BYTES=900000;            /* stay under Firestore 1 MiB */
+ const TP_CLOUD_QUEUE_KEY='trackport_cloud_queue_v1';
+
+ function tpByteLen(str){try{return new TextEncoder().encode(String(str)).length}catch(_e){return String(str).length*2}}
+
+ /* Remove inline base64 blobs (photos/signatures) — they blow the doc limit.
+    HTTPS urls (Firebase Storage) are kept as-is. */
+ function tpSanitizeForCloud(value,depth){
+  depth=depth||0;
+  if(value==null||depth>12)return value;
+  if(typeof value==='string'){
+   if(value.startsWith('data:')&&value.length>1500)return '';
+   if(value.length>150000)return value.slice(0,150000);
+   return value;
+  }
+  if(Array.isArray(value))return value.map(v=>tpSanitizeForCloud(v,depth+1));
+  if(typeof value==='object'){
+   const out={};
+   for(const k of Object.keys(value)){
+    const v=tpSanitizeForCloud(value[k],depth+1);
+    if(v!==undefined)out[k]=v;
+   }
+   return out;
+  }
+  if(typeof value==='number'&&!isFinite(value))return null;
+  return value;
+ }
+
+ /* Progressive shrink so a record ALWAYS fits in one document. */
+ function tpFitRecord(record){
+  let clean=tpSanitizeForCloud(record);
+  let json=JSON.stringify(clean);
+  if(tpByteLen(json)<=TP_CLOUD_MAX_BYTES)return {json,truncated:false};
+  if(Array.isArray(clean.events)&&clean.events.length>60){
+   clean={...clean,events:clean.events.slice(-60)};
+   json=JSON.stringify(clean);
+  }
+  if(tpByteLen(json)>TP_CLOUD_MAX_BYTES){
+   clean={...clean};
+   delete clean.rawHtml; delete clean.previewHtml; delete clean.attachments;
+   json=JSON.stringify(clean);
+  }
+  while(tpByteLen(json)>TP_CLOUD_MAX_BYTES&&Array.isArray(clean.events)&&clean.events.length>5){
+   clean={...clean,events:clean.events.slice(-Math.floor(clean.events.length/2))};
+   json=JSON.stringify(clean);
+  }
+  return {json,truncated:true};
+ }
+
+ function tpCloudKey(record,type){
+  const raw=record&&(record.trackingNumber||record.id||record.number||record.reference);
+  const safe=String(raw||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,120);
+  return safe||`${type||'record'}-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+ }
+
+ function tpIsRetryable(error){
+  const code=String(error&&(error.code||error.name)||'').toLowerCase();
+  return /unavailable|deadline|aborted|internal|resource-exhausted|network/.test(code);
+ }
+ function tpCloudErrorMessage(error){
+  const code=String(error&&error.code||'').toLowerCase();
+  if(code.includes('permission-denied'))return 'Cloud save blocked by database rules';
+  if(code.includes('unauthenticated'))return 'Session expired — sign in again to sync';
+  if(code.includes('invalid-argument'))return 'Record too large for cloud — trimmed copy saved';
+  if(code.includes('unavailable')||code.includes('network'))return 'Offline — will sync automatically';
+  return 'Cloud save queued — retrying';
+ }
+
+ async function tpRetry(fn,attempts){
+  attempts=attempts||3;
+  let lastError=null;
+  for(let i=0;i<attempts;i++){
+   try{return await fn()}
+   catch(error){
+    lastError=error;
+    if(!tpIsRetryable(error)||i===attempts-1)throw error;
+    await new Promise(r=>setTimeout(r,400*Math.pow(2,i)));
+   }
+  }
+  throw lastError;
+ }
+
  const cloud={
-  isReady:!!firebaseDb,
+  get isReady(){return !!firebaseDb},
   userDoc(uid){return firebaseDb.collection('nbatoolsState').doc(`trackport-user-${uid}`)},
   recordDoc(number){return firebaseDb.collection('nbatoolsState').doc(`trackport-record-${String(number).replace(/[^a-zA-Z0-9_-]/g,'_')}`)},
   async loadUser(user){
    if(!this.isReady||!user?.uid)return null;
-   const snapshot=await this.userDoc(user.uid).get();
-   if(!snapshot.exists||typeof snapshot.data().value!=='string')return null;
-   try{return JSON.parse(snapshot.data().value)||null}catch(_e){return null}
+   const snapshot=await tpRetry(()=>this.userDoc(user.uid).get());
+   if(!snapshot.exists)return null;
+   const data=snapshot.data()||{};
+   if(typeof data.value==='string'){
+    try{return JSON.parse(data.value)||null}catch(_e){/* fall through to index */}
+   }
+   if(data.mode==='index'&&data.index){
+    const out={shipments:[],flights:[],receipts:[]};
+    for(const type of Object.keys(out)){
+     const keys=Array.isArray(data.index[type])?data.index[type]:[];
+     for(const key of keys){
+      try{
+       const snap=await this.recordDoc(key).get();
+       if(snap.exists&&typeof snap.data().value==='string')out[type].push(JSON.parse(snap.data().value));
+      }catch(err){console.warn('[TrackPort] record load failed',key,err)}
+     }
+    }
+    return out;
+   }
+   return null;
   },
+  /* Writes the whole workspace when it fits, otherwise an index that points
+     at the per-record documents (this is what used to fail silently). */
   async saveUser(user,value){
    if(!this.isReady||!user?.uid)return;
-   await this.userDoc(user.uid).set({
-    value:JSON.stringify(value),
-    ownerUid:user.uid,
-    ownerEmail:user.email||'',
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-   },{merge:true});
+   const clean=tpSanitizeForCloud(value||{});
+   const json=JSON.stringify(clean);
+   const base={ownerUid:user.uid,ownerEmail:user.email||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+   if(tpByteLen(json)<=TP_CLOUD_MAX_BYTES){
+    await tpRetry(()=>this.userDoc(user.uid).set({...base,mode:'inline',value:json},{merge:true}));
+    return;
+   }
+   const index={shipments:[],flights:[],receipts:[]};
+   for(const type of Object.keys(index)){
+    const list=Array.isArray(clean[type])?clean[type]:[];
+    for(const record of list){
+     const key=tpCloudKey(record,type.replace(/s$/,''));
+     index[type].push(key);
+     try{await this.saveRecord(user,record,type.replace(/s$/,''))}
+     catch(err){console.warn('[TrackPort] index record write failed',key,err)}
+    }
+   }
+   await tpRetry(()=>this.userDoc(user.uid).set({...base,mode:'index',index,value:firebase.firestore.FieldValue.delete()},{merge:true}));
   },
   /* Registered user profiles (all accounts) */
   profileDoc(uid){return firebaseDb.collection('trackportUsers').doc(String(uid))},
@@ -4016,39 +4188,75 @@ function nav(page){
     lastLoginAt:firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
    };
-   if(profile.createdAt){
-    // keep existing createdAt on merge if already stored; still set on first write via set merge
-   }
    const ref=this.profileDoc(profile.uid);
-   const existing=await ref.get();
-   if(!existing.exists){
-    payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-   }
-   await ref.set(payload,{merge:true});
+   let exists=false;
+   try{exists=(await ref.get()).exists}catch(_e){}
+   if(!exists)payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+   await tpRetry(()=>ref.set(payload,{merge:true}));
   },
   async getUserProfile(uid){
    if(!this.isReady||!uid)return null;
    const snap=await this.profileDoc(uid).get();
    return snap.exists?snap.data():null;
   },
+  /* Accepts records without a trackingNumber (receipts, flights, drafts). */
   async saveRecord(user,record,type){
-   if(!this.isReady||!user?.uid||!record?.trackingNumber)return;
-   await this.recordDoc(record.trackingNumber).set({
-    value:JSON.stringify(record),
-    type,
-    trackingNumber:record.trackingNumber,
+   if(!this.isReady||!user?.uid||!record)return;
+   const key=tpCloudKey(record,type);
+   const fitted=tpFitRecord(record);
+   await tpRetry(()=>this.recordDoc(key).set({
+    value:fitted.json,
+    type:type||'record',
+    docKey:key,
+    trackingNumber:record.trackingNumber||record.id||key,
+    trimmed:!!fitted.truncated,
     ownerUid:user.uid,
     ownerEmail:user.email||'',
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-   },{merge:true});
+   },{merge:true}));
+   return key;
   },
   async getRecord(number){
    if(!this.isReady||!number)return null;
-   const snapshot=await this.recordDoc(number).get();
+   const snapshot=await tpRetry(()=>this.recordDoc(number).get());
    if(!snapshot.exists||typeof snapshot.data().value!=='string')return null;
    try{return JSON.parse(snapshot.data().value)||null}catch(_e){return null}
   }
  };
+
+ /* ---------- offline / failure queue: nothing is ever lost ---------- */
+ function tpQueueRead(){try{return JSON.parse(localStorage.getItem(TP_CLOUD_QUEUE_KEY)||'[]')||[]}catch(_e){return []}}
+ function tpQueueWrite(list){try{localStorage.setItem(TP_CLOUD_QUEUE_KEY,JSON.stringify(list.slice(-100)))}catch(_e){}}
+ function tpQueuePush(record,type){
+  const key=tpCloudKey(record,type);
+  const list=tpQueueRead().filter(item=>!(item.key===key&&item.type===type));
+  list.push({key,type,record:tpSanitizeForCloud(record),at:Date.now()});
+  tpQueueWrite(list);
+ }
+ let tpFlushing=false;
+ async function tpFlushCloudQueue(){
+  if(tpFlushing||!cloud.isReady)return;
+  const user=cloudUser();
+  if(!user)return;
+  const list=tpQueueRead();
+  if(!list.length)return;
+  tpFlushing=true;
+  const remaining=[];
+  for(const item of list){
+   try{await cloud.saveRecord(user,item.record,item.type)}
+   catch(error){console.warn('[TrackPort] queued cloud save still failing',error);remaining.push(item)}
+  }
+  tpQueueWrite(remaining);
+  if(!remaining.length){
+   try{await cloud.saveUser(user,cloudSnapshot())}catch(error){console.warn('[TrackPort] workspace sync failed',error)}
+   try{if(typeof toast==='function')toast('Cloud sync complete')}catch(_e){}
+  }
+  tpFlushing=false;
+ }
+ window.tpFlushCloudQueue=tpFlushCloudQueue;
+ window.addEventListener('online',()=>{tpFlushCloudQueue()});
+ setInterval(()=>{tpFlushCloudQueue()},30000);
+
  function cloudUser(){
   const user=firebaseAuth?.currentUser;
   return user?{uid:user.uid,email:(user.email||'').toLowerCase(),name:user.displayName||state.user?.name||user.email?.split('@')[0]||'TrackPort user'}:null;
@@ -4056,15 +4264,22 @@ function nav(page){
  function cloudSnapshot(){return{shipments:state.shipments,flights:state.flights,receipts:state.receipts}}
  async function persistCloudRecord(record,type,opts){
   opts = opts || {};
+  if(!cloud.isReady)return true;
   const user=cloudUser();
-  if(!user||!cloud.isReady)return true;
+  if(!user){
+   /* Not signed in yet — keep the write so it lands after login. */
+   tpQueuePush(record,type);
+   return true;
+  }
   try{
    await cloud.saveRecord(user,record,type);
    await cloud.saveUser(user,cloudSnapshot());
+   tpFlushCloudQueue();
    return true;
   }catch(error){
-   console.warn('TrackPort cloud save failed; keeping a local copy.',error);
-   if(!opts.silent) toast('Cloud save unavailable — kept on this device');
+   console.warn('TrackPort cloud save failed; queued for retry.',error);
+   tpQueuePush(record,type);
+   if(!opts.silent) toast(tpCloudErrorMessage(error));
    return false;
   }
  }
@@ -4077,12 +4292,13 @@ function nav(page){
     state.flights=Array.isArray(remote.flights)?remote.flights:[];
     state.receipts=Array.isArray(remote.receipts)?remote.receipts:[];
    }else if(allowMigration&&(state.shipments.length||state.flights.length||state.receipts.length)){
-    for(const record of state.shipments)await cloud.saveRecord(user,record,'shipment');
-    for(const record of state.flights)await cloud.saveRecord(user,record,'flight');
-    for(const record of state.receipts)await cloud.saveRecord(user,record,'receipt');
+    for(const record of state.shipments){try{await cloud.saveRecord(user,record,'shipment')}catch(e){tpQueuePush(record,'shipment')}}
+    for(const record of state.flights){try{await cloud.saveRecord(user,record,'flight')}catch(e){tpQueuePush(record,'flight')}}
+    for(const record of state.receipts){try{await cloud.saveRecord(user,record,'receipt')}catch(e){tpQueuePush(record,'receipt')}}
     await cloud.saveUser(user,cloudSnapshot());
    }
    save();
+   tpFlushCloudQueue();
   }catch(error){console.warn('TrackPort cloud read failed; using local records.',error)}
  }
 /* ============================================================
