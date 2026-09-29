@@ -5594,7 +5594,7 @@ function normalizeShipmentForEmail(shipment){
   };
 }
 /* Email gateway URL — override with Gmail Apps Script web app via tpSetupGmail() */
-const TRACKPORT_NOTIFY_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxcJNPJkEfQY_oCmElQpUJ-0RLLK7Nkvd166f8Re5Zsft8e18b7HJ_33e8VnZ7FukwK/exec';
+const TRACKPORT_NOTIFY_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbwumO2c68X8qZLil1oG9cL7-yTZJnfEZuEkRAOPat6knE-r5NXI8Cxf1ldLOCv_1hC2/exec';
 const TRACKPORT_NOTIFY_URL_KEY = 'tp_notify_url_v1';
 const TRACKPORT_EMAIL_PROVIDER_KEY = 'tp_email_provider_v1';
 function getNotifyUrl(){
@@ -5648,6 +5648,35 @@ function tpSetupGmail(){
   return cleaned;
 }
 window.tpSetupGmail = tpSetupGmail;
+/**
+ * Point TrackPort at your Nodemailer gateway (default: http://localhost:3847/send).
+ * Run the Node server first (see trackport-email-server/README).
+ */
+function tpSetupNodemailer(){
+  const current = getNotifyUrl();
+  const url = window.prompt(
+    'Nodemailer gateway URL (your Node server /send endpoint):',
+    current.indexOf('localhost:3847') >= 0 || current.indexOf('/send') >= 0 ? current : 'http://localhost:3847/send'
+  );
+  if(url === null) return getNotifyUrl();
+  const cleaned = String(url || '').trim();
+  if(!cleaned){
+    try{
+      localStorage.removeItem(TRACKPORT_NOTIFY_URL_KEY);
+      localStorage.setItem(TRACKPORT_EMAIL_PROVIDER_KEY, 'nodemailer');
+    }catch(_e){}
+    try{ toast('Using default Nodemailer gateway'); }catch(_e){}
+    return TRACKPORT_NOTIFY_URL_DEFAULT;
+  }
+  try{
+    localStorage.setItem(TRACKPORT_NOTIFY_URL_KEY, cleaned);
+    localStorage.setItem(TRACKPORT_EMAIL_PROVIDER_KEY, 'nodemailer');
+  }catch(_e){}
+  try{ toast('Nodemailer gateway saved'); }catch(_e){}
+  return cleaned;
+}
+window.tpSetupNodemailer = tpSetupNodemailer;
+
 window.getNotifyUrl = getNotifyUrl;
 window.TRACKPORT_GMAIL_APPS_SCRIPT = [
   '/** TrackPort → Gmail gateway (Apps Script) */',
@@ -5814,7 +5843,7 @@ async function sendBrevoRecipientAlert(shipment, opts){
     try{ data = detail ? JSON.parse(detail) : null; }catch(_e){}
     const isGoogleScript = /script\.google\.com|script\.googleusercontent\.com/i.test(String(getNotifyUrl()||''));
     if(res.ok && !(data && data.ok === false)){
-      return { ok:true, via: isGoogleScript ? 'gmail-apps-script' : 'gateway', data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
+      return { ok:true, via: isGoogleScript ? 'gmail-apps-script' : (/localhost:3847|\/send/i.test(String(getNotifyUrl()||'')) ? 'nodemailer' : 'gateway'), data: data, trackUrl: trackUrl, kind: kind, status: status, toEmail: toEmail };
     }
     /* Apps Script sometimes returns HTML error page after redirect even when mail was queued — accept explicit ok:true only */
     if(isGoogleScript && data && data.ok === true){
