@@ -5442,24 +5442,21 @@ function tpSetupEmail(){
   return saved;
 }
 window.tpSetupEmail = tpSetupEmail;
-function buildShipmentTrackUrl(tn, mode){
-  /* Email-safe deep links: query params survive Brevo/sendibt click redirects.
-     Hash fragments (#/track/...) are often stripped by email trackers, which is
-     why CTAs were landing on "This link is temporarily unavailable". */
-  const id = encodeURIComponent(String(tn||''));
+function buildPublicDeepLink(route, identifier){
+  /* Keep the complete destination in one query value. Some inbox click trackers
+     truncate links at a second query parameter, which previously discarded the
+     package ID and sent recipients to the landing page. */
   const origin = (typeof TRACKING_APP_ORIGIN!=='undefined' && TRACKING_APP_ORIGIN)
     ? TRACKING_APP_ORIGIN
     : 'https://app.trackport.workers.dev';
-  const base = origin.replace(/\/$/,'');
-  if(mode === 'pickup') return base + '/?go=pickup&id=' + id;
-  return base + '/?go=track&id=' + id;
+  const destination = String(route||'track').replace(/^\/+|\/+$/g,'') + '/' + String(identifier||'').trim();
+  return origin.replace(/\/$/,'') + '/?go=' + encodeURIComponent(destination);
+}
+function buildShipmentTrackUrl(tn, mode){
+  return buildPublicDeepLink(mode === 'pickup' ? 'pickup' : 'track', tn);
 }
 function buildShipmentReceiptUrl(tn){
-  const id = encodeURIComponent(String(tn||''));
-  const origin = (typeof TRACKING_APP_ORIGIN!=='undefined' && TRACKING_APP_ORIGIN)
-    ? TRACKING_APP_ORIGIN
-    : 'https://app.trackport.workers.dev';
-  return origin.replace(/\/$/,'') + '/?go=shipment-receipt&id=' + id;
+  return buildPublicDeepLink('shipment-receipt', tn);
 }
 window.buildShipmentReceiptUrl = buildShipmentReceiptUrl;
 function shipmentStatusHeadline(status){
@@ -5499,7 +5496,7 @@ function shipmentRecipientAlertHtml(shipment, trackUrl, opts){
   const receipt = buildShipmentReceiptUrl(tn);
   const steps = ['Created','In transit','At hub','Out for delivery','Delivered'];
   const current = isDelivered ? 4 : isOut ? 3 : 0;
-  const logoUrl = 'https://i.postimg.cc/7JhY5kT0/Background-Eraser-20260927-105801705.png';
+  const logoUrl = 'https://i.postimg.cc/7JhY5kT0/Background-Eraser-20260927-105801705.png'; /* Supplied email branding logo */
   const escAttr = (v)=>esc(String(v||'')).replace(/&amp;/g,'&amp;');
   const stepHtml = steps.map((label,i)=>{
     const active = i===current, done = i<current;
@@ -7776,9 +7773,9 @@ async function updateShipmentMovement(number){
 }
 function copyText(t){navigator.clipboard?.writeText(t);toast('Tracking number copied')}
 const TRACKING_APP_ORIGIN='https://app.trackport.workers.dev';
-function shareUrl(t){return TRACKING_APP_ORIGIN.replace(/\/$/,'')+'/?go=track&id='+encodeURIComponent(String(t||''))}
+function shareUrl(t){return buildPublicDeepLink('track',t)}
 window.shareUrl=shareUrl;window.TRACKING_APP_ORIGIN=TRACKING_APP_ORIGIN;
-function hostedTrackingUrl(t){ return (typeof shareUrl==='function'?shareUrl(t):(TRACKING_APP_ORIGIN+'/?go=track&id='+encodeURIComponent(String(t||'')))); }
+function hostedTrackingUrl(t){ return buildPublicDeepLink('track',t); }
 window.hostedTrackingUrl=hostedTrackingUrl;
 function copyShareLink(t){navigator.clipboard?.writeText(shareUrl(t));toast('Share link copied')}
 async function shareRecord(t){const url=shareUrl(t);try{if(navigator.share)await navigator.share({title:'TrackPort tracking',text:t,url});else copyShareLink(t)}catch{copyShareLink(t)}}
@@ -9086,21 +9083,24 @@ async function boot(){
   // No Firebase: trust localStorage remembered user
   state.first=false; save();
  }
- /* Resolve email-safe deep links (?go=track&id=TN) before default hash */
- try{
-  const qs = new URLSearchParams(location.search||'');
-  const go = (qs.get('go')||qs.get('r')||'').trim();
-  const deepId = (qs.get('id')||qs.get('track')||qs.get('tn')||'').trim();
-  if(go && deepId){
-    const route = go.replace(/^\/+/, '');
-    const target = '#/' + route + '/' + encodeURIComponent(deepId);
-    // Drop query so refresh stays on hash route
-    try{ history.replaceState(null, '', location.pathname + target); }catch(_e){ location.hash = target; }
-  } else if(deepId && !go){
-    const target = '#/track/' + encodeURIComponent(deepId);
-    try{ history.replaceState(null, '', location.pathname + target); }catch(_e){ location.hash = target; }
-  }
- }catch(_e){}
+  /* Resolve durable one-field email deep links before the landing route.
+     Legacy ?go=track&id=TN links remain supported. */
+  try{
+   const qs = new URLSearchParams(location.search||'');
+   const goValue = (qs.get('go')||qs.get('r')||'').trim();
+   let deepId = (qs.get('id')||qs.get('track')||qs.get('tn')||'').trim();
+   let deepRoute = goValue.replace(/^\/+|\/+$/g, '');
+   if(goValue && !deepId){
+     const packed = goValue.match(/^(track|pickup|shipment-receipt)\/(.+)$/);
+     if(packed){ deepRoute=packed[1]; deepId=packed[2].trim(); }
+   }
+   const allowedDeepRoutes = ['track','pickup','shipment-receipt'];
+   if(deepId && (!deepRoute || allowedDeepRoutes.includes(deepRoute))){
+     const route = deepRoute || 'track';
+     const target = '#/' + route + '/' + encodeURIComponent(deepId);
+     try{ history.replaceState(null, '', location.pathname + target); }catch(_e){ location.hash = target; }
+   }
+  }catch(_e){}
  if(!location.hash) location.hash = state.user ? 'home' : 'landing';
  setTimeout(()=>{ document.getElementById('loader')?.remove(); render(); }, 3500);
 }
@@ -13995,10 +13995,7 @@ function fmtDate(value){
   }
 }
 function trackingUrl(tn){
-  /* Email-safe public tracking link (query params, not hash) */
-  const id = encodeURIComponent(String(tn || ''));
-  const origin = (typeof TRACKING_APP_ORIGIN!=='undefined'&&TRACKING_APP_ORIGIN)?TRACKING_APP_ORIGIN:'https://app.trackport.workers.dev';
-  return origin.replace(/\/$/,'') + '/?go=track&id=' + id;
+  return buildPublicDeepLink('track', tn);
 }
 function shipmentReceiptBarcode(value){
   const seed = String(value||'TRACKPORT').split('').reduce((n,ch)=>(n*31+ch.charCodeAt(0))%997,17);
@@ -14074,7 +14071,7 @@ function shipmentReceiptDocHtml(s){
   };
   const senderAddr = fmtAddr(sender, s.origin);
   const recipientAddr = fmtAddr(recipient, s.destination);
-  const trackUrl = (typeof trackingUrl === 'function') ? trackingUrl(tn) : ('https://app.trackport.workers.dev/?go=track&id=' + encodeURIComponent(tn));
+  const trackUrl = (typeof trackingUrl === 'function') ? trackingUrl(tn) : buildPublicDeepLink('track',tn);
   const serviceLabel = brand.service || (carrier + (method ? (' ' + method) : ''));
   const barcode = (typeof shipmentReceiptBarcode === 'function') ? shipmentReceiptBarcode(tn) : '';
 
