@@ -4265,26 +4265,32 @@ function nav(page){
       sanitiser can no longer strip the product picture / logo / receipt. */
    let media={};
    try{media=await tpResolveRecordMedia(record,type,key)}catch(err){console.warn('[TrackPort] media resolve failed',err)}
-   const fitted=tpFitRecord(record);
-   await tpRetry(()=>this.recordDoc(key).set({
-    value:fitted.json,
-    type:type||'record',
-    docKey:key,
-    trackingNumber:record.trackingNumber||record.id||key,
-    trimmed:!!fitted.truncated,
-    ownerUid:user.uid,
-    ownerEmail:user.email||'',
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-   },{merge:true}));
-   /* Mirror into the public collection for the read-only tracking app. */
-   try{
+    /* The public mirror is required by the separate tracking page. Do not
+       report a successful cloud save when this write fails; the caller must
+       queue it and tell the user that tracking is not ready yet. */
     const payload=tpBuildPublicDoc(record,type,key,user,media);
     const ref=this.publicDoc(key);
     let exists=false;
     try{exists=(await ref.get()).exists}catch(_e){}
     if(!exists)payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
-    await tpRetry(()=>ref.set(payload,{merge:true}));
-   }catch(err){console.warn('[TrackPort] public mirror write failed',key,err)}
+    const publicWrite=tpRetry(()=>ref.set(payload,{merge:true}));
+    /* Launch the public write first, then write the private record in parallel.
+       A private-write failure cannot cancel the independently running public
+       write, and the two operations do not add their network latency together. */
+    const fitted=tpFitRecord(record);
+    const privateWrite=tpRetry(()=>this.recordDoc(key).set({
+     value:fitted.json,
+     type:type||'record',
+     docKey:key,
+     trackingNumber:record.trackingNumber||record.id||key,
+     trimmed:!!fitted.truncated,
+     ownerUid:user.uid,
+     ownerEmail:user.email||'',
+     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true}));
+    const writeResults=await Promise.allSettled([publicWrite,privateWrite]);
+    const failedWrite=writeResults.find(result=>result.status==='rejected');
+    if(failedWrite)throw failedWrite.reason;
    return key;
   },
   async getRecord(number){
@@ -4663,16 +4669,31 @@ function nav(page){
  function cloudSnapshot(){return{shipments:state.shipments,flights:state.flights,receipts:state.receipts}}
  async function persistCloudRecord(record,type,opts){
   opts = opts || {};
-  if(!cloud.isReady)return true;
+   if(!cloud.isReady){
+    tpQueuePush(record,type);
+    return !opts.requireCloud;
+   }
   const user=cloudUser();
   if(!user){
    /* Not signed in yet — keep the write so it lands after login. */
    tpQueuePush(record,type);
-   return true;
+    return !opts.requireCloud;
   }
   try{
    await cloud.saveRecord(user,record,type);
-   await cloud.saveUser(user,cloudSnapshot());
+    if(opts.backgroundWorkspace){
+     cloud.saveUser(user,cloudSnapshot()).catch(error=>{
+      console.warn('[TrackPort] workspace snapshot failed after public tracking sync',error);
+      tpQueuePush(record,type);
+     });
+    }else{
+     try{ await cloud.saveUser(user,cloudSnapshot()); }
+     catch(error){
+      /* The per-record public mirror is already saved and trackable. */
+      if(!opts.requireCloud) throw error;
+      console.warn('[TrackPort] workspace snapshot failed after public tracking sync',error);
+     }
+    }
    tpFlushCloudQueue();
    return true;
   }catch(error){
@@ -6713,20 +6734,8 @@ async function createShipment(){
   if(!product||!origin||!dest){ toast('Complete the package and route fields'); return; }
   const tn=tracking('SHP');
 
-  // Upload the product image when possible, but never let an unavailable/slow
-  // storage service prevent the shipment itself from being created.
-  if(productImage && typeof tpUploadShipmentProductImage==='function'){
-   const originalImage = productImage;
-   try{
-    const uploaded = await Promise.race([
-      tpUploadShipmentProductImage(productImage, tn),
-      new Promise(resolve=>setTimeout(()=>resolve(null), 12000))
-    ]);
-    /* Keep original on timeout; only replace when we got a usable result */
-    if(uploaded && String(uploaded).trim()) productImage = uploaded;
-    else productImage = originalImage;
-   }catch(_e){ productImage = originalImage; }
-  }
+  // Keep image upload inside the background cloud-sync flow so slow storage
+  // never delays the shipment confirmation.
   if(window.sbState){
    window.sbState.productImage = productImage || '';
    if(window.sbState.package){ window.sbState.package.imageUrl = productImage || ''; window.sbState.package.productImage = productImage || ''; }
@@ -6753,16 +6762,20 @@ async function createShipment(){
   x.recipient.email = String(x.recipient.email || val('sb_recipient_email') || val('recipient_email') || val('ship_recipient_email') || '').trim();
   x.sender.email = String(x.sender.email || val('sb_sender_email') || val('sender_email') || '').trim();
 
-  // Create locally and navigate immediately. Cloud sync/email are deliberately
-  // background tasks so a slow Firebase/Brevo request can never make the CTA
-  // look broken or prevent the confirmation page from opening.
+   // Confirm immediately; cloud tracking and the larger workspace snapshot
+   // continue in the background without blocking the shipment flow.
   state.shipments.unshift(x); save();
   if(window.sbState){ window.sbState.selectedService=null; window.sbState.step=1; window.sbState.productImage=''; if(window.sbState.package){ window.sbState.package.imageUrl=''; window.sbState.package.productImage=''; } }
   nav('shipment-'+encodeURIComponent(tn));
-
-  Promise.resolve()
-   .then(()=>persistCloudRecord(x,'shipment'))
-   .catch(err=>console.warn('[TrackPort] cloud save',err));
+   toast('Shipment created · syncing tracking…');
+   Promise.resolve()
+    .then(()=>persistCloudRecord(x,'shipment',{requireCloud:true,silent:true,backgroundWorkspace:true}))
+    .then(trackingSynced=>{
+     toast(trackingSynced
+      ? 'Shipment tracking is ready'
+      : 'Shipment created · tracking sync pending; check connection and sign-in');
+    })
+    .catch(err=>console.warn('[TrackPort] shipment tracking sync failed',err));
 
   if(x.recipient && x.recipient.email && x.recipient.email.includes('@')){
    Promise.resolve()
@@ -6775,7 +6788,7 @@ async function createShipment(){
     .catch(err=>{
      console.warn('[TrackPort] Brevo notify',err,err && err.detail);
      const reason=String((err && (err.friendly||err.message))||'email gateway unavailable').slice(0,100);
-     toast('Shipment created · email failed: '+reason);
+      toast('Shipment created · email failed: '+reason);
     });
   }else{
    toast('Shipment created · add a recipient email to send the alert');
