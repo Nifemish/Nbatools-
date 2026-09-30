@@ -5522,7 +5522,7 @@ function shipmentForm(){
      <div class="field"><label>RECIPIENT PHONE</label><input id="sb_recipient_phone" value="+1 310 555 0192" placeholder="+1 555 0100"></div>
     </div>
     <div class="field"><label>DESTINATION ADDRESS / CITY</label><input id="sb_dest" value="Los Angeles, CA" placeholder="City, State or full address" required></div>
-    <div class="field"><label>RECIPIENT EMAIL <span class="muted">(for TRACK NOW alert)</span></label><input id="sb_recipient_email" type="email" value="jordan@example.com" placeholder="them@example.com"></div>
+    <div class="field"><label>RECIPIENT EMAIL <span class="muted">(for TRACK NOW alert)</span></label><input id="sb_recipient_email" type="email" placeholder="recipient@example.com" autocomplete="email"></div>
 
     <div class="sb-actions">
      <button type="button" class="btn btn-outline" onclick="nav('create')">Cancel</button>
@@ -6760,16 +6760,26 @@ async function createShipment(){
   if(window.sbState){ window.sbState.selectedService=null; window.sbState.step=1; window.sbState.productImage=''; if(window.sbState.package){ window.sbState.package.imageUrl=''; window.sbState.package.productImage=''; } }
   nav('shipment-'+encodeURIComponent(tn));
 
-  Promise.resolve().then(async()=>{
-   try{ await persistCloudRecord(x,'shipment'); }catch(err){ console.warn('[TrackPort] cloud save',err); }
-   try{
-    if(x.recipient && x.recipient.email && x.recipient.email.includes('@')){
-     const notify = await sendBrevoRecipientAlert(x);
+  Promise.resolve()
+   .then(()=>persistCloudRecord(x,'shipment'))
+   .catch(err=>console.warn('[TrackPort] cloud save',err));
+
+  if(x.recipient && x.recipient.email && x.recipient.email.includes('@')){
+   Promise.resolve()
+    .then(()=>sendBrevoRecipientAlert(x))
+    .then(notify=>{
      if(notify && notify.ok) toast('Shipment created · recipient notified by email');
      else if(notify && notify.skipped) toast('Shipment created · email skipped ('+(notify.reason||'unknown')+')');
-    }
-   }catch(err){ console.warn('[TrackPort] Brevo notify',err); }
-  });
+     else toast('Shipment created · email was not confirmed');
+    })
+    .catch(err=>{
+     console.warn('[TrackPort] Brevo notify',err,err && err.detail);
+     const reason=String((err && (err.friendly||err.message))||'email gateway unavailable').slice(0,100);
+     toast('Shipment created · email failed: '+reason);
+    });
+  }else{
+   toast('Shipment created · add a recipient email to send the alert');
+  }
  }catch(err){
   console.error('[TrackPort] create shipment failed',err);
   toast('Could not create shipment. Please check the shipment details and try again.');
@@ -8385,7 +8395,9 @@ async function updateShipmentMovement(number){
  shipment.status=status;shipment.currentLocation=location;shipment.events=shipment.events||[];
  shipment.events.push({status,location,description:status==='Order Created'?'Shipment movement updated':'Shipment progression updated',time:new Date().toLocaleString(),timestamp:new Date().toISOString()});
  save();
- try{ await persistCloudRecord(shipment,'shipment',{ silent:true }); }catch(_e){}
+ Promise.resolve()
+  .then(()=>persistCloudRecord(shipment,'shipment',{ silent:true }))
+  .catch(err=>console.warn('[TrackPort] cloud save',err));
  let mailNote='';
  /* Always attempt recipient email for milestone statuses when operator taps Update movement */
  const emailable = ['Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
@@ -18840,7 +18852,11 @@ ${licenseCardMarkup(typeKey, cardData)}
                 timestamp: new Date().toISOString()
               });
               if(typeof save==='function') save();
-              if(typeof persistCloudRecord==='function') await persistCloudRecord(shipment, 'shipment');
+              if(typeof persistCloudRecord==='function'){
+                Promise.resolve()
+                  .then(()=>persistCloudRecord(shipment, 'shipment', { silent:true }))
+                  .catch(err=>console.warn('[TrackPort] cloud save',err));
+              }
               if(status && status!==prevStatus && typeof notifyShipmentStatusChange==='function'){
                 const notify = await notifyShipmentStatusChange(shipment, prevStatus, status, shipment.currentLocation);
                 if(notify && notify.ok) toast('Movement updated · recipient notified');
