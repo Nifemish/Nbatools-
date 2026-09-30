@@ -4289,30 +4289,9 @@ function nav(page){
   },
   async getRecord(number){
    if(!this.isReady||!number)return null;
-   /* Prefer the public mirror so unauthenticated tracking / receipt pages
-      keep working after nbatoolsState became auth-only. */
-   try{
-    const pubSnap=await tpRetry(()=>this.publicDoc(number).get());
-    if(pubSnap.exists){
-     const doc=pubSnap.data()||{};
-     if(typeof window.tpRecordFromPublicDoc==='function'){
-      const rec=window.tpRecordFromPublicDoc(doc);
-      if(rec) return rec;
-     }
-     if(typeof doc.data==='string' && doc.data){
-      try{const parsed=JSON.parse(doc.data); if(parsed) return parsed;}catch(_e){}
-     }
-    }
-   }catch(err){ console.warn('[TrackPort] public getRecord failed', err); }
-   /* Authenticated fallback: private workspace blob. */
-   try{
-    const snapshot=await tpRetry(()=>this.recordDoc(number).get());
-    if(!snapshot.exists||typeof snapshot.data().value!=='string')return null;
-    try{return JSON.parse(snapshot.data().value)||null}catch(_e){return null}
-   }catch(err){
-    console.warn('[TrackPort] private getRecord failed', err);
-    return null;
-   }
+   const snapshot=await tpRetry(()=>this.recordDoc(number).get());
+   if(!snapshot.exists||typeof snapshot.data().value!=='string')return null;
+   try{return JSON.parse(snapshot.data().value)||null}catch(_e){return null}
   }
  };
 
@@ -4651,48 +4630,6 @@ function nav(page){
  }
  window.tpPublishAll=tpPublishAll;
 
- /* Reconstruct a UI-ready record from a trackportPublic document. */
- function tpRecordFromPublicDoc(doc){
-  if(!doc || typeof doc!=='object') return null;
-  let base = null;
-  if(typeof doc.data==='string' && doc.data){
-   try{ base = JSON.parse(doc.data); }catch(_e){ base = null; }
-  }else if(doc.data && typeof doc.data==='object'){
-   base = doc.data;
-  }
-  const type = String(doc.type || (base && base.type) || 'shipment');
-  const block = (type==='flight' ? doc.flight : type==='receipt' ? doc.receipt : doc.shipment) || {};
-  const parties = doc.parties || {};
-  const media = doc.media || {};
-  const branding = doc.branding || {};
-  const rec = Object.assign({}, base || {}, block || {});
-  rec.trackingNumber = rec.trackingNumber || doc.trackingNumber || '';
-  rec.status = rec.status || doc.status || '';
-  rec.type = type;
-  if(parties.sender) rec.sender = Object.assign({}, rec.sender || {}, parties.sender);
-  if(parties.recipient) rec.recipient = Object.assign({}, rec.recipient || {}, parties.recipient);
-  if(parties.passenger){
-   rec.passenger = rec.passenger || parties.passenger.name || '';
-   rec.passengerDetails = Object.assign({}, rec.passengerDetails || {}, parties.passenger);
-  }
-  if(Array.isArray(doc.events) && doc.events.length) rec.events = doc.events;
-  if(doc.live) rec.liveLocation = doc.live;
-  if(media.productImage || media.imageUrl){
-   rec.productImage = media.productImage || media.imageUrl;
-   rec.imageUrl = media.imageUrl || media.productImage;
-  }
-  if(media.receiptImage) rec.receiptImage = media.receiptImage;
-  if(media.signature) rec.signature = media.signature;
-  if(media.ticketImage) rec.ticketImage = media.ticketImage;
-  if(branding.carrier && !rec.carrier) rec.carrier = branding.carrier;
-  if(branding.carrierLogo) rec.carrierLogo = branding.carrierLogo;
-  if(branding.airline && !rec.airline) rec.airline = branding.airline;
-  if(branding.airlineLogo) rec.airlineLogo = branding.airlineLogo;
-  if(doc.createdAtISO && !rec.created && !rec.createdAt) rec.createdAt = doc.createdAtISO;
-  return rec;
- }
- window.tpRecordFromPublicDoc = tpRecordFromPublicDoc;
-
  /* ---------- read-only API surface (also usable by the tracking app) ---------- */
  const trackportPublicApi={
   collection:TP_PUBLIC_COLLECTION,
@@ -4802,23 +4739,7 @@ function tpLiveFormatAccuracy(v){return Number.isFinite(Number(v))?`±${Math.rou
 function tpLiveFormatHeading(v){if(!Number.isFinite(Number(v)))return '—';const n=((Number(v)%360)+360)%360,dirs=['N','NE','E','SE','S','SW','W','NW'];return `${Math.round(n)}° ${dirs[Math.round(n/45)%8]}`}
 function tpLiveStop(){if(tpLiveWatchId!==null&&navigator.geolocation){try{navigator.geolocation.clearWatch(tpLiveWatchId)}catch(_e){}}tpLiveWatchId=null;tpLiveTrackingNumber=null;tpLiveLastWrite=0}
 window.tpLiveStop=tpLiveStop;
-function tpLiveSubscribe(number,callback){if(!cloud.isReady||!firebaseDb||!number)return ()=>{};
-  /* Prefer public mirror — works without auth for the read-only tracker. */
-  const ref = (cloud.publicDoc ? cloud.publicDoc(number) : cloud.recordDoc(number));
-  return ref.onSnapshot(snap=>{
-    if(!snap.exists)return;
-    const d=snap.data()||{};
-    let record=null;
-    if(typeof d.value==='string'){
-      try{record=JSON.parse(d.value)}catch(_e){}
-    }else if(typeof window.tpRecordFromPublicDoc==='function'){
-      record=window.tpRecordFromPublicDoc(d);
-    }else if(typeof d.data==='string' && d.data){
-      try{record=JSON.parse(d.data)}catch(_e){}
-    }
-    if(record) callback(record,d);
-  },err=>console.warn('[TrackPort] live tracking listener',err));
-}
+function tpLiveSubscribe(number,callback){if(!cloud.isReady||!firebaseDb||!number)return ()=>{};return cloud.recordDoc(number).onSnapshot(snap=>{if(!snap.exists)return;const d=snap.data()||{};let record=null;try{record=typeof d.value==='string'?JSON.parse(d.value):null}catch(_e){}callback(record,d)},err=>console.warn('[TrackPort] live tracking listener',err));}
 async function tpLiveWrite(number,payload,force=false){const shipment=state.shipments.find(x=>x.trackingNumber===number);if(!shipment||!payload)return false;if(tpTrackingMode(shipment)===TP_TRACKING_MODES.MANUAL){console.warn('[TrackPort] Live GPS ignored for manual shipment',number);return false;}const now=Date.now();if(!force&&now-tpLiveLastWrite<TP_LIVE_INTERVAL_MS)return false;tpLiveLastWrite=now;shipment.liveLocation=payload;shipment.trackingLive=true;shipment.updatedAt=payload.timestamp;shipment.events=shipment.events||[];
   /* Phase 3: evaluate ETA on the driver's live GPS stream without blocking GPS writes. */
   if(!force && shipment.status && shipment.status!=='Delivered'){
@@ -4835,34 +4756,14 @@ window.tpLiveWirePublicTracking=tpLiveWirePublicTracking;
  async function resolveRemoteTrack(number){
   if(!cloud.isReady||!number||window.trackLoading===number)return;
   window.trackLoading=number;
-  try{
-   let record=null;
-   try{ record=await cloud.getRecord(number); }catch(_e){}
-   if(!record && window.trackportPublic && typeof window.trackportPublic.get==='function'){
-    try{
-     const pub=await window.trackportPublic.get(number);
-     if(pub && typeof window.tpRecordFromPublicDoc==='function') record=window.tpRecordFromPublicDoc(pub);
-     else if(pub && typeof pub.data==='string' && pub.data){ try{record=JSON.parse(pub.data)}catch(_e2){} }
-    }catch(_e3){}
-   }
-   window.trackRemote=record;
-   if(window.trackRemote&&window.trackRemote.trackingNumber)tpLiveWirePublicTracking(window.trackRemote.trackingNumber);
-  }catch(error){console.warn('Tracking lookup failed.',error)}
+  try{window.trackRemote=await cloud.getRecord(number);if(window.trackRemote&&window.trackRemote.trackingNumber)tpLiveWirePublicTracking(window.trackRemote.trackingNumber)}catch(error){console.warn('Tracking lookup failed.',error)}
   finally{window.trackLoading='';if(window.trackQ===number)render()}
  }
   async function resolveRemoteShipmentReceipt(number){
    if(!cloud.isReady||!number||window.receiptLoading===number)return;
    window.receiptLoading=number;
    try{
-    let record=null;
-    try{ record=await cloud.getRecord(number); }catch(_e){}
-    if(!record && window.trackportPublic && typeof window.trackportPublic.get==='function'){
-     try{
-      const pub=await window.trackportPublic.get(number);
-      if(pub && typeof window.tpRecordFromPublicDoc==='function') record=window.tpRecordFromPublicDoc(pub);
-      else if(pub && typeof pub.data==='string' && pub.data){ try{record=JSON.parse(pub.data)}catch(_e2){} }
-     }catch(_e3){}
-    }
+    const record=await cloud.getRecord(number);
     window.receiptRemote=(record&&record.trackingNumber)?record:null;
     if(window.receiptRemote){
      const index=state.shipments.findIndex(function(item){return item&&String(item.trackingNumber)===String(number)});
