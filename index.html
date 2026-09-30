@@ -4224,6 +4224,19 @@ function nav(page){
    try{exists=(await ref.get()).exists}catch(_e){}
    if(!exists)payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
    await tpRetry(()=>ref.set(payload,{merge:true}));
+   /* Public, non-sensitive copy so the read-only tracker can show who
+      created a shipment / ticket without touching the private profile. */
+   try{
+    await tpRetry(()=>firebaseDb.collection('trackportPublicUsers').doc(String(profile.uid)).set({
+     uid:profile.uid,
+     name:profile.name||'',
+     displayName:profile.name||'',
+     email:(profile.email||'').toLowerCase(),
+     phone:profile.phone||'',
+     isPublic:true,
+     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    },{merge:true}));
+   }catch(err){console.warn('[TrackPort] public profile mirror failed',err)}
   },
   async getUserProfile(uid){
    if(!this.isReady||!uid)return null;
@@ -4231,9 +4244,27 @@ function nav(page){
    return snap.exists?snap.data():null;
   },
   /* Accepts records without a trackingNumber (receipts, flights, drafts). */
+  publicDoc(key){return firebaseDb.collection(TP_PUBLIC_COLLECTION).doc(tpPubKey(key))},
+  /* Public, read-only mirror consumed by the separate tracking app. */
+  async savePublic(user,record,type,key){
+   if(!this.isReady||!record)return null;
+   key=key||tpCloudKey(record,type);
+   const media=await tpResolveRecordMedia(record,type,key);
+   const payload=tpBuildPublicDoc(record,type,key,user||{},media);
+   const ref=this.publicDoc(key);
+   let exists=false;
+   try{exists=(await ref.get()).exists}catch(_e){}
+   if(!exists)payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+   await tpRetry(()=>ref.set(payload,{merge:true}));
+   return key;
+  },
   async saveRecord(user,record,type){
    if(!this.isReady||!user?.uid||!record)return;
    const key=tpCloudKey(record,type);
+   /* Resolve inline images to https URLs BEFORE the private write so the
+      sanitiser can no longer strip the product picture / logo / receipt. */
+   let media={};
+   try{media=await tpResolveRecordMedia(record,type,key)}catch(err){console.warn('[TrackPort] media resolve failed',err)}
    const fitted=tpFitRecord(record);
    await tpRetry(()=>this.recordDoc(key).set({
     value:fitted.json,
@@ -4245,6 +4276,15 @@ function nav(page){
     ownerEmail:user.email||'',
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
    },{merge:true}));
+   /* Mirror into the public collection for the read-only tracking app. */
+   try{
+    const payload=tpBuildPublicDoc(record,type,key,user,media);
+    const ref=this.publicDoc(key);
+    let exists=false;
+    try{exists=(await ref.get()).exists}catch(_e){}
+    if(!exists)payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+    await tpRetry(()=>ref.set(payload,{merge:true}));
+   }catch(err){console.warn('[TrackPort] public mirror write failed',key,err)}
    return key;
   },
   async getRecord(number){
@@ -4254,6 +4294,287 @@ function nav(page){
    try{return JSON.parse(snapshot.data().value)||null}catch(_e){return null}
   }
  };
+
+  /* ============================================================
+    TRACKPORT PUBLIC CLOUD READ MODEL  (v1)
+    Purpose: mirror EVERY shipment, flight ticket and receipt into a
+    flat, structured, image-resolved Firestore collection so the
+    separate READ-ONLY tracking app can fetch everything it needs
+    (user info, carrier/airline branding logos, package receipt,
+    product picture, full flight information, timeline, live GPS)
+    without parsing the private JSON blobs.
+
+    Collection : trackportPublic
+    Doc id     : sanitised tracking number / record id
+    ============================================================ */
+ const TP_PUBLIC_COLLECTION = 'trackportPublic';
+ const TP_PUBLIC_MAX_BYTES  = 700000;
+
+ function tpPubKey(v){ return String(v||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,140); }
+ function tpIsDataUrl(v){ return typeof v==='string' && /^data:image\//i.test(v); }
+ function tpIsHttpUrl(v){ return typeof v==='string' && /^https?:\/\//i.test(v); }
+ function tpStr(v){ return v===null||v===undefined ? '' : String(v); }
+ function tpNum(v){ const n=Number(v); return Number.isFinite(n)?n:null; }
+ function tpIso(v){
+  if(!v) return '';
+  try{ const d = (typeof v==='number') ? new Date(v) : new Date(String(v)); return isNaN(d.getTime())?'':d.toISOString(); }catch(_e){ return ''; }
+ }
+
+ /* Upload one inline image to Firebase Storage and return a public https URL.
+    Falls back to the existing public-host uploader so email + the read-only
+    app always get a real URL instead of a stripped-out data: blob. */
+ async function tpPublicUploadMedia(dataUrl, path){
+  if(tpIsHttpUrl(dataUrl)) return dataUrl;
+  if(!tpIsDataUrl(dataUrl)) return '';
+  try{
+   if(typeof firebaseStorage!=='undefined' && firebaseStorage && typeof firebaseAuth!=='undefined' && firebaseAuth && firebaseAuth.currentUser){
+    const ref = firebaseStorage.ref().child('trackport-public/'+path);
+    await ref.putString(dataUrl,'data_url',{cacheControl:'public,max-age=31536000'});
+    const url = await ref.getDownloadURL();
+    if(tpIsHttpUrl(url)) return url;
+   }
+  }catch(err){ console.warn('[TrackPort] public media upload failed', path, err); }
+  try{
+   if(typeof window.tpUploadShipmentProductImage==='function'){
+    const url = await window.tpUploadShipmentProductImage(dataUrl, path.replace(/[^\w.-]+/g,'_'));
+    if(tpIsHttpUrl(url)) return url;
+   }
+  }catch(err){ console.warn('[TrackPort] fallback media upload failed', path, err); }
+  return '';
+ }
+
+ /* Every image-bearing field we mirror, per record type. */
+ const TP_PUBLIC_MEDIA_FIELDS = {
+  shipment : ['imageUrl','productImage','productPhoto','packageImage','carrierLogo','receiptImage','receiptUrl','signature','signatureImage','podImage','proofOfDelivery','invoiceImage','labelImage'],
+  flight   : ['airlineLogo','ticketImage','boardingPass','boardingPassImage','barcodeImage','qrImage','passengerPhoto','receiptImage'],
+  receipt  : ['logo','logoUrl','receiptImage','image','businessLogo','signature','stamp']
+ };
+
+ /* Resolve every inline image on a record into an https URL, write the URL
+    back onto the record, and return the media map for the public doc. */
+ async function tpResolveRecordMedia(record, type, key){
+  const media = {};
+  if(!record || typeof record!=='object') return media;
+  const fields = TP_PUBLIC_MEDIA_FIELDS[type] || TP_PUBLIC_MEDIA_FIELDS.shipment;
+  let mutated = false;
+
+  for(const field of fields){
+   const raw = record[field];
+   if(!raw) continue;
+   if(tpIsHttpUrl(raw)){ media[field]=raw; continue; }
+   if(!tpIsDataUrl(raw)) continue;
+   const url = await tpPublicUploadMedia(raw, type+'/'+tpPubKey(key)+'/'+field+'.img');
+   if(url){ record[field]=url; media[field]=url; mutated = true; }
+  }
+
+  /* Branding logos: resolve from the built-in brand tables when the record
+     has none, so the read-only app never has to know the brand map. */
+  try{
+   if(type==='shipment' && !media.carrierLogo && typeof carrierLogoUrl==='function'){
+    const url = carrierLogoUrl(record.carrier);
+    if(tpIsHttpUrl(url)){ media.carrierLogo = url; if(!record.carrierLogo){ record.carrierLogo = url; mutated = true; } }
+   }
+   if(type==='flight' && !media.airlineLogo && typeof airlineLogoUrl==='function'){
+    const url = airlineLogoUrl(record.airline);
+    if(tpIsHttpUrl(url)){ media.airlineLogo = url; if(!record.airlineLogo){ record.airlineLogo = url; mutated = true; } }
+   }
+  }catch(err){ console.warn('[TrackPort] brand logo resolve failed', err); }
+
+  if(!media.productImage && tpIsHttpUrl(record.imageUrl)) media.productImage = record.imageUrl;
+  if(!media.imageUrl && tpIsHttpUrl(record.productImage)) media.imageUrl = record.productImage;
+
+  if(mutated){ try{ if(typeof save==='function') save(); }catch(_e){} }
+  return media;
+ }
+
+ /* Brand block (name, mark, colour, logo) so the tracker can render branding. */
+ function tpPublicBranding(record, type, media){
+  const out = { carrier:'', carrierLogo:'', airline:'', airlineLogo:'', color:'', mark:'', appLogo:'' };
+  try{ out.appLogo = (typeof TRACKPORT_LOGO!=='undefined' && tpIsHttpUrl(TRACKPORT_LOGO)) ? TRACKPORT_LOGO : ''; }catch(_e){}
+  try{
+   if(type==='shipment'){
+    out.carrier = tpStr(record.carrier);
+    out.carrierLogo = media.carrierLogo || tpStr(record.carrierLogo);
+    if(typeof carrierBrand==='function'){ const b=carrierBrand(record.carrier)||{}; out.color=tpStr(b.color); out.mark=tpStr(b.mark); if(!out.carrier) out.carrier=tpStr(b.name); }
+   }else if(type==='flight'){
+    out.airline = tpStr(record.airline);
+    out.airlineLogo = media.airlineLogo || tpStr(record.airlineLogo);
+    if(typeof airlineBrand==='function'){ const b=airlineBrand(record.airline)||{}; out.color=tpStr(b.color); out.mark=tpStr(b.mark); }
+   }else{
+    out.carrier = tpStr(record.businessName);
+    out.carrierLogo = media.logo || tpStr(record.logo);
+   }
+  }catch(err){ console.warn('[TrackPort] branding block failed', err); }
+  return out;
+ }
+
+ function tpPublicParty(p, fallbackName){
+  p = p || {};
+  return {
+   name  : tpStr(p.name || fallbackName || ''),
+   email : tpStr(p.email || '').toLowerCase(),
+   phone : tpStr(p.phone || ''),
+   city  : tpStr(p.city || ''),
+   address: tpStr(p.address || '')
+  };
+ }
+
+ function tpPublicEvents(record){
+  const list = Array.isArray(record && record.events) ? record.events.slice(-120) : [];
+  return list.map(function(e){
+   e = e || {};
+   return {
+    status      : tpStr(e.status),
+    location    : tpStr(e.location),
+    description : tpStr(e.description),
+    time        : tpStr(e.time),
+    timestamp   : tpIso(e.timestamp) || tpStr(e.timestamp),
+    type        : tpStr(e.type),
+    latitude    : tpNum(e.latitude),
+    longitude   : tpNum(e.longitude),
+    speedKmh    : tpNum(e.speedKmh),
+    heading     : tpNum(e.heading),
+    accuracy    : tpNum(e.accuracy)
+   };
+  });
+ }
+
+ function tpPublicShipment(record, media){
+  return {
+   productName : tpStr(record.productName),
+   category    : tpStr(record.category),
+   description : tpStr(record.description),
+   quantity    : tpNum(record.quantity),
+   packageType : tpStr(record.packageType),
+   weight      : tpStr(record.weight),
+   dimensions  : tpStr(record.dimensions),
+   fee         : tpStr(record.fee),
+   currency    : tpStr(record.currency),
+   carrier     : tpStr(record.carrier),
+   method      : tpStr(record.method),
+   origin      : tpStr(record.origin),
+   destination : tpStr(record.destination),
+   currentLocation : tpStr(record.currentLocation),
+   eta         : tpStr(record.eta),
+   trackingMode: tpStr(record.trackingMode || 'manual'),
+   trackingLive: !!record.trackingLive,
+   productImage: media.productImage || media.imageUrl || tpStr(record.imageUrl) || tpStr(record.productImage),
+   receiptImage: media.receiptImage || tpStr(record.receiptImage),
+   signature   : media.signature || media.signatureImage || '',
+   route       : record.route || null,
+   routeStops  : Array.isArray(record.routeStops) ? record.routeStops.slice(0,80) : [],
+   routeGeometry : Array.isArray(record.routeGeometry) ? record.routeGeometry.slice(0,400) : [],
+   originCoordinates : record.originCoordinates || null,
+   destinationCoordinates : record.destinationCoordinates || null
+  };
+ }
+
+ function tpPublicFlight(record, media){
+  return {
+   passenger   : tpStr(record.passenger),
+   airline     : tpStr(record.airline),
+   airlineLogo : media.airlineLogo || tpStr(record.airlineLogo),
+   flightNo    : tpStr(record.flightNo),
+   origin      : tpStr(record.origin),
+   originCode  : tpStr(record.originCode),
+   destination : tpStr(record.destination),
+   destinationCode : tpStr(record.destinationCode),
+   date        : tpStr(record.date),
+   time        : tpStr(record.time),
+   departure   : tpStr(record.departure),
+   arrival     : tpStr(record.arrival),
+   seat        : tpStr(record.seat),
+   cabin       : tpStr(record.cabin),
+   terminal    : tpStr(record.terminal),
+   gate        : tpStr(record.gate),
+   boardingGroup : tpStr(record.boardingGroup),
+   sequence    : tpStr(record.sequence),
+   etNo        : tpStr(record.etNo),
+   fare        : tpNum(record.fare),
+   notes       : tpStr(record.notes),
+   currentLocation   : tpStr(record.currentLocation),
+   currentLocationId : tpStr(record.currentLocationId),
+   routeStops  : Array.isArray(record.routeStops) ? record.routeStops.slice(0,80) : [],
+   ticketImage : media.ticketImage || media.boardingPass || ''
+  };
+ }
+
+ function tpPublicReceipt(record, media){
+  return {
+   template      : tpStr(record.template),
+   documentLabel : tpStr(record.documentLabel),
+   businessName  : tpStr(record.businessName),
+   businessAddress : tpStr(record.businessAddress),
+   businessContact : tpStr(record.businessContact),
+   receiptTitle  : tpStr(record.receiptTitle),
+   receiptNumber : tpStr(record.receiptNumber),
+   date          : tpStr(record.date),
+   time          : tpStr(record.time),
+   customerName  : tpStr(record.customerName),
+   paymentMethod : tpStr(record.paymentMethod),
+   currency      : tpStr(record.currency),
+   taxRate       : tpNum(record.taxRate),
+   discountRate  : tpNum(record.discountRate),
+   tipRate       : tpNum(record.tipRate),
+   notes         : tpStr(record.notes),
+   showBarcode   : !!record.showBarcode,
+   logo          : media.logo || media.logoUrl || tpStr(record.logo),
+   receiptImage  : media.receiptImage || tpStr(record.receiptImage),
+   items         : (Array.isArray(record.items)?record.items:[]).slice(0,200).map(function(i){
+     i=i||{}; return { description:tpStr(i.description), quantity:tpNum(i.quantity), price:tpNum(i.price) };
+   })
+  };
+ }
+
+ /* Build the complete public document for one record. */
+ function tpBuildPublicDoc(record, type, key, user, media){
+  media = media || {};
+  const trackingNumber = tpStr(record.trackingNumber || record.id || key);
+  const doc = {
+   schemaVersion : 1,
+   docKey        : tpPubKey(key),
+   type          : type || 'record',
+   trackingNumber: trackingNumber,
+   trackingNumberLower : trackingNumber.toLowerCase(),
+   searchKeys    : Array.from(new Set([trackingNumber, trackingNumber.toLowerCase(), tpPubKey(key), tpStr(record.etNo), tpStr(record.flightNo), tpStr(record.receiptNumber)].filter(Boolean))).slice(0,10),
+   status        : tpStr(record.status),
+   readOnly      : true,
+   isPublic      : true,
+   owner         : {
+     uid   : tpStr(user && user.uid),
+     email : tpStr(user && user.email).toLowerCase(),
+     name  : tpStr(user && user.name)
+   },
+   parties : {
+     sender    : tpPublicParty(record.sender),
+     recipient : tpPublicParty(record.recipient),
+     passenger : tpPublicParty(record.passengerDetails, record.passenger),
+     customer  : tpPublicParty(record.customer, record.customerName),
+     contactEmail : tpStr(record.email || (record.recipient&&record.recipient.email) || '').toLowerCase(),
+     contactPhone : tpStr(record.phone || (record.recipient&&record.recipient.phone) || '')
+   },
+   branding : tpPublicBranding(record, type, media),
+   media    : media,
+   events   : tpPublicEvents(record),
+   live     : record.liveLocation || null,
+   createdAtISO : tpIso(record.created || record.createdAt),
+   updatedAtISO : new Date().toISOString(),
+   updatedAt    : firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  if(type==='shipment')      doc.shipment = tpPublicShipment(record, media);
+  else if(type==='flight')   doc.flight   = tpPublicFlight(record, media);
+  else if(type==='receipt')  doc.receipt  = tpPublicReceipt(record, media);
+
+  /* Full sanitised payload for anything the structured blocks miss. */
+  try{
+   const fitted = tpFitRecord(record);
+   if(tpByteLen(fitted.json) <= TP_PUBLIC_MAX_BYTES){ doc.data = fitted.json; doc.dataTrimmed = !!fitted.truncated; }
+   else { doc.data = ''; doc.dataTrimmed = true; }
+  }catch(_e){ doc.data=''; doc.dataTrimmed=true; }
+
+  return doc;
+ }
 
  /* ---------- offline / failure queue: nothing is ever lost ---------- */
  function tpQueueRead(){try{return JSON.parse(localStorage.getItem(TP_CLOUD_QUEUE_KEY)||'[]')||[]}catch(_e){return []}}
@@ -4287,6 +4608,53 @@ function nav(page){
  window.tpFlushCloudQueue=tpFlushCloudQueue;
  window.addEventListener('online',()=>{tpFlushCloudQueue()});
  setInterval(()=>{tpFlushCloudQueue()},30000);
+
+ /* ---------- backfill: push every existing record to the public mirror ---------- */
+ async function tpPublishAll(){
+  if(!cloud.isReady){ try{toast('Cloud is unavailable in this browser')}catch(_e){} return {ok:false,count:0}; }
+  const user=cloudUser();
+  if(!user){ try{toast('Sign in to publish records to the cloud')}catch(_e){} return {ok:false,count:0}; }
+  const groups=[['shipment',state.shipments],['flight',state.flights],['receipt',state.receipts]];
+  let count=0, failed=0;
+  try{toast('Publishing records to the cloud…')}catch(_e){}
+  for(const [type,list] of groups){
+   for(const record of (Array.isArray(list)?list:[])){
+    try{ await cloud.saveRecord(user,record,type); count++; }
+    catch(err){ failed++; tpQueuePush(record,type); console.warn('[TrackPort] publish failed',type,err); }
+   }
+  }
+  try{ await cloud.saveUser(user,cloudSnapshot()); }catch(err){ console.warn('[TrackPort] workspace sync failed',err); }
+  try{ save(); }catch(_e){}
+  try{toast(failed?('Published '+count+' records · '+failed+' queued for retry'):('Published '+count+' records to the cloud'))}catch(_e){}
+  return {ok:!failed,count,failed};
+ }
+ window.tpPublishAll=tpPublishAll;
+
+ /* ---------- read-only API surface (also usable by the tracking app) ---------- */
+ const trackportPublicApi={
+  collection:TP_PUBLIC_COLLECTION,
+  async get(trackingNumber){
+   if(!cloud.isReady||!trackingNumber)return null;
+   const snap=await cloud.publicDoc(trackingNumber).get();
+   return snap.exists?snap.data():null;
+  },
+  subscribe(trackingNumber,callback){
+   if(!cloud.isReady||!trackingNumber)return function(){};
+   return cloud.publicDoc(trackingNumber).onSnapshot(
+    function(snap){ if(snap.exists) callback(snap.data()); },
+    function(err){ console.warn('[TrackPort] public listener',err); }
+   );
+  },
+  async listByType(type,limit){
+   if(!cloud.isReady)return [];
+   const snap=await firebaseDb.collection(TP_PUBLIC_COLLECTION).where('type','==',String(type||'shipment')).limit(Number(limit)||50).get();
+   return snap.docs.map(function(d){return d.data()});
+  }
+ };
+ window.trackportPublic=trackportPublicApi;
+ window.tpBuildPublicDoc=tpBuildPublicDoc;
+ window.tpResolveRecordMedia=tpResolveRecordMedia;
+ window.tpPublicUploadMedia=tpPublicUploadMedia;
 
  function cloudUser(){
   const user=firebaseAuth?.currentUser;
@@ -4330,6 +4698,9 @@ function nav(page){
    }
    save();
    tpFlushCloudQueue();
+   /* Make sure the public read-model has every record (incl. records that
+      existed before this feature shipped). Runs in the background. */
+   setTimeout(function(){ try{ tpPublishAll(); }catch(err){ console.warn('[TrackPort] auto publish failed',err); } }, 1500);
   }catch(error){console.warn('TrackPort cloud read failed; using local records.',error)}
  }
 /* ============================================================
@@ -8689,7 +9060,7 @@ return `<div class="screen"><div class="container">${topbar('Settings','home')}<
 <div class="grid two"><div class="card pad"><div class="section-row" style="margin-top:0"><h3>Appearance</h3></div><div class="record"><div class="record-icon">${state.theme==='dark'?'☾':'☀'}</div><div class="record-main"><strong>${state.theme==='dark'?'Dark mode':'Light mode'}</strong><span>Premium adaptive interface</span></div><button class="btn btn-soft" onclick="setTheme(state.theme==='dark'?'light':'dark')">Switch</button></div></div>
 <div class="card pad"><div class="section-row" style="margin-top:0"><h3>Account</h3></div><div class="record"><div class="record-icon">●</div><div class="record-main"><strong>${esc(state.user?.name||'Guest')}</strong><span>${esc(state.user?.email||'Not signed in')}</span></div></div><button class="btn btn-outline full" style="margin-top:12px" onclick="signOutUser()">Sign out</button></div></div>
 ${adminCard}
-<div class="card pad" style="margin-top:18px"><div class="section-row" style="margin-top:0"><h3>Workspace data</h3></div><p class="muted" style="font-size:13px;line-height:1.6">${cloud.isReady?'Cloud Firestore is connected. Your shipments, flights and receipts sync to your account, while a local copy keeps the workspace usable offline.':'Firebase is unavailable in this browser, so records are currently stored on this device only.'}</p><button class="btn btn-outline" onclick="if(confirm('Clear all local TrackPort records?')){state.shipments=[];state.flights=[];state.receipts=[];save();toast('Records cleared');render()}">Clear local copy</button></div>${navBar('tools')}</div></div>`;
+<div class="card pad" style="margin-top:18px"><div class="section-row" style="margin-top:0"><h3>Workspace data</h3></div><p class="muted" style="font-size:13px;line-height:1.6">${cloud.isReady?'Cloud Firestore is connected. Your shipments, flights and receipts sync to your account, while a local copy keeps the workspace usable offline.':'Firebase is unavailable in this browser, so records are currently stored on this device only.'}</p><button class="btn btn-accent" onclick="tpPublishAll()" style="margin-right:8px">Publish all records to cloud</button><button class="btn btn-outline" onclick="if(confirm('Clear all local TrackPort records?')){state.shipments=[];state.flights=[];state.receipts=[];save();toast('Records cleared');render()}">Clear local copy</button></div>${navBar('tools')}</div></div>`;
 }
 
 
