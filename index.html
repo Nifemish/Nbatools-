@@ -10193,6 +10193,7 @@ const p=decodeURIComponent(location.hash.slice(1)||'landing').replace(/^\/+/, ''
 const isPublicTrack=/^(track|pickup|shipment-receipt)\//.test(p);
 if(state.user&&['landing','welcome','login','register','','home-marketing'].includes(p)){try{location.replace('#/home');}catch(_e){}return home();}
 if(!state.user && !isPublicTrack && !['landing','welcome','login','register'].includes(p))return landingPage();
+if(p==='subscription')return tpSubscriptionPage();if(p.startsWith('payment/'))return tpPaymentPage(p.slice(8));
 if(p.startsWith('pickup/')){window.trackQ=p.slice(7);return track()}
 if(p==='landing'||p===''||p==='home-marketing')return landingPage();
 if(p==='welcome')return welcome();if(p==='login')return auth('login');if(p==='register')return auth('register');
@@ -20824,138 +20825,202 @@ body{-webkit-overflow-scrolling:touch}
 .tp-adm-grant .full{grid-column:1/-1}
 .tp-adm-receipt{max-width:100%;max-height:78vh;border-radius:12px}
 </style>
+<style id="tp-credits-pages-css">
+.tp-pay-wrap{max-width:560px;margin:0 auto}
+.tp-sub-plans{padding-top:6px;margin-top:18px}
+.tp-sub-plans .tp-cr-pack small{font-size:12px;color:var(--axe-copy,#aaa)}
+.tp-cr-wa{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.tp-cr-ghost{width:100%;margin-top:10px;padding:14px;border-radius:999px;border:1px solid var(--axe-line,#333);background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer}
+.tp-cr-ghost:hover{border-color:var(--axe-accent,#fc0)}
+.tp-cr-done{display:flex;flex-direction:column;gap:6px;text-align:center;padding:26px 8px 6px}
+.tp-cr-done .tick{width:54px;height:54px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:26px;background:color-mix(in oklch,var(--axe-accent,#fc0) 18%,transparent);color:var(--axe-accent,#fc0)}
+.tp-adm-bal{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer}
+.tp-adm-bal span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-adm-bal b{flex:none}
+</style>
 <script id="tp-credits">
-/* ===== TrackPort credits: 3-day free trial (once per IP), then pay-per-create with credits =====
-   Credits are bought by BANK TRANSFER: the customer pays, uploads the receipt, and the admin approves it
-   in the Admin dashboard. All checks happen on the server (/api/credits/*). This file only shows balances and asks the server. */
+/* ===== TrackPort credits (no server) =====
+   Credits live in Firestore (wallets/{uid}). Customers pick a plan on the Subscription page, pay by bank transfer on the
+   Payment page, upload their receipt and tap "Buy Credit Now". A request is saved for the admin and WhatsApp opens with the
+   payment details. The admin approves it in Admin dashboard -> Credit payments (or adds credits by hand) and the balance
+   updates live on the customer's phone. Rules for this are in firestore.rules.snippet. */
 (function(){
-  var ENABLED = true;                       // set to false to switch the credit system off entirely
-  var API = (window.TP_API_BASE || '').replace(/\/$/, '');
-  var C = window.tpCredits = { loaded:false, loading:false, error:false, balance:0, trialActive:false, trialEndsAt:null, trialUsedUp:false, costs:{shipment:10}, packs:[], bank:null, requests:[], skew:0, lastTry:0, lastMine:0 };
+  var ENABLED = true;                          // false = switch the whole credit system off
+  var WHATSAPP_NUMBER = '';                    // <-- your WhatsApp number with country code, digits only, e.g. '2348012345678'
+  var BANK = { bankName:'PalmPay', accountName:'Osanyinlusi Olayemi', accountNumber:'8109893166', note:'Use the reference below as the transfer narration.' };
+  var COSTS = { shipment:10 };                 // credits used per action
+  var PLANS = [
+    { id:'starter',  name:'Starter',  credits:50,  amountNgn:2500 },
+    { id:'plus',     name:'Plus',     credits:120, amountNgn:5500 },
+    { id:'pro',      name:'Pro',      credits:300, amountNgn:12000 },
+    { id:'business', name:'Business', credits:800, amountNgn:30000 }
+  ];
   var LABELS = { shipment:'New shipment' };
-  var VIEW = 'main', PAY = null;            // 'main' = balance + packs, 'pay' = bank transfer steps for PAY.pack
 
-  function deviceId(){ try{ var k='tp_device_id', v=localStorage.getItem(k); if(!v){ v=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now()); localStorage.setItem(k,v);} return v; }catch(e){ return ''; } }
-  async function token(){
-    if(typeof firebaseAuth==='undefined'||!firebaseAuth) return null;
-    var u=firebaseAuth.currentUser;
-    if(!u){ u=await new Promise(function(r){ var done=false; var off=firebaseAuth.onAuthStateChanged(function(x){ if(done) return; done=true; try{off();}catch(e){} r(x); }); setTimeout(function(){ if(!done){done=true;r(null);} },4000); }); }
-    return u ? u.getIdToken() : null;
-  }
-  async function api(path, body){
-    var t=await token(); if(!t) throw new Error('no-auth');
-    var r=await fetch(API+'/api/credits/'+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+t,'X-TP-Device':deviceId()},body:JSON.stringify(body||{})});
-    var j={}; try{ j=await r.json(); }catch(e){}
-    j.status=r.status; return j;
-  }
-  window.tpCreditsApi=api;                  // used by the admin payments panel
-  function apply(j){
-    if(!j) return;
-    if(typeof j.balance==='number') C.balance=j.balance;
-    if('trialEndsAt' in j){ C.trialEndsAt=j.trialEndsAt; C.trialUsedUp=!!j.trialUsedUp; if(j.now) C.skew=j.now-Date.now(); }
-    if(j.costs) C.costs=j.costs; if(j.packs) C.packs=j.packs;
-    if('bank' in j) C.bank=j.bank;
-    paint();
-  }
-  function trialLeftMs(){ return C.trialEndsAt ? C.trialEndsAt-(Date.now()+C.skew) : 0; }
-  function trialActive(){ return trialLeftMs()>0; }
-  function leftText(){ var ms=trialLeftMs(), h=Math.floor(ms/3600000); if(h>=24) return Math.floor(h/24)+'d '+(h%24)+'h'; if(h>=1) return h+'h'; return Math.max(1,Math.ceil(ms/60000))+'m'; }
+  var C = window.tpCredits = { loaded:false, error:false, balance:0, costs:COSTS, plans:PLANS, bank:BANK, requests:[] };
+  var unsubW=null, unsubP=null, watchUid=null, firstP=true, prevStatus={}, spends={}, refunded={}, PAY=null;
+
+  function db(){ try{ return (typeof firebaseDb!=='undefined'&&firebaseDb)?firebaseDb:null; }catch(e){ return null; } }
+  function FV(){ return firebase.firestore.FieldValue; }
+  function cu(){ try{ return (typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||null; }catch(e){ return null; } }
+  function lc(s){ return String(s||'').trim().toLowerCase(); }
+  function naira(n){ return '₦'+Number(n).toLocaleString('en-NG'); }
+  function plan(id){ var r=null; PLANS.forEach(function(p){ if(p.id===id) r=p; }); return r; }
+  function waDigits(){ return String(WHATSAPP_NUMBER||'').replace(/\D/g,''); }
+
   function label(){
     var narrow=window.innerWidth<=650;
     if(!C.loaded) return C.error?'Credits':'…';
-    if(trialActive()) return narrow?('Trial · '+leftText().split(' ')[0]):('Free trial · '+leftText()+' left');
     return C.balance+(narrow?' cr':' credits');
   }
-  function paint(){ document.querySelectorAll('.tp-credit-chip .tp-cc-text').forEach(function(n){ n.textContent=label(); }); var m=document.getElementById('tp-cr-body'); if(m && VIEW==='main') m.innerHTML=body(); }
-  function repaintBody(){ var m=document.getElementById('tp-cr-body'); if(m) m.innerHTML = VIEW==='pay' ? payBody() : body(); var o=document.querySelector('.tp-cr-modal'); if(o) o.scrollTop=0; }
-
-  window.tpCreditChip=function(){ if(!ENABLED) return ''; return '<button type="button" class="tp-credit-chip'+(C.loaded&&!trialActive()&&C.balance<(C.costs.shipment||10)?' is-low':'')+'" onclick="tpCreditsOpen()" aria-label="Credits and top-up"><i class="tp-cc-gem" aria-hidden="true"></i><span class="tp-cc-text">'+label()+'</span></button>'; };
-
-  async function refresh(){
-    if(!ENABLED||C.loading) return; C.loading=true; C.lastTry=Date.now();
-    try{ var j=await api('init'); if(j.ok){ C.loaded=true; C.error=false; apply(j); loadMine(); } else { C.error=true; } }
-    catch(e){ C.error=true; }
-    C.loading=false; paint();
+  function paint(){
+    document.querySelectorAll('.tp-credit-chip .tp-cc-text').forEach(function(n){ n.textContent=label(); });
+    var d=document.getElementById('tp-sub-dyn'); if(d) d.innerHTML=subDyn();
   }
-  window.tpCreditsRefresh=refresh;
+  window.tpCreditChip=function(){ if(!ENABLED) return ''; return '<button type="button" class="tp-credit-chip'+(C.loaded&&C.balance<COSTS.shipment?' is-low':'')+'" onclick="tpCreditsOpen()" aria-label="Credits and subscription"><i class="tp-cc-gem" aria-hidden="true"></i><span class="tp-cc-text">'+label()+'</span></button>'; };
 
-  /* The customer's own payment requests (pending / approved / rejected). Tells them when one is approved. */
-  async function loadMine(){
-    C.lastMine=Date.now();
-    try{
-      var j=await api('mine');
-      if(!j.ok) return;
-      var before={}; (C.requests||[]).forEach(function(x){ before[x.id]=x.status; });
-      var had=(C.requests||[]).length>0;
-      C.requests=j.requests||[];
-      apply(j);
-      if(had) C.requests.forEach(function(x){ if(before[x.id]==='pending'&&x.status==='approved') toast('Payment approved · '+x.credits+' credits added'); if(before[x.id]==='pending'&&x.status==='rejected') toast('A payment was not approved — open Credits for details'); });
-      if(VIEW==='main'){ var m=document.getElementById('tp-cr-body'); if(m) m.innerHTML=body(); }
-    }catch(e){}
+  /* ---------- live wallet + payment requests ---------- */
+  function stop(){ if(unsubW){ try{unsubW();}catch(e){} unsubW=null; } if(unsubP){ try{unsubP();}catch(e){} unsubP=null; } watchUid=null; }
+  function reset(){ stop(); C.loaded=false; C.error=false; C.balance=0; C.requests=[]; firstP=true; prevStatus={}; paint(); }
+  function watch(u){
+    stop(); var d=db(); if(!d){ C.error=true; paint(); return; }
+    watchUid=u.uid; firstP=true; prevStatus={};
+    var wref=d.collection('wallets').doc(u.uid);
+    unsubW=wref.onSnapshot(function(s){
+      if(!s.exists){
+        wref.set({ balance:0, spent:0, refunded:0, email:lc(u.email), createdAt:FV().serverTimestamp(), updatedAt:FV().serverTimestamp() }).catch(function(e){ console.warn('[credits] wallet create',e); C.error=true; paint(); });
+        return;
+      }
+      var w=s.data()||{}; C.balance=Number(w.balance)||0; C.loaded=true; C.error=false;
+      if(u.email && lc(w.email)!==lc(u.email)) wref.update({ email:lc(u.email) }).catch(function(){});
+      paint();
+    }, function(e){ console.warn('[credits] wallet',e); C.error=true; paint(); });
+    unsubP=d.collection('payments').where('uid','==',u.uid).onSnapshot(function(q){
+      var list=[]; q.forEach(function(x){ var r=x.data(); r.id=x.id; list.push(r); });
+      list.sort(function(a,b){ return (b.createdMs||0)-(a.createdMs||0); });
+      if(!firstP) list.forEach(function(r){
+        if(prevStatus[r.id]==='pending'&&r.status==='approved') toast('Payment approved · '+r.credits+' credits added');
+        if(prevStatus[r.id]==='pending'&&r.status==='rejected') toast('A payment was not approved — open Credits for details');
+      });
+      prevStatus={}; list.forEach(function(r){ prevStatus[r.id]=r.status; });
+      firstP=false; C.requests=list; paint();
+    }, function(e){ console.warn('[credits] payments',e); });
   }
-  function hasPending(){ return (C.requests||[]).some(function(x){ return x.status==='pending'; }); }
+  setInterval(function(){
+    if(!ENABLED) return;
+    var signed=typeof state!=='undefined'&&state.user, u=cu();
+    if(!signed){ if(watchUid||C.loaded||C.error) reset(); return; }
+    if(u&&u.uid!==watchUid) watch(u);
+  },1500);
 
-  function reset(){ C.loaded=false; C.balance=0; C.trialEndsAt=null; C.trialUsedUp=false; C.error=false; C.requests=[]; paint(); }
-
-  /* Ask the server to charge for an action. Returns {ok, spendId}. Shows the top-up panel when short on credits. */
+  /* ---------- charging ---------- */
   window.tpCreditsSpend=async function(action){
     if(!ENABLED) return {ok:true,spendId:null};
+    var cost=COSTS[action]||0, u=cu(), d=db();
+    if(!u||!d){ toast('Please sign in to continue.'); return {ok:false}; }
+    var wref=d.collection('wallets').doc(u.uid);
     try{
-      var j=await api('spend',{action:action});
-      if(j.ok){ apply({balance:j.balance}); if(j.trial) toast('Free trial · no credits used'); else toast(j.charged+' credits used · '+j.balance+' left'); return {ok:true,spendId:j.spendId}; }
-      if(j.code==='insufficient'){ apply({balance:j.balance}); tpCreditsOpen('You need '+j.needed+' credits for this — you have '+j.balance+'. '+(C.trialUsedUp?'Your free trial has ended.':'')); return {ok:false}; }
-      if(j.code==='no_wallet'){ await refresh(); toast('Credits are being set up — please try again.'); return {ok:false}; }
-      toast('Could not charge credits. Please try again.'); return {ok:false};
-    }catch(e){ toast(e&&e.message==='no-auth'?'Please sign in to continue.':'Credit service unavailable — please try again shortly.'); return {ok:false}; }
+      var res=await d.runTransaction(async function(t){
+        var s=await t.get(wref); if(!s.exists) return {short:true,balance:0};
+        var w=s.data(), bal=Number(w.balance)||0;
+        if(bal<cost) return {short:true,balance:bal};
+        t.update(wref,{ balance:bal-cost, spent:(Number(w.spent)||0)+cost, updatedAt:FV().serverTimestamp() });
+        return {ok:true,balance:bal-cost};
+      });
+      if(res.short){ goSubscribe('You need '+cost+' credits for this — you have '+res.balance+'. Choose a plan to continue.'); return {ok:false}; }
+      C.balance=res.balance; paint();
+      var id='sp'+Date.now()+Math.random().toString(36).slice(2,6); spends[id]=cost;
+      toast(cost+' credits used · '+res.balance+' left');
+      return {ok:true,spendId:id};
+    }catch(e){ console.warn('[credits] spend',e); toast('Could not use credits. Please try again.'); return {ok:false}; }
   };
-  window.tpCreditsRefund=async function(id){ if(!ENABLED||!id) return; try{ var j=await api('refund',{spendId:id}); if(j.ok){ apply({balance:j.balance}); } }catch(e){} };
+  window.tpCreditsRefund=async function(id){
+    var cost=spends[id], u=cu(), d=db(); if(!ENABLED||!cost||refunded[id]||!u||!d) return; refunded[id]=true;
+    var wref=d.collection('wallets').doc(u.uid);
+    try{
+      await d.runTransaction(async function(t){
+        var s=await t.get(wref); if(!s.exists) return; var w=s.data();
+        t.update(wref,{ balance:(Number(w.balance)||0)+cost, refunded:(Number(w.refunded)||0)+cost, updatedAt:FV().serverTimestamp() });
+      });
+      toast(cost+' credits returned');
+    }catch(e){ refunded[id]=false; console.warn('[credits] refund',e); }
+  };
 
-  function naira(n){ return '₦'+Number(n).toLocaleString('en-NG'); }
+  function goSubscribe(msg){ window.__tpCrMsg=msg||''; try{ nav('subscription'); }catch(e){ location.hash='#/subscription'; } }
+  window.tpCreditsOpen=function(msg){ if(!ENABLED) return; goSubscribe(typeof msg==='string'?msg:''); };
+  window.tpCreditsClose=function(){};
+
+  /* ---------- Subscription page ---------- */
   function reqHtml(){
-    var r=(C.requests||[]).slice(0,5); if(!r.length) return '';
+    var r=(C.requests||[]).slice(0,6); if(!r.length) return '';
     return '<div class="tp-cr-reqs"><div class="tp-cr-sub" style="margin-top:14px">Your payment requests</div>'+r.map(function(x){
       var st = x.status==='approved' ? '<em class="ok">Approved</em>' : x.status==='rejected' ? '<em class="no">Not approved'+(x.reason?' · '+esc(x.reason):'')+'</em>' : '<em class="wait">Waiting for approval</em>';
-      return '<div class="tp-cr-req"><span>'+esc(x.packName)+' · '+naira(x.amountNgn)+'<small>'+esc(x.reference)+'</small></span>'+st+'</div>';
+      return '<div class="tp-cr-req"><span>'+esc(x.planName)+' · '+naira(x.amountNgn)+'<small>'+esc(x.reference)+'</small></span>'+st+'</div>';
     }).join('')+'</div>';
   }
-  function body(){
-    var head = trialActive()
-      ? '<div class="tp-cr-hero"><span>Free trial</span><b>'+leftText()+' left</b><small>Create freely until your trial ends. Then it is pay-per-use with credits.</small></div>'
-      : '<div class="tp-cr-hero"><span>Your balance</span><b>'+C.balance+' credits</b><small>'+(C.trialUsedUp?'Your free trial has ended.':'No free trial on this connection.')+'</small></div>';
-    var costs = Object.keys(C.costs).map(function(k){ return '<li><span>'+(LABELS[k]||k)+'</span><b>'+C.costs[k]+' credits</b></li>'; }).join('');
-    var packs = (C.packs||[]).map(function(p){ return '<button type="button" class="tp-cr-pack" onclick="tpCreditsBuy(\''+p.id+'\')"><span>'+p.name+'</span><b>'+p.credits+' credits</b><em>'+naira(p.amountNgn)+'</em></button>'; }).join('');
-    return head+'<ul class="tp-cr-costs">'+costs+'</ul><div class="tp-cr-packs">'+(packs||'<p class="tp-cr-note">Credit packs are loading…</p>')+'</div>'+reqHtml();
+  function subDyn(){
+    var costs=Object.keys(COSTS).map(function(k){ return '<li><span>'+(LABELS[k]||k)+'</span><b>'+COSTS[k]+' credits</b></li>'; }).join('');
+    var bal = C.loaded ? C.balance+' credits' : (C.error ? 'Unavailable' : 'Loading…');
+    return '<div class="tp-cr-hero"><span>Your balance</span><b>'+bal+'</b><small>'+(C.error?'We could not load your credits. Check your connection and reload.':'Credits never expire.')+'</small></div><ul class="tp-cr-costs">'+costs+'</ul>'+reqHtml();
   }
+  window.tpSubscriptionPage=function(){
+    var msg=window.__tpCrMsg||''; window.__tpCrMsg='';
+    var cards=PLANS.map(function(p){
+      return '<button type="button" class="tp-cr-pack" onclick="nav(\'payment/'+p.id+'\')"><span>'+esc(p.name)+'</span><b>'+p.credits+' credits</b><em>'+naira(p.amountNgn)+'</em><small>≈ '+Math.floor(p.credits/COSTS.shipment)+' shipments</small></button>';
+    }).join('');
+    return '<div class="screen"><div class="container">'+topbar('Credits','home')
+      +'<div class="header"><div><div class="eyebrow">Subscription</div><h1 class="page-title">Choose a plan.</h1><p class="sub">Pick a credit plan, pay by bank transfer, and your credits are added once the payment is confirmed.</p></div></div>'
+      +(msg?'<p class="tp-cr-msg">'+esc(msg)+'</p>':'')
+      +'<div class="card pad" id="tp-sub-dyn">'+subDyn()+'</div>'
+      +'<div class="tp-cr-packs tp-sub-plans">'+cards+'</div>'
+      +'<p class="tp-cr-note">Payment is by bank transfer. Credits are added after your payment is approved.</p>'
+      +navBar('home')+'</div></div>';
+  };
 
-  function brow(k,v,copy){ if(!v) return ''; return '<div class="tp-cr-brow"><span>'+k+'</span><b>'+esc(v)+'</b>'+(copy?'<button type="button" class="tp-cr-copy" data-copy="'+esc(copy===true?v:copy)+'" onclick="tpCreditsCopy(this)">Copy</button>':'')+'</div>'; }
-  function payBody(){
-    var p=null; (C.packs||[]).forEach(function(x){ if(PAY&&x.id===PAY.pack) p=x; });
-    if(!p) return '<button type="button" class="tp-cr-back" onclick="tpCreditsBack()">← Back</button><p class="tp-cr-note">That pack is not available. Please go back and choose again.</p>';
-    var b=C.bank;
-    var bank = b ? '<div class="tp-cr-bank">'+brow('Bank',b.bankName)+brow('Account name',b.accountName)+brow('Account number',b.accountNumber,true)+brow('Amount',naira(p.amountNgn),String(p.amountNgn))+'</div>'+(b.note?'<p class="tp-cr-note left">'+esc(b.note)+'</p>':'')
-      : '<p class="tp-cr-msg">Payment details are not available yet. Please try again shortly.</p>';
-    return '<button type="button" class="tp-cr-back" onclick="tpCreditsBack()">← Back</button>'
-      +'<div class="tp-cr-hero"><span>Pay by bank transfer</span><b>'+naira(p.amountNgn)+'</b><small>'+esc(p.name)+' · '+p.credits+' credits</small></div>'
-      +'<ol class="tp-cr-steps">'
-      +'<li><b>1. Transfer exactly '+naira(p.amountNgn)+' to this account</b>'+bank+'</li>'
-      +'<li><b>2. Use this reference as the transfer narration</b><div class="tp-cr-ref"><b>'+esc(PAY.ref)+'</b><button type="button" class="tp-cr-copy" data-copy="'+esc(PAY.ref)+'" onclick="tpCreditsCopy(this)">Copy</button></div></li>'
-      +'<li><b>3. Upload your payment receipt</b><label class="tp-cr-file"><input type="file" id="tp-cr-file" accept="image/*" onchange="tpCreditsPick(this)"><span id="tp-cr-file-name">Tap to choose a screenshot or photo</span></label><img class="tp-cr-prev" id="tp-cr-prev" alt="Receipt preview" hidden></li>'
-      +'<li><b>4. Name on the sending account (optional)</b><input class="tp-cr-in" id="tp-cr-note-in" maxlength="120" placeholder="e.g. Ade Johnson"></li>'
-      +'</ol>'
-      +'<button type="button" class="tp-cr-send" id="tp-cr-send" onclick="tpCreditsSend()">I’ve paid — send receipt</button>'
-      +'<p class="tp-cr-note" id="tp-cr-pay-msg">We check your payment, then add your credits. This is done by hand, so it may take a little while.</p>';
-  }
+  /* ---------- Payment page ---------- */
   function newRef(){
     var s=''; try{ var a=new Uint8Array(4); crypto.getRandomValues(a); a.forEach(function(n){ s+=(n%36).toString(36); }); }catch(e){ s=(Math.random().toString(36)+'0000').slice(2,6); }
     return 'TP-'+s.toUpperCase();
   }
-  window.tpCreditsBuy=function(id){ PAY={pack:id,ref:newRef(),file:null,url:''}; VIEW='pay'; repaintBody(); };
-  window.tpCreditsBack=function(){ if(PAY&&PAY.url){ try{URL.revokeObjectURL(PAY.url);}catch(e){} } PAY=null; VIEW='main'; repaintBody(); };
+  function brow(k,v,copy){ if(!v) return ''; return '<div class="tp-cr-brow"><span>'+k+'</span><b>'+esc(v)+'</b>'+(copy?'<button type="button" class="tp-cr-copy" data-copy="'+esc(copy===true?v:copy)+'" onclick="tpCreditsCopy(this)">Copy</button>':'')+'</div>'; }
   window.tpCreditsCopy=function(btn){
     var v=btn.getAttribute('data-copy')||'';
     function done(){ toast('Copied'); }
-    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(done,function(){ fallback(); }); } else fallback();
-    function fallback(){ try{ var t=document.createElement('textarea'); t.value=v; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }catch(e){ toast(v); } }
+    function fb(){ try{ var t=document.createElement('textarea'); t.value=v; t.style.position='fixed'; t.style.opacity='0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }catch(e){ toast(v); } }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(done,fb); } else fb();
+  };
+  function waText(){
+    var p=plan(PAY.plan), u=(typeof state!=='undefined'&&state.user)||{};
+    return 'Hello, I have paid for TrackPort credits.\n\nPlan: '+p.name+' ('+p.credits+' credits)\nAmount: '+naira(p.amountNgn)+'\nReference: '+PAY.ref+'\nAccount: '+(u.email||'')+(u.name?'\nName: '+u.name:'')+'\n\nMy payment receipt is attached.';
+  }
+  function waUrl(){ var n=waDigits(); return 'https://wa.me/'+(n?n:'')+'?text='+encodeURIComponent(waText()); }
+  function sentBody(){
+    var p=plan(PAY.plan), n=waDigits();
+    var canShare=false; try{ canShare=!!(PAY.file&&navigator.canShare&&navigator.canShare({files:[PAY.file]})); }catch(e){}
+    return '<div class="tp-cr-done"><div class="tick">✓</div><h2 style="margin:0;font-family:\'Marcellus\',Georgia,serif;font-weight:400;font-size:28px">Request saved</h2>'
+      +'<p class="tp-cr-note" style="margin:6px 0 0">Reference <b>'+esc(PAY.ref)+'</b> · '+esc(p.name)+' · '+naira(p.amountNgn)+'</p></div>'
+      +'<p class="tp-cr-note left" style="text-align:center;margin:14px 0 18px">Last step: send your receipt on WhatsApp'+(n?' to +'+esc(n):'')+' so we can confirm the payment. Your credits are added as soon as it is approved.</p>'
+      +'<a class="tp-cr-send tp-cr-wa" href="'+esc(waUrl())+'" target="_blank" rel="noopener">Open WhatsApp &amp; send receipt</a>'
+      +(canShare?'<button type="button" class="tp-cr-ghost" onclick="tpCreditsShareReceipt()">Share receipt image to WhatsApp</button>':'')
+      +'<button type="button" class="tp-cr-ghost" onclick="nav(\'subscription\')">Back to my credits</button>';
+  }
+  window.tpPaymentPage=function(id){
+    var p=plan(decodeURIComponent(id||'')); if(!p) return window.tpSubscriptionPage();
+    if(!PAY||PAY.plan!==p.id) PAY={ plan:p.id, ref:newRef(), file:null, url:'', sent:false };
+    var inner;
+    if(PAY.sent) inner=sentBody();
+    else inner='<ol class="tp-cr-steps">'
+      +'<li><b>1. Transfer exactly '+naira(p.amountNgn)+' to this account</b><div class="tp-cr-bank">'+brow('Bank',BANK.bankName)+brow('Account name',BANK.accountName)+brow('Account number',BANK.accountNumber,true)+brow('Amount',naira(p.amountNgn),String(p.amountNgn))+'</div>'+(BANK.note?'<p class="tp-cr-note left">'+esc(BANK.note)+'</p>':'')+'</li>'
+      +'<li><b>2. Use this reference as the transfer narration</b><div class="tp-cr-ref"><b>'+esc(PAY.ref)+'</b><button type="button" class="tp-cr-copy" data-copy="'+esc(PAY.ref)+'" onclick="tpCreditsCopy(this)">Copy</button></div></li>'
+      +'<li><b>3. Upload your payment receipt</b><label class="tp-cr-file"><input type="file" id="tp-cr-file" accept="image/*" onchange="tpCreditsPick(this)"><span id="tp-cr-file-name">'+(PAY.file?esc(PAY.file.name):'Tap to choose a screenshot or photo')+'</span></label><img class="tp-cr-prev" id="tp-cr-prev" alt="Receipt preview"'+(PAY.file&&PAY.url?' src="'+PAY.url+'"':' hidden')+'></li>'
+      +'<li><b>4. Name on the sending account (optional)</b><input class="tp-cr-in" id="tp-cr-note-in" maxlength="120" placeholder="e.g. Ade Johnson"></li>'
+      +'</ol>'
+      +'<button type="button" class="tp-cr-send" id="tp-cr-send" onclick="tpCreditsBuy()">Buy Credit Now</button>'
+      +'<p class="tp-cr-note" id="tp-cr-pay-msg">We confirm your payment by hand, then add your credits. Your receipt opens in WhatsApp for you to send.</p>';
+    return '<div class="screen"><div class="container">'+topbar('Payment','subscription')
+      +'<div class="tp-pay-wrap"><div class="header"><div><div class="eyebrow">Payment</div><h1 class="page-title">Pay by transfer.</h1></div></div>'
+      +'<div class="card pad"><div class="tp-cr-hero"><span>'+esc(p.name)+' plan</span><b>'+naira(p.amountNgn)+'</b><small>'+p.credits+' credits · ≈ '+Math.floor(p.credits/COSTS.shipment)+' shipments</small></div><div id="tp-pay-body">'+inner+'</div></div></div>'
+      +navBar('home')+'</div></div>';
   };
   window.tpCreditsPick=function(inp){
     if(!PAY) return; var f=inp.files&&inp.files[0]; PAY.file=f||null;
@@ -20965,72 +21030,64 @@ body{-webkit-overflow-scrolling:touch}
     if(im){ if(f){ PAY.url=URL.createObjectURL(f); im.src=PAY.url; im.hidden=false; } else { im.hidden=true; } }
   };
   function readFile(f){ return new Promise(function(res,rej){ var r=new FileReader(); r.onload=function(){ res(String(r.result||'')); }; r.onerror=function(){ rej(new Error('read')); }; r.readAsDataURL(f); }); }
-  window.tpCreditsSend=async function(){
+  window.tpCreditsBuy=async function(){
     var msg=document.getElementById('tp-cr-pay-msg'), btn=document.getElementById('tp-cr-send');
     function say(t){ if(msg) msg.textContent=t; }
     function free(){ if(btn) btn.disabled=false; }
-    if(!PAY) return;
-    if(!C.bank) return say('Payment details are not available yet. Please try again shortly.');
-    if(!PAY.file) return say('Please choose your payment receipt first.');
-    if(btn) btn.disabled=true; say('Sending your receipt…');
+    if(!PAY) return; var p=plan(PAY.plan), u=cu(), d=db();
+    if(!u||!d) return say('Please sign in to continue.');
+    if(!PAY.file) return say('Please upload your payment receipt first.');
+    var waiting=(C.requests||[]).filter(function(x){ return x.status==='pending'; }).length;
+    if(waiting>=3) return say('You already have 3 payments waiting for approval. Please wait for them to be approved first.');
+    if(btn) btn.disabled=true; say('Saving your request…');
     try{
       var data=await readFile(PAY.file);
       if(!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(data)){ say('Please choose a normal image (a screenshot or photo, JPG or PNG).'); return free(); }
-      if(data.length>880000){ say('That image is too large. Please send a smaller screenshot.'); return free(); }
-      var note=(document.getElementById('tp-cr-note-in')||{}).value||'';
-      var j=await api('request',{pack:PAY.pack,reference:PAY.ref,note:note,receipt:data});
-      if(j.ok){ VIEW='main'; if(PAY.url){ try{URL.revokeObjectURL(PAY.url);}catch(e){} } PAY=null; toast('Receipt sent — your credits will be added once it is approved'); await loadMine(); repaintBody(); return; }
-      if(j.code==='too_many_pending') say('You already have 3 payments waiting for approval. Please wait for them to be approved first.');
-      else if(j.code==='receipt_too_large') say('That image is too large. Please send a smaller screenshot.');
-      else if(j.code==='receipt_required') say('We could not read that image. Please use a JPG or PNG screenshot.');
-      else say('Could not send your receipt. Please try again.');
-    }catch(e){ say(e&&e.message==='no-auth'?'Please sign in to continue.':'Could not reach the service. Please try again.'); }
-    free();
+      var sender=((document.getElementById('tp-cr-note-in')||{}).value||'').trim().slice(0,120);
+      var pref=d.collection('payments').doc(), rref=d.collection('paymentReceipts').doc(pref.id), b=d.batch();
+      var me=(typeof state!=='undefined'&&state.user)||{};
+      b.set(pref,{ uid:u.uid, email:lc(u.email||me.email), name:String(me.name||'').slice(0,80), planId:p.id, planName:p.name, credits:p.credits, amountNgn:p.amountNgn, reference:PAY.ref, note:sender, status:'pending', hasReceipt:data.length<=900000, createdMs:Date.now(), createdAt:FV().serverTimestamp() });
+      if(data.length<=900000) b.set(rref,{ uid:u.uid, data:data, createdMs:Date.now() });
+      await b.commit();
+      PAY.sent=true;
+      var body=document.getElementById('tp-pay-body'); if(body) body.innerHTML=sentBody();
+      try{ window.scrollTo(0,0); }catch(e){}
+      toast('Request saved — now send your receipt on WhatsApp');
+      try{ window.open(waUrl(),'_blank','noopener'); }catch(e){}
+    }catch(e){ console.warn('[credits] buy',e); say(e&&e.code==='permission-denied'?'Not allowed yet — the Firestore rules have not been updated.':'Could not save your request. Please try again.'); free(); }
   };
-
-  var MSG='';
-  window.tpCreditsOpen=function(msg){
-    if(!ENABLED) return; MSG=typeof msg==='string'?msg:''; closeIt(); VIEW='main';
-    var o=document.createElement('div'); o.className='tp-cr-overlay'; o.id='tp-cr-overlay';
-    o.innerHTML='<div class="tp-cr-modal" role="dialog" aria-modal="true" aria-label="Credits"><button type="button" class="tp-cr-x" aria-label="Close" onclick="tpCreditsClose()">✕</button><div class="tp-cr-eyebrow">Credits</div>'+(MSG?'<p class="tp-cr-msg" id="tp-cr-msg">'+esc(MSG)+'</p>':'')+'<div id="tp-cr-body">'+body()+'</div><p class="tp-cr-note" id="tp-cr-note">Pay by bank transfer. Credits are added after your payment is approved. Credits never expire.</p></div>';
-    o.addEventListener('click',function(e){ if(e.target===o) closeIt(); });
-    document.body.appendChild(o); requestAnimationFrame(function(){ o.classList.add('on'); });
-    if(!C.loaded||C.error) refresh(); else loadMine();
+  window.tpCreditsShareReceipt=async function(){
+    if(!PAY||!PAY.file) return;
+    try{ await navigator.share({ files:[PAY.file], text:waText() }); }
+    catch(e){ if(!e||e.name!=='AbortError') toast('Could not open the share menu. Use the WhatsApp button instead.'); }
   };
-  function closeIt(){ var o=document.getElementById('tp-cr-overlay'); if(o) o.remove(); if(PAY&&PAY.url){ try{URL.revokeObjectURL(PAY.url);}catch(e){} } PAY=null; VIEW='main'; }
-  window.tpCreditsClose=closeIt;
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeIt(); });
-
-  /* Keep the chip fresh: load once signed in, retry if the API was down, tick the trial countdown, clear on sign-out.
-     While a payment is waiting for approval, check every so often so credits show up without a refresh. */
-  setInterval(function(){
-    var signed=typeof state!=='undefined'&&state.user;
-    if(!signed){ if(C.loaded||C.error) reset(); return; }
-    if(!C.loaded&&!C.loading&&Date.now()-C.lastTry>(C.error?10000:0)){ refresh(); return; }
-    paint();
-    if(C.loaded&&hasPending()&&Date.now()-C.lastMine>(document.getElementById('tp-cr-overlay')?10000:30000)) loadMine();
-  },2000);
 })();
 </script>
 <script id="tp-credits-admin">
-/* ===== Admin: approve bank-transfer payments and add credits by hand (shown inside the Admin dashboard) =====
-   The server decides who is an admin (ADMIN_UIDS). Hiding this panel in the page is only for convenience. */
+/* ===== Admin: approve bank-transfer payments and add credits by hand (inside the Admin dashboard) ===== */
 (function(){
-  var S = window._tpTop = { at:0, loading:false, pending:[], recent:[], err:'' };
-  function api(p,b){ return window.tpCreditsApi(p,b); }
+  var S = window._tpTop = { at:0, loading:false, pending:[], recent:[], wallets:[], err:'' };
+  function db(){ try{ return (typeof firebaseDb!=='undefined'&&firebaseDb)?firebaseDb:null; }catch(e){ return null; } }
+  function FV(){ return firebase.firestore.FieldValue; }
+  function lc(s){ return String(s||'').trim().toLowerCase(); }
   function naira(n){ return '₦'+Number(n).toLocaleString('en-NG'); }
   function when(ts){ try{ return new Date(ts).toLocaleString('en-NG',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+  function me(){ return lc((typeof state!=='undefined'&&state.user&&state.user.email)||''); }
   function find(id){ var all=S.pending.concat(S.recent), r=null; all.forEach(function(x){ if(x.id===id) r=x; }); return r; }
   function line(x){ return '<div class="record" style="align-items:flex-start;flex-wrap:wrap;gap:10px">'
     +'<div class="record-icon">₦</div><div class="record-main">'
-    +'<strong>'+esc(x.packName)+' · '+x.credits+' credits · '+naira(x.amountNgn)+'</strong>'
+    +'<strong>'+esc(x.planName)+' · '+x.credits+' credits · '+naira(x.amountNgn)+'</strong>'
     +'<span>'+esc(x.email||x.uid)+'</span>'
-    +'<span style="display:block;margin-top:4px;font-size:11px;color:var(--muted)">Ref '+esc(x.reference)+' · '+esc(when(x.at))+(x.note?' · '+esc(x.note):'')+'</span>'
+    +'<span style="display:block;margin-top:4px;font-size:11px;color:var(--muted)">Ref '+esc(x.reference)+' · '+esc(when(x.createdMs))+(x.note?' · '+esc(x.note):'')+'</span>'
     +'</div>'
     +(x.status==='pending'
-      ? '<div class="tp-adm-actions"><button class="btn btn-outline" onclick="tpAdminReceipt(\''+esc(x.id)+'\')">Receipt</button><button class="btn btn-accent" onclick="tpAdminDecide(\''+esc(x.id)+'\',\'approve\')">Approve</button><button class="btn btn-soft" onclick="tpAdminDecide(\''+esc(x.id)+'\',\'reject\')">Reject</button></div>'
+      ? '<div class="tp-adm-actions">'+(x.hasReceipt?'<button class="btn btn-outline" onclick="tpAdminReceipt(\''+esc(x.id)+'\')">Receipt</button>':'')+'<button class="btn btn-accent" onclick="tpAdminDecide(\''+esc(x.id)+'\',\'approve\')">Approve</button><button class="btn btn-soft" onclick="tpAdminDecide(\''+esc(x.id)+'\',\'reject\')">Reject</button></div>'
       : '<div class="tp-adm-actions"><span style="font-size:12px;color:var(--muted)">'+(x.status==='approved'?'Approved':'Rejected'+(x.reason?' · '+esc(x.reason):''))+'</span></div>')
     +'</div>'; }
+  function balHtml(){
+    if(!S.wallets.length) return '<p class="muted" style="margin:0;font-size:13px">No customers yet.</p>';
+    return S.wallets.map(function(w){ return '<div class="tp-adm-bal" onclick="tpAdminPick(\''+esc(w.email)+'\')"><span>'+esc(w.email||w.id)+'</span><b>'+(Number(w.balance)||0)+' cr</b></div>'; }).join('');
+  }
   function listHtml(){
     if(S.err) return '<p class="muted" style="margin:0">'+esc(S.err)+'</p>';
     if(!S.at) return '<p class="muted" style="margin:0">Loading payments…</p>';
@@ -21044,28 +21101,44 @@ body{-webkit-overflow-scrolling:touch}
       +'<div id="tp-admin-topups-list">'+listHtml()+'</div>'
       +'<div class="section-row"><h3 style="font-size:16px">Add credits by hand</h3></div>'
       +'<div class="tp-adm-grant"><input id="tp-adm-g-email" type="email" placeholder="User email" autocomplete="off"><input id="tp-adm-g-n" type="number" step="1" placeholder="Credits"><input class="full" id="tp-adm-g-note" placeholder="Note (optional)" maxlength="120"><button class="btn btn-accent full" style="grid-column:1/-1" onclick="tpAdminGrant()">Add credits</button></div>'
+      +'<p class="muted" style="margin:10px 0 0;font-size:12px">Use a negative number to remove credits. A customer must have opened the app once to appear below.</p>'
+      +'<div class="section-row"><h3 style="font-size:16px">Customer balances</h3></div><div id="tp-admin-bals">'+balHtml()+'</div>'
       +'</div>';
   };
-  window.tpAdminTopupsEnsure=async function(force){
-    if(S.loading) return; if(!force && Date.now()-S.at<20000) return;
-    S.loading=true; S.err='';
-    try{
-      var j=await api('admin-list');
-      if(j.ok){ S.pending=j.pending||[]; S.recent=j.recent||[]; }
-      else S.err = j.code==='forbidden' ? 'This account is not set as an admin on the server yet (ADMIN_UIDS).' : 'Could not load payments.';
-    }catch(e){ S.err = e&&e.message==='no-auth' ? 'Sign in with the admin account to manage payments.' : 'The payment service is not reachable.'; }
-    S.at=Date.now(); S.loading=false;
+  function repaint(){
     var el=document.getElementById('tp-admin-topups-list'); if(el) el.innerHTML=listHtml();
     var c=document.getElementById('tp-admin-topups-count'); if(c) c.textContent=S.pending.length+' waiting';
+    var b=document.getElementById('tp-admin-bals'); if(b) b.innerHTML=balHtml();
+  }
+  window.tpAdminPick=function(email){ var i=document.getElementById('tp-adm-g-email'); if(i){ i.value=email; var n=document.getElementById('tp-adm-g-n'); if(n) n.focus(); } };
+  window.tpAdminTopupsEnsure=async function(force){
+    if(S.loading) return; if(!force && Date.now()-S.at<20000) return;
+    var d=db(); if(!d){ S.err='Not connected to the database.'; S.at=Date.now(); return repaint(); }
+    S.loading=true; S.err='';
+    try{
+      var ps=await d.collection('payments').where('status','==','pending').get();
+      var pend=[]; ps.forEach(function(x){ var r=x.data(); r.id=x.id; pend.push(r); });
+      pend.sort(function(a,b){ return (b.createdMs||0)-(a.createdMs||0); });
+      var rs=await d.collection('payments').orderBy('createdMs','desc').limit(20).get();
+      var rec=[]; rs.forEach(function(x){ var r=x.data(); r.id=x.id; if(r.status!=='pending') rec.push(r); });
+      var ws=await d.collection('wallets').limit(300).get();
+      var wl=[]; ws.forEach(function(x){ var r=x.data(); r.id=x.id; wl.push(r); });
+      wl.sort(function(a,b){ return String(a.email||'').localeCompare(String(b.email||'')); });
+      S.pending=pend; S.recent=rec; S.wallets=wl;
+    }catch(e){
+      console.warn('[admin credits]',e);
+      S.err = e&&e.code==='permission-denied' ? 'Not allowed: sign in as the admin account and make sure the Firestore rules were updated.' : 'Could not load payments.';
+    }
+    S.at=Date.now(); S.loading=false; repaint();
   };
   window.tpAdminReceipt=async function(id){
     try{
-      var j=await api('admin-receipt',{id:id});
-      if(!j.ok||!j.receipt) return toast('No receipt image found');
+      var s=await db().collection('paymentReceipts').doc(id).get();
+      if(!s.exists||!s.data().data) return toast('No receipt image found');
       var old=document.getElementById('tp-adm-receipt'); if(old) old.remove();
       var o=document.createElement('div'); o.className='tp-cr-overlay'; o.id='tp-adm-receipt';
       o.innerHTML='<div class="tp-cr-modal" style="text-align:center"><button type="button" class="tp-cr-x" aria-label="Close" onclick="document.getElementById(\'tp-adm-receipt\').remove()">✕</button><div class="tp-cr-eyebrow">Receipt</div><img class="tp-adm-receipt" alt="Payment receipt"></div>';
-      o.querySelector('img').src=j.receipt;
+      o.querySelector('img').src=s.data().data;
       o.addEventListener('click',function(e){ if(e.target===o) o.remove(); });
       document.body.appendChild(o); requestAnimationFrame(function(){ o.classList.add('on'); });
     }catch(e){ toast('Could not load the receipt'); }
@@ -21073,23 +21146,51 @@ body{-webkit-overflow-scrolling:touch}
   window.tpAdminDecide=async function(id,action){
     var x=find(id), reason='';
     if(action==='approve'){ if(!confirm('Approve and add '+(x?x.credits:'')+' credits to '+(x?(x.email||x.uid):'this user')+'?\n\nOnly do this after you can see the money in your bank account.')) return; }
-    else { var r=prompt('Reason for rejecting (optional — the customer will see it):',''); if(r===null) return; reason=r; }
+    else { var r=prompt('Reason for rejecting (optional — the customer will see it):',''); if(r===null) return; reason=String(r).slice(0,160); }
+    var d=db(); if(!d) return toast('Not connected to the database');
     try{
-      var j=await api('admin-decide',{id:id,action:action,reason:reason});
-      if(j.ok) toast(j.duplicate ? 'Already '+j.status : action==='approve' ? 'Approved · '+j.credited+' credits added' : 'Rejected');
-      else toast('Could not update this payment ('+(j.code||'error')+')');
-    }catch(e){ toast('The payment service is not reachable'); }
+      var res=await d.runTransaction(async function(t){
+        var pref=d.collection('payments').doc(id), ps=await t.get(pref);
+        if(!ps.exists) return {gone:true};
+        var p=ps.data(); if(p.status!=='pending') return {dup:p.status};
+        if(action==='approve'){
+          var wref=d.collection('wallets').doc(p.uid), ws=await t.get(wref);
+          if(ws.exists) t.update(wref,{ balance:(Number(ws.data().balance)||0)+Number(p.credits), updatedAt:FV().serverTimestamp() });
+          else t.set(wref,{ balance:Number(p.credits), spent:0, refunded:0, email:lc(p.email), createdAt:FV().serverTimestamp(), updatedAt:FV().serverTimestamp() });
+          t.update(pref,{ status:'approved', decidedMs:Date.now(), decidedBy:me() });
+          t.set(d.collection('ledger').doc(),{ uid:p.uid, email:lc(p.email), delta:Number(p.credits), type:'payment', reference:p.reference, by:me(), at:Date.now() });
+        } else {
+          t.update(pref,{ status:'rejected', reason:reason, decidedMs:Date.now(), decidedBy:me() });
+        }
+        return {ok:true,credits:p.credits};
+      });
+      if(res.gone) toast('That request no longer exists');
+      else if(res.dup) toast('Already '+res.dup);
+      else toast(action==='approve' ? 'Approved · '+res.credits+' credits added' : 'Rejected');
+    }catch(e){ console.warn('[admin credits]',e); toast('Could not update this payment ('+((e&&e.code)||'error')+')'); }
     window.tpAdminTopupsEnsure(true);
   };
   window.tpAdminGrant=async function(){
-    var em=((document.getElementById('tp-adm-g-email')||{}).value||'').trim(), n=Number((document.getElementById('tp-adm-g-n')||{}).value), note=(document.getElementById('tp-adm-g-note')||{}).value||'';
+    var em=lc((document.getElementById('tp-adm-g-email')||{}).value), n=Number((document.getElementById('tp-adm-g-n')||{}).value), note=((document.getElementById('tp-adm-g-note')||{}).value||'').slice(0,120);
     if(!em||!Number.isInteger(n)||n===0) return toast('Enter an email and a whole number of credits');
+    var d=db(); if(!d) return toast('Not connected to the database');
     if(!confirm((n>0?'Add ':'Remove ')+Math.abs(n)+' credits '+(n>0?'to ':'from ')+em+'?')) return;
     try{
-      var j=await api('admin-grant',{email:em,credits:n,note:note});
-      if(j.ok){ toast('Done · new balance '+j.balance+' credits'); ['tp-adm-g-email','tp-adm-g-n','tp-adm-g-note'].forEach(function(i){ var el=document.getElementById(i); if(el) el.value=''; }); }
-      else toast(j.code==='user_not_found'?'No account with that email':j.code==='below_zero'?'That would take the balance below 0':'Could not update credits ('+(j.code||'error')+')');
-    }catch(e){ toast('The payment service is not reachable'); }
+      var q=await d.collection('wallets').where('email','==',em).limit(1).get();
+      if(q.empty) return toast('No customer with that email has opened the app yet');
+      var wref=q.docs[0].ref;
+      var res=await d.runTransaction(async function(t){
+        var s=await t.get(wref), w=s.data(), nb=(Number(w.balance)||0)+n;
+        if(nb<0) return {below:true};
+        t.update(wref,{ balance:nb, updatedAt:FV().serverTimestamp() });
+        t.set(d.collection('ledger').doc(),{ uid:wref.id, email:em, delta:n, type:'manual', note:note, by:me(), at:Date.now() });
+        return {balance:nb};
+      });
+      if(res.below) return toast('That would take the balance below 0');
+      toast('Done · new balance '+res.balance+' credits');
+      ['tp-adm-g-email','tp-adm-g-n','tp-adm-g-note'].forEach(function(i){ var el=document.getElementById(i); if(el) el.value=''; });
+      window.tpAdminTopupsEnsure(true);
+    }catch(e){ console.warn('[admin credits]',e); toast('Could not update credits ('+((e&&e.code)||'error')+')'); }
   };
 })();
 </script>
