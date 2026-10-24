@@ -1,0 +1,224 @@
+'use strict';
+/**
+ * TrackPort credits – core logic. Pure functions over a Firestore-like `db`
+ * (db.doc(path), db.runTransaction) so they can be unit-tested without Firebase.
+ *
+ * Collections (all server-only; clients must have NO access, see firestore.rules):
+ *   wallets/{uid}        { balance, createdAt, trialStartedAt, trialEndsAt, trialDenied, refunds[] }
+ *   trialIps/{ipHash}    { count, uids[], firstAt, lastAt }      <- remembers the IP forever
+ *   trialDevices/{hash}  { uid, at }
+ *   ledger/{id}          every spend / refund / purchase
+ *   topups/{id}          manual bank-transfer requests: pending -> approved / rejected (receipt image kept here)
+ */
+const crypto = require('crypto');
+
+const DAY = 86400000;
+
+// What each action costs. Change numbers here only; the app reads them from the API.
+const COSTS = { shipment: 10 };
+
+// Credit packs. amountNgn is the price in naira that the customer transfers to your bank account.
+const PACKS = {
+  starter:  { id: 'starter',  name: 'Starter',  credits: 50,  amountNgn: 2500 },
+  plus:     { id: 'plus',     name: 'Plus',     credits: 120, amountNgn: 5500 },
+  pro:      { id: 'pro',      name: 'Pro',      credits: 300, amountNgn: 12000 },
+  business: { id: 'business', name: 'Business', credits: 800, amountNgn: 30000 },
+};
+
+function config() {
+  return {
+    trialDays: Number(process.env.TRIAL_DAYS || 3),
+    maxPerIp: Number(process.env.TRIAL_MAX_ACCOUNTS_PER_IP || 1),
+    salt: process.env.IP_HASH_SALT || 'change-me',
+  };
+}
+
+/** IPv4 as-is; IPv4-mapped IPv6 -> IPv4; other IPv6 -> its /64 prefix (users get a whole /64). */
+function normalizeIp(raw) {
+  let ip = String(raw || '').trim();
+  if (!ip) return '';
+  ip = ip.replace(/^\[|\]$/g, '').split('%')[0];
+  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (mapped) return mapped[1];
+  if (!ip.includes(':')) return ip;
+  let [head, tail] = ip.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail !== undefined && tail ? tail.split(':') : [];
+  const fill = ip.includes('::') ? new Array(Math.max(0, 8 - h.length - t.length)).fill('0') : [];
+  const groups = [...h, ...fill, ...t].map((g) => (g || '0').toLowerCase().replace(/^0+(?=.)/, ''));
+  return groups.slice(0, 4).join(':') + '::/64';
+}
+
+function hashKey(value) {
+  return crypto.createHmac('sha256', config().salt).update(String(value)).digest('hex').slice(0, 40);
+}
+
+function view(w, now) {
+  const active = !!(w.trialEndsAt && now < w.trialEndsAt);
+  return {
+    balance: w.balance || 0,
+    trialActive: active,
+    trialEndsAt: w.trialEndsAt || null,
+    trialUsedUp: !!(w.trialEndsAt && !active),
+    trialDenied: w.trialDenied || null,
+    now,
+  };
+}
+
+/** Get-or-create wallet. The 3-day trial is granted once per IP (and per device) – ever. */
+async function initWallet(db, { uid, ip, device, now = Date.now() }) {
+  const cfg = config();
+  return db.runTransaction(async (tx) => {
+    const wRef = db.doc('wallets/' + uid);
+    const w = await tx.get(wRef);
+    if (w.exists) return view(w.data(), now);
+
+    const ipKey = ip ? hashKey('ip:' + normalizeIp(ip)) : null;
+    const devKey = device ? hashKey('dev:' + device) : null;
+    const ipRef = ipKey ? db.doc('trialIps/' + ipKey) : null;
+    const devRef = devKey ? db.doc('trialDevices/' + devKey) : null;
+    const ipDoc = ipRef ? await tx.get(ipRef) : null;
+    const devDoc = devRef ? await tx.get(devRef) : null;
+
+    const prev = ipDoc && ipDoc.exists ? ipDoc.data() : { count: 0, uids: [], firstAt: now };
+    let reason = null;
+    if (!ipKey) reason = 'no_ip'; // fail closed: no IP, no trial
+    else if ((prev.count || 0) >= cfg.maxPerIp) reason = 'ip_used';
+    else if (devDoc && devDoc.exists) reason = 'device_used';
+
+    const data = {
+      balance: 0,
+      createdAt: now,
+      trialStartedAt: reason ? null : now,
+      trialEndsAt: reason ? null : now + cfg.trialDays * DAY,
+      trialDenied: reason,
+      refunds: [],
+    };
+    tx.set(wRef, data);
+    if (!reason) {
+      tx.set(ipRef, { count: (prev.count || 0) + 1, uids: [...(prev.uids || []), uid].slice(-10), firstAt: prev.firstAt || now, lastAt: now });
+      if (devRef) tx.set(devRef, { uid, at: now });
+    }
+    return view(data, now);
+  });
+}
+
+async function getWallet(db, { uid, now = Date.now() }) {
+  const snap = await db.doc('wallets/' + uid).get();
+  return snap.exists ? view(snap.data(), now) : null;
+}
+
+/** Charge for an action. During an active trial nothing is deducted. */
+async function spend(db, { uid, action, now = Date.now() }) {
+  const cost = COSTS[action];
+  if (!cost) return { ok: false, code: 'unknown_action' };
+  return db.runTransaction(async (tx) => {
+    const wRef = db.doc('wallets/' + uid);
+    const w = await tx.get(wRef);
+    if (!w.exists) return { ok: false, code: 'no_wallet' };
+    const d = w.data();
+    const spendId = crypto.randomUUID();
+    const lRef = db.doc('ledger/' + spendId);
+    if (d.trialEndsAt && now < d.trialEndsAt) {
+      tx.set(lRef, { uid, type: 'spend', action, charged: 0, trial: true, at: now });
+      return { ok: true, spendId, charged: 0, trial: true, balance: d.balance || 0 };
+    }
+    if ((d.balance || 0) < cost) return { ok: false, code: 'insufficient', needed: cost, balance: d.balance || 0 };
+    const balance = d.balance - cost;
+    tx.update(wRef, { balance });
+    tx.set(lRef, { uid, type: 'spend', action, charged: cost, balanceAfter: balance, at: now });
+    return { ok: true, spendId, charged: cost, trial: false, balance };
+  });
+}
+
+/** Give credits back when the app failed to create the record. Limited to curb abuse. */
+async function refund(db, { uid, spendId, now = Date.now() }) {
+  if (!spendId) return { ok: false, code: 'bad_request' };
+  return db.runTransaction(async (tx) => {
+    const lRef = db.doc('ledger/' + spendId);
+    const wRef = db.doc('wallets/' + uid);
+    const l = await tx.get(lRef);
+    const w = await tx.get(wRef);
+    if (!l.exists || !w.exists) return { ok: false, code: 'not_found' };
+    const e = l.data();
+    if (e.uid !== uid || e.type !== 'spend') return { ok: false, code: 'not_found' };
+    if (e.refunded) return { ok: true, duplicate: true, balance: w.data().balance || 0 };
+    if (now - e.at > 10 * 60000) return { ok: false, code: 'too_late' };
+    const recent = (w.data().refunds || []).filter((t) => now - t < DAY);
+    if (recent.length >= 5) return { ok: false, code: 'refund_limit' };
+    const balance = (w.data().balance || 0) + (e.charged || 0);
+    tx.update(lRef, { refunded: true, refundedAt: now });
+    tx.update(wRef, { balance, refunds: [...recent, now] });
+    return { ok: true, balance };
+  });
+}
+
+const TOPUP_REF = /^TP-[A-Z0-9]{4,8}$/;
+const MAX_RECEIPT_CHARS = 900000; // keeps the Firestore document under its 1 MB limit
+const MAX_GRANT = 100000;
+
+function newId(prefix) { return prefix + Date.now().toString(36) + crypto.randomBytes(4).toString('hex'); }
+
+/** The customer says "I paid": store a pending request (with the receipt image) for the admin to check. */
+async function createTopup(db, { uid, email, packId, reference, note, receipt, now = Date.now() }) {
+  const pack = PACKS[packId];
+  if (!pack || !uid) return { ok: false, code: 'bad_request' };
+  if (typeof receipt !== 'string' || !/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(receipt)) return { ok: false, code: 'receipt_required' };
+  if (receipt.length > MAX_RECEIPT_CHARS) return { ok: false, code: 'receipt_too_large' };
+  const ref = TOPUP_REF.test(String(reference || '')) ? String(reference) : 'TP-' + crypto.randomBytes(3).toString('hex').toUpperCase();
+  const id = newId('t_');
+  const doc = {
+    uid, email: String(email || '').slice(0, 200), packId: pack.id, packName: pack.name,
+    credits: pack.credits, amountNgn: pack.amountNgn, reference: ref,
+    note: String(note || '').slice(0, 200), receipt, hasReceipt: true,
+    status: 'pending', at: now,
+  };
+  await db.runTransaction(async (tx) => { tx.set(db.doc('topups/' + id), doc); });
+  return { ok: true, id, reference: ref };
+}
+
+function walletBase(w, now) {
+  return w.exists ? w.data() : { balance: 0, createdAt: now, trialStartedAt: null, trialEndsAt: null, trialDenied: 'purchase_first', refunds: [] };
+}
+
+/** Admin approves (adds the pack's credits) or rejects a pending request. Safe to click twice. */
+async function decideTopup(db, { id, action, reason, adminUid, now = Date.now() }) {
+  if (!id || (action !== 'approve' && action !== 'reject')) return { ok: false, code: 'bad_request' };
+  return db.runTransaction(async (tx) => {
+    const tRef = db.doc('topups/' + id);
+    const t = await tx.get(tRef);
+    if (!t.exists) return { ok: false, code: 'not_found' };
+    const d = t.data();
+    if (d.status !== 'pending') return { ok: true, duplicate: true, status: d.status };
+    if (action === 'reject') {
+      tx.update(tRef, { status: 'rejected', decidedAt: now, decidedBy: adminUid || '', reason: String(reason || '').slice(0, 200) });
+      return { ok: true, status: 'rejected' };
+    }
+    const wRef = db.doc('wallets/' + d.uid);
+    const w = await tx.get(wRef);
+    const base = walletBase(w, now);
+    const balance = (base.balance || 0) + d.credits;
+    tx.update(tRef, { status: 'approved', decidedAt: now, decidedBy: adminUid || '' });
+    tx.set(wRef, { ...base, balance });
+    tx.set(db.doc('ledger/topup_' + id), { uid: d.uid, type: 'purchase', method: 'manual', packId: d.packId, credits: d.credits, reference: d.reference, balanceAfter: balance, at: now });
+    return { ok: true, status: 'approved', credited: d.credits, balance, uid: d.uid };
+  });
+}
+
+/** Admin adds (or removes, with a negative number) credits for a user directly. */
+async function grantCredits(db, { uid, credits, note, adminUid, now = Date.now() }) {
+  const n = Number(credits);
+  if (!uid || !Number.isInteger(n) || n === 0 || Math.abs(n) > MAX_GRANT) return { ok: false, code: 'bad_request' };
+  return db.runTransaction(async (tx) => {
+    const wRef = db.doc('wallets/' + uid);
+    const w = await tx.get(wRef);
+    const base = walletBase(w, now);
+    const balance = (base.balance || 0) + n;
+    if (balance < 0) return { ok: false, code: 'below_zero', balance: base.balance || 0 };
+    tx.set(wRef, { ...base, balance });
+    tx.set(db.doc('ledger/' + newId('grant_')), { uid, type: 'grant', credits: n, note: String(note || '').slice(0, 200), by: adminUid || '', balanceAfter: balance, at: now });
+    return { ok: true, balance };
+  });
+}
+
+module.exports = { COSTS, PACKS, DAY, config, normalizeIp, hashKey, initWallet, getWallet, spend, refund, createTopup, decideTopup, grantCredits };
