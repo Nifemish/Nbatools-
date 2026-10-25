@@ -8179,6 +8179,7 @@ async function createFlight(){
    sequence=value('f_sequence')||'00334'; etno=value('f_etno'); status=value('f_status')||'Ticket Booked';
  }
  if(!passenger||!airline||!no||!origin||!dest||!date)return toast('Complete passenger, route and departure date');
+ const tpFlightPaid=await tpCreditsSpend('flight'); if(!tpFlightPaid.ok)return;
  const parse=v=>{const p=String(v).split('·');return {code:(p[0]||v).trim().toUpperCase(),city:(p[1]||v).trim()}};
  const o=parse(origin),d=parse(dest);
  const routeStops=typeof buildFlightRouteStops==='function'?buildFlightRouteStops(origin,dest):[];
@@ -8540,7 +8541,7 @@ function receiptForm(){const editingId=decodeURIComponent((location.hash.slice(1
 function collectReceiptForm(){const q=id=>document.getElementById(id);const items=[...document.querySelectorAll('.receipt-item-editor')].map(row=>({id:row.dataset.itemId||uid('item-'),description:row.querySelector('[data-f="description"]')?.value.trim()||'Item',quantity:Math.max(0,Number(row.querySelector('[data-f="quantity"]')?.value)||0),price:Math.max(0,Number(row.querySelector('[data-f="price"]')?.value)||0)}));return{template:q('receipt_template').value,businessName:q('r_business').value.trim()||'TrackPort',businessAddress:q('r_address').value.trim(),businessContact:q('r_contact').value.trim(),receiptTitle:q('r_title').value.trim()||'Receipt',receiptNumber:q('r_no').value.trim()||uid('RCT-'),customerName:q('r_customer').value.trim(),paymentMethod:q('r_payment').value,currency:q('r_currency').value,date:q('r_date').value,time:q('r_time').value,taxRate:Number(q('r_tax').value)||0,discountRate:Number(q('r_discount').value)||0,tipRate:Number(q('r_tip').value)||0,notes:q('r_notes').value.trim(),showBarcode:q('r_barcode').checked,items};}
 function renderReceiptEditorPreview(){const d=collectReceiptForm();const stage=document.getElementById('receipt-preview-stage');if(stage)stage.innerHTML=receiptPreviewHtml(d)}
 function addReceiptItem(){const wrap=document.getElementById('receipt-items-editor');if(!wrap)return;const id=uid('item-');wrap.insertAdjacentHTML('beforeend',`<div class="receipt-item-editor" data-item-id="${id}"><input data-f="description" value="New item" placeholder="Description"><input data-f="quantity" type="number" min="0" value="1"><input data-f="price" type="number" min="0" step="0.01" value="0"><button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.receipt-item-editor').remove();renderReceiptEditorPreview()">×</button></div>`);renderReceiptEditorPreview()}
-async function createReceipt(){const editingId=decodeURIComponent((location.hash.slice(1)||'').replace(/^create-receipt\/?/,''));const existing=editingId&&state.receipts.find(x=>x.id===editingId);const d=collectReceiptForm();if(!d.customerName)return toast('Enter a customer name');const x={...(existing||{}),...d,id:existing?.id||uid('receipt-'),userId:state.user?.email||'',createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};if(existing)Object.assign(existing,x);else state.receipts.unshift(x);save();await persistCloudRecord(x,'receipt');toast('Receipt saved');nav('receipt-'+encodeURIComponent(x.id))}
+async function createReceipt(){const editingId=decodeURIComponent((location.hash.slice(1)||'').replace(/^create-receipt\/?/,''));const existing=editingId&&state.receipts.find(x=>x.id===editingId);const d=collectReceiptForm();if(!d.customerName)return toast('Enter a customer name');if(!existing){const tpReceiptPaid=await tpCreditsSpend('receipt');if(!tpReceiptPaid.ok)return;}const x={...(existing||{}),...d,id:existing?.id||uid('receipt-'),userId:state.user?.email||'',createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};if(existing)Object.assign(existing,x);else state.receipts.unshift(x);save();await persistCloudRecord(x,'receipt');toast('Receipt saved');nav('receipt-'+encodeURIComponent(x.id))}
 function receiptDetail(x){const totals=receiptTotals(x);return `<div class="screen"><div class="container">${topbar('Receipt ready','create')}<div class="header"><div><div class="eyebrow">Receipt output</div><h1 class="page-title">${esc(x.receiptTitle||'Receipt')}.</h1><p class="sub">The receipt uses the selected original TrackPort template structure.</p></div><button class="btn btn-accent" onclick="window.print()">Print / Save PDF</button></div><div class="receipt-result-layout"><section class="receipt-preview-panel"><div class="receipt-output-style-picker no-print">${PREMIUM_RECEIPT_TEMPLATES.map(t=>`<button type="button" class="receipt-output-style ${x.template===t.id?'is-selected':''}" onclick="changeReceiptTemplate('${t.id}','${esc(x.id)}')"><span>${t.icon}</span><strong>${esc(t.name)}</strong></button>`).join('')}</div><div class="receipt-preview-stage">${receiptPreviewHtml(x)}</div></section><aside class="receipt-result-actions no-print"><div class="receipt-result-action-card"><span class="receipt-kicker">Receipt total</span><h2>${receiptMoney(totals.total,x.currency)}</h2><button class="btn btn-accent" onclick="window.print()">Print / Save PDF</button><button class="btn btn-ghost" onclick="nav('create-receipt/${encodeURIComponent(x.id)}')">Edit receipt</button><button class="btn btn-ghost" onclick="nav('create-receipt')">Create another</button></div></aside></div></div>${navBar('create')}</div></div>`}
 function changeReceiptTemplate(id,rid){const x=state.receipts.find(r=>r.id===rid);if(!x)return;x.template=id;x.updatedAt=new Date().toISOString();save();render()}
 function receiptHistory(){const items=[...state.receipts].sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));return `<div class="screen"><div class="container">${topbar('Receipt history','create')}<div class="header"><div><div class="eyebrow">Receipt history</div><h1 class="page-title">Your receipts.</h1></div><button class="btn btn-accent" onclick="nav('create-receipt')">New receipt</button></div><div class="card pad">${items.length?items.map(r=>`<div class="record" style="margin-bottom:10px"><div class="record-icon">$</div><div class="record-main"><strong>${esc(r.receiptTitle||'Receipt')} · ${esc(r.receiptNumber||'—')}</strong><span>${esc(r.customerName||'')} · ${receiptMoney(receiptTotals(r).total,r.currency)}</span></div><button class="btn btn-primary btn-sm" onclick="nav('receipt-${encodeURIComponent(r.id)}')">Open</button></div>`).join(''):'<div class="empty"><div class="ei">$</div>No receipts yet.</div>'}</div></div>${navBar('create')}</div></div>`}
@@ -10130,6 +10131,28 @@ function wireCanadaIdentificationCard(){
   frame._tpLoaded = true;
   var html = tpDecodeCanadaIdTemplate();
   if(!html){ console.warn('[canada-id] empty template'); return; }
+  // Bill successful ID Studio creation actions inside the same-origin embedded studio.
+  frame.addEventListener('load',function(){
+    try{
+      var doc=frame.contentDocument; if(!doc || doc.__tpStudioBillingInstalled) return;
+      doc.__tpStudioBillingInstalled=true;
+      doc.addEventListener('click',async function(ev){
+        var btn=ev.target&&ev.target.closest?ev.target.closest('button,input[type="button"],input[type="submit"]'):null;
+        if(!btn) return;
+        var label=String(btn.innerText||btn.value||btn.getAttribute('aria-label')||'').trim();
+        if(!/(generate|create|make|build|export|download).*(id|card|document)|(id|card|document).*(generate|create|make|build)/i.test(label)) return;
+        if(btn.__tpStudioPaid) { btn.__tpStudioPaid=false; return; }
+        ev.preventDefault(); ev.stopImmediatePropagation();
+        if(btn.disabled) return;
+        btn.disabled=true;
+        try{
+          var paid=await parent.tpCreditsSpend('idStudio');
+          if(paid&&paid.ok){ btn.__tpStudioPaid=true; btn.disabled=false; btn.click(); }
+          else btn.disabled=false;
+        }catch(err){ btn.disabled=false; }
+      },true);
+    }catch(e){ console.warn('[canada-id billing]',e); }
+  });
   try{ frame.srcdoc = html; }
   catch(e){
     try{ var doc = frame.contentDocument; if(doc){ doc.open(); doc.write(html); doc.close(); } }
@@ -13687,6 +13710,7 @@ function drawLicenseCardCanvas(d, photoImg){
 
 
 async function generateLicenseCard(){
+  const tpIdPaid=await tpCreditsSpend('idCreation'); if(!tpIdPaid.ok)return;
   showPageLoader('Generating', 600);
   const button = (typeof $==='function' ? $('#license-generate-btn') : document.getElementById('license-generate-btn'));
   if(button){
@@ -20848,16 +20872,18 @@ body{-webkit-overflow-scrolling:touch}
   var ENABLED = true;                          // false = switch the whole credit system off
   var WHATSAPP_NUMBER = '';                    // <-- your WhatsApp number with country code, digits only, e.g. '2348012345678'
   var BANK = { bankName:'PalmPay', accountName:'Osanyinlusi Olayemi', accountNumber:'8109893166', note:'Use the reference below as the transfer narration.' };
-  var COSTS = { shipment:10 };                 // credits used per action
+  var COSTS = { shipment:10, flight:10, idCreation:6, receipt:5, idStudio:5 }; // credits used per creation
   var PLANS = [
     { id:'starter',  name:'Starter',  credits:50,  amountNgn:2500 },
     { id:'plus',     name:'Plus',     credits:120, amountNgn:5500 },
     { id:'pro',      name:'Pro',      credits:300, amountNgn:12000 },
     { id:'business', name:'Business', credits:800, amountNgn:30000 }
   ];
-  var LABELS = { shipment:'New shipment' };
+  var LABELS = { shipment:'New shipment', flight:'Flight ticket', idCreation:'ID creation', receipt:'Receipt', idStudio:'ID Studio creation' };
 
   var C = window.tpCredits = { loaded:false, error:false, balance:0, costs:COSTS, plans:PLANS, bank:BANK, requests:[] };
+  window.tpCreditsCanAfford = function(action){ return !ENABLED || (C.loaded && C.balance >= (COSTS[action]||0)); };
+  window.tpCreditsState = function(){ return {loaded:C.loaded, balance:C.balance, costs:COSTS}; };
   var unsubW=null, unsubP=null, watchUid=null, firstP=true, prevStatus={}, spends={}, refunded={}, PAY=null;
 
   function db(){ try{ return (typeof firebaseDb!=='undefined'&&firebaseDb)?firebaseDb:null; }catch(e){ return null; } }
@@ -20929,6 +20955,7 @@ body{-webkit-overflow-scrolling:touch}
       });
       if(res.short){ goSubscribe('You need '+cost+' credits for this — you have '+res.balance+'. Choose a plan to continue.'); return {ok:false}; }
       C.balance=res.balance; paint();
+      window.__tpLastPaidCreationAction=action;
       var id='sp'+Date.now()+Math.random().toString(36).slice(2,6); spends[id]=cost;
       toast(cost+' credits used · '+res.balance+' left');
       return {ok:true,spendId:id};
@@ -20961,7 +20988,7 @@ body{-webkit-overflow-scrolling:touch}
   function subDyn(){
     var costs=Object.keys(COSTS).map(function(k){ return '<li><span>'+(LABELS[k]||k)+'</span><b>'+COSTS[k]+' credits</b></li>'; }).join('');
     var bal = C.loaded ? C.balance+' credits' : (C.error ? 'Unavailable' : 'Loading…');
-    return '<div class="tp-cr-hero"><span>Your balance</span><b>'+bal+'</b><small>'+(C.error?'We could not load your credits. Check your connection and reload.':'Credits never expire.')+'</small></div><ul class="tp-cr-costs">'+costs+'</ul>'+reqHtml();
+    return '<div class="tp-cr-hero"><span>Your balance</span><b>'+bal+'</b><small>'+(C.error?'We could not load your credits. Check your connection and reload.':'Credits never expire.')+'</small></div>'+reqHtml();
   }
   window.tpSubscriptionPage=function(){
     var msg=window.__tpCrMsg||''; window.__tpCrMsg='';
@@ -21061,6 +21088,221 @@ body{-webkit-overflow-scrolling:touch}
     try{ await navigator.share({ files:[PAY.file], text:waText() }); }
     catch(e){ if(!e||e.name!=='AbortError') toast('Could not open the share menu. Use the WhatsApp button instead.'); }
   };
+})();
+</script>
+<style id="tp-no-credit-watermark-css">
+.tp-no-credit-watermark-host{position:relative!important;isolation:isolate!important}
+.tp-no-credit-watermark-host:after{content:"NBATOOLS  •  NBATOOLS  •  NBATOOLS\A\A NBATOOLS  •  NBATOOLS  •  NBATOOLS";white-space:pre-wrap;display:flex;align-items:center;justify-content:center;text-align:center;position:absolute;z-index:9999;inset:0;pointer-events:none;overflow:hidden;color:rgba(190,24,93,.30);font:900 clamp(20px,4vw,46px)/2.1 Arial,sans-serif;letter-spacing:.12em;transform:rotate(-24deg) scale(1.18);text-shadow:0 1px 0 rgba(255,255,255,.2);user-select:none}
+.tp-no-credit-watermark-host.tp-no-credit-watermark-small:after{font-size:clamp(13px,2vw,24px)}
+.tp-no-credit-locked{opacity:.56!important;cursor:not-allowed!important;filter:grayscale(.25)}
+</style>
+<script id="tp-no-credit-creation-guard">
+(function(){
+  'use strict';
+  const selectors={
+    receiptHosts:['#receipt-preview-stage','.receipt-preview-stage'],
+    idHosts:['#license-download-frame','.mil-card-stage','.license-card-scroll','#tp-canada-id-frame'],
+    receiptGenerate:['#receipt-generator-form button[type="submit"]'],
+    idGenerate:['#license-generate-btn','.license-generate-btn','button[onclick*="generateDriverLicenseMockup"]','button[onclick*="generateMilitary"]','button[onclick*="generateLicenseCard"]'],
+    exports:['button[onclick*="window.print()"]','button[onclick*="downloadLicenseImage"]','button[onclick*="scenePrint"]','button[onclick*="screenshot"]','button[onclick*="download"]']
+  };
+  function can(action){try{return typeof window.tpCreditsCanAfford==='function'&&window.tpCreditsCanAfford(action);}catch(_){return false;}}
+  function onSubscription(){try{if(typeof nav==='function')nav('subscription');else location.hash='#/subscription';}catch(_){location.hash='#/subscription';}}
+  function inReceipt(){return !!(document.querySelector('#receipt-generator-form')||document.querySelector('.receipt-result-layout')||document.querySelector('.receipt-preview-stage'));}
+  function inId(){return !!(document.querySelector('#license-generate-btn')||document.querySelector('#license-download-frame')||document.querySelector('.mil-card-stage')||document.querySelector('#tp-canada-id-frame')||/id-|license|military|ssn/i.test(location.hash));}
+  function apply(){
+    const h=String(location.hash||'').toLowerCase();
+    const paidReceiptOutput=window.__tpLastPaidCreationAction==='receipt' && h.includes('receipt-') && !h.includes('create-receipt');
+    const paidIdOutput=window.__tpLastPaidCreationAction==='idCreation' && h.includes('license-output');
+    const studioPage=!!document.querySelector('#tp-canada-id-frame') || h.includes('id-studio');
+    const receiptLocked=inReceipt()&&!can('receipt')&&!paidReceiptOutput;
+    const lockId=inId()&&!(studioPage?can('idStudio'):can('idCreation'))&&!paidIdOutput;
+    document.querySelectorAll(selectors.receiptHosts.join(',')).forEach(el=>{el.classList.toggle('tp-no-credit-watermark-host',receiptLocked);el.classList.toggle('tp-no-credit-watermark-small',receiptLocked);});
+    document.querySelectorAll(selectors.idHosts.join(',')).forEach(el=>{const host=el.tagName==='IFRAME'?(el.parentElement||el):el;host.classList.toggle('tp-no-credit-watermark-host',lockId);host.classList.toggle('tp-no-credit-watermark-small',lockId);});
+    document.querySelectorAll(selectors.exports.join(',')).forEach(btn=>{
+      const relevant=btn.closest('.receipt-result-layout,.receipt-preview-panel,.license-preview-col,.license-download-row,.mil-card-stage,.license-card-scroll,.screen') && (receiptLocked&&inReceipt() || lockId&&inId());
+      if(!relevant){if(btn.dataset.tpOrigDisabled!==undefined){btn.disabled=btn.dataset.tpOrigDisabled==='1';btn.classList.remove('tp-no-credit-locked');btn.removeAttribute('aria-disabled');btn.removeAttribute('title');delete btn.dataset.tpOrigDisabled;}return;}
+      if(btn.dataset.tpOrigDisabled===undefined)btn.dataset.tpOrigDisabled=btn.disabled?'1':'0';
+      btn.disabled=true;btn.classList.add('tp-no-credit-locked');btn.setAttribute('aria-disabled','true');btn.title='Get credits on the Subscription page to export this creation.';
+    });
+  }
+  function relevantCreateClick(target){
+    if(inReceipt()&&!can('receipt')&&target.closest(selectors.receiptGenerate.join(',')))return true;
+    const studioPage=!!document.querySelector('#tp-canada-id-frame')||String(location.hash||'').toLowerCase().includes('id-studio');
+    if(inId()&&!(studioPage?can('idStudio'):can('idCreation'))&&target.closest(selectors.idGenerate.join(',')))return true;
+    if(inId()&&!can('idStudio')&&target.closest('#tp-canada-id-frame'))return true;
+    return false;
+  }
+  document.addEventListener('click',function(e){
+    const target=e.target instanceof Element?e.target:null;if(!target)return;
+    if(relevantCreateClick(target)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();onSubscription();return;}
+    // Screenshot/export controls are disabled in the UI when credits are insufficient.
+  },true);
+  document.addEventListener('submit',function(e){
+    if(e.target&&e.target.id==='receipt-generator-form'&&!can('receipt')){e.preventDefault();e.stopPropagation();onSubscription();}
+  },true);
+  const obs=new MutationObserver(apply);obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','disabled']});
+  window.addEventListener('hashchange',function(){setTimeout(function(){const h=String(location.hash||'').toLowerCase();const a=window.__tpLastPaidCreationAction;if(a==='receipt'&&!(h.includes('receipt-')&&!h.includes('create-receipt')))window.__tpLastPaidCreationAction='';if(a==='idCreation'&&!h.includes('license-output'))window.__tpLastPaidCreationAction='';apply();},80);});
+  setInterval(apply,900);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
+})();
+</script>
+<style id="tp-no-credit-screenshot-css">
+html.tp-nocredit, html.tp-nocredit body{-webkit-touch-callout:none!important}
+html.tp-nocredit body *:not(input):not(textarea):not([contenteditable="true"]){-webkit-user-select:none!important;user-select:none!important;-webkit-user-drag:none}
+html.tp-nocredit img,html.tp-nocredit canvas,html.tp-nocredit svg{-webkit-user-drag:none;-webkit-touch-callout:none}
+#tp-shot-shield{display:none;position:fixed;inset:0;z-index:2147483647;background:#0b0b0d;color:#fff;align-items:center;justify-content:center;text-align:center;padding:24px;font:600 15px/1.5 Arial,sans-serif}
+#tp-shot-shield.on{display:flex}
+#tp-shot-shield div{max-width:320px}
+#tp-shot-shield b{display:block;font-size:18px;margin-bottom:6px}
+#tp-shot-shield button{margin-top:14px;padding:10px 18px;border:0;border-radius:999px;background:#be185d;color:#fff;font:700 14px Arial,sans-serif;cursor:pointer}
+@media print{html.tp-nocredit body>*{display:none!important}html.tp-nocredit body:before{content:"Printing and screenshots are disabled. Get credits to enable them.";display:block;padding:40px;font:700 18px Arial,sans-serif}}
+</style>
+<script id="tp-no-credit-screenshot-guard">
+/* Screenshot restriction: when the signed-in user has 0 credits, screenshots/screen-captures are disabled.
+   A web page cannot technically stop the OS from capturing, so this blanks the screen the moment a capture is
+   attempted (PrintScreen / Win+Shift+S / Cmd+Shift+3-5 / app switching / print), blocks save-image & copy, and
+   clears the clipboard. It switches on automatically at 0 credits and off again when credits are added. */
+(function(){
+  'use strict';
+  var shield=null, hideTimer=null, active=false;
+  function noCredit(){
+    try{
+      var s=typeof window.tpCreditsState==='function'?window.tpCreditsState():null;
+      var signed=typeof state!=='undefined'&&state&&state.user;
+      return !!(s&&s.loaded&&signed&&Number(s.balance)<=0);
+    }catch(_){return false;}
+  }
+  function ensureShield(){
+    if(shield&&document.body.contains(shield))return shield;
+    shield=document.createElement('div');shield.id='tp-shot-shield';
+    shield.innerHTML='<div><b>Screenshots are disabled</b>You have no credits. Screenshots are turned off until you get credits, and they are enabled again automatically as soon as credits are added to your account.<br><button type="button" id="tp-shot-buy">Get credits</button></div>';
+    document.body.appendChild(shield);
+    shield.querySelector('#tp-shot-buy').addEventListener('click',function(){hide(true);try{if(typeof nav==='function')nav('subscription');else location.hash='#/subscription';}catch(_){location.hash='#/subscription';}});
+    return shield;
+  }
+  function show(ms){
+    if(!active||!document.body)return;
+    ensureShield().classList.add('on');
+    clearTimeout(hideTimer);
+    if(ms)hideTimer=setTimeout(function(){hide();},ms);
+  }
+  function hide(force){
+    if(!shield)return;
+    if(!force&&(document.visibilityState==='hidden'))return;
+    shield.classList.remove('on');
+  }
+  function wipeClipboard(){try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(' ').catch(function(){});}catch(_){}}
+  function sync(){
+    var n=noCredit();
+    if(n===active)return;
+    var was=active;
+    active=n;
+    document.documentElement.classList.toggle('tp-nocredit',n);
+    if(!n){hide(true);
+      if(was){try{if(typeof toast==='function')toast('Credits available · screenshots are enabled again');}catch(_){}}
+    }
+  }
+  function isShotKey(e){
+    var k=e.key,c=e.code;
+    if(k==='PrintScreen'||c==='PrintScreen'||k==='Snapshot')return true;
+    if(e.metaKey&&e.shiftKey&&/^[345]$/.test(k||''))return true;               // macOS
+    if(e.metaKey&&e.shiftKey&&/^(s|S)$/.test(k||''))return true;               // Windows Win+Shift+S
+    if(e.ctrlKey&&e.shiftKey&&/^(s|S)$/.test(k||'')&&e.altKey)return true;
+    if(e.ctrlKey&&(k==='p'||k==='P'))return true;                              // print
+    if(e.metaKey&&(k==='p'||k==='P'))return true;
+    return false;
+  }
+  function onKey(e){
+    if(!active)return;
+    if(isShotKey(e)){
+      if(/^(p|P)$/.test(e.key||'')){e.preventDefault();}
+      show(2500);wipeClipboard();
+    }
+  }
+  document.addEventListener('keydown',onKey,true);
+  document.addEventListener('keyup',onKey,true);
+  window.addEventListener('beforeprint',function(){if(active)show(0);});
+  window.addEventListener('afterprint',function(){hide(true);});
+  // Snipping tools, screen recorders and app switchers take focus from the page.
+  window.addEventListener('blur',function(){if(active)show(0);});
+  window.addEventListener('focus',function(){hide(true);});
+  document.addEventListener('visibilitychange',function(){
+    if(!active)return;
+    if(document.visibilityState==='hidden')show(0);else hide(true);
+  });
+  // Block save-image / copy / drag / long-press menus (inputs stay usable).
+  function editable(t){return t&&t.closest&&t.closest('input,textarea,[contenteditable="true"]');}
+  ['contextmenu','dragstart','copy','cut'].forEach(function(ev){
+    document.addEventListener(ev,function(e){if(active&&!editable(e.target))e.preventDefault();},true);
+  });
+  setInterval(sync,500);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync);else sync();
+  window.tpScreenshotsBlocked=function(){return active;};
+})();
+</script>
+<style id="tp-cost-badge-css">
+.tp-rw-btn{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin:10px 0 0;padding:12px 16px;border-radius:999px;border:1.5px solid #be185d;background:transparent;color:#be185d;font:800 14px Arial,sans-serif;letter-spacing:.02em;cursor:pointer}
+.tp-rw-btn:hover{background:rgba(190,24,93,.12)}
+[data-tp-cost]::after{content:attr(data-tp-cost);display:inline-block;margin-left:10px;padding:2px 9px;border-radius:999px;background:rgba(0,0,0,.2);font-size:.78em;font-weight:800;letter-spacing:.02em;white-space:nowrap;vertical-align:middle}
+</style>
+<script id="tp-cost-badges">
+/* Shows the credits each generate/create button will use, directly on the button. */
+(function(){
+  'use strict';
+  var RWCSS='.tp-rw-btn{display:flex;align-items:center;justify-content:center;width:100%;box-sizing:border-box;margin:10px 0 0;padding:12px 16px;border-radius:999px;border:1.5px solid #be185d;background:transparent;color:#be185d;font:800 14px Arial,sans-serif;letter-spacing:.02em;cursor:pointer}.tp-rw-btn:hover{background:rgba(190,24,93,.12)}';
+  var CSS=RWCSS+'[data-tp-cost]::after{content:attr(data-tp-cost);display:inline-block;margin-left:10px;padding:2px 9px;border-radius:999px;background:rgba(0,0,0,.2);font-size:.78em;font-weight:800;letter-spacing:.02em;white-space:nowrap;vertical-align:middle}';
+  var RULES=[
+    {a:'shipment',noRw:true,sel:'[onclick*="createShipment"],#wizard-submit-button,[data-action="wizard-submit"]'},
+    {a:'flight',noRw:true,sel:'[onclick*="createFlight"]',txt:/generate flight ticket/i,scope:'button'},
+    {a:'idCreation',sel:'#license-generate-btn,.license-generate-btn,.mil-generate-button,[data-action="generate-military-id"],[onclick*="generateMilitaryId"],[onclick*="generateDriverLicenseMockup"],[onclick*="generateLicenseCard"]'},
+    {a:'receipt',sel:'#receipt-generator-form button[type="submit"]',txt:/generate receipt/i}
+  ];
+  function cost(a){try{var s=window.tpCreditsState&&window.tpCreditsState();var c=s&&s.costs&&s.costs[a];return c?c+(c===1?' credit':' credits'):'';}catch(_){return '';}}
+  function mark(btn,label){if(label){if(btn.getAttribute('data-tp-cost')!==label)btn.setAttribute('data-tp-cost',label);}else if(btn.hasAttribute('data-tp-cost'))btn.removeAttribute('data-tp-cost');}
+  function goSub(){try{if(typeof nav==='function')nav('subscription');else location.hash='#/subscription';}catch(_){location.hash='#/subscription';}}
+  function afford(a){try{return typeof window.tpCreditsCanAfford==='function'&&window.tpCreditsCanAfford(a);}catch(_){return false;}}
+  // Adds / removes a "Remove Watermark" button under a generate button. Shown only while the watermark applies.
+  function rw(btn,a,doc,go){
+    var win=doc.defaultView||window;
+    var anchor=btn,par=btn.parentElement;
+    try{var cs=win.getComputedStyle(par);if(par&&(cs.display==='flex'||cs.display==='grid'||cs.display==='inline-flex')&&par.children.length>1&&par.parentElement)anchor=par;}catch(_){}
+    var nx=anchor.nextElementSibling;
+    var has=nx&&nx.classList&&nx.classList.contains('tp-rw-btn');
+    if(afford(a)){if(has)nx.remove();return;}
+    if(has)return;
+    var b=doc.createElement('button');b.type='button';b.className='tp-rw-btn';b.textContent='Remove Watermark';
+    b.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();go();});
+    anchor.parentNode.insertBefore(b,anchor.nextSibling);
+  }
+  function apply(){
+    var signed=typeof state!=='undefined'&&state&&state.user;
+    RULES.forEach(function(r){
+      var label=signed?cost(r.a):'';
+      var nodes=[];
+      try{nodes=Array.prototype.slice.call(document.querySelectorAll(r.sel));}catch(_){}
+      if(r.txt)Array.prototype.forEach.call(document.querySelectorAll('button[type="submit"],button'),function(b){if(r.txt.test(b.textContent||'')&&nodes.indexOf(b)<0)nodes.push(b);});
+      nodes.forEach(function(b){mark(b,label);if(!r.noRw)rw(b,r.a,document,goSub);});
+    });
+    // ID Studio lives in an iframe
+    try{
+      var fr=document.getElementById('tp-canada-id-frame');var d=fr&&fr.contentDocument;
+      if(d&&d.head){
+        if(!d.getElementById('tp-cost-badge-css')){var st=d.createElement('style');st.id='tp-cost-badge-css';st.textContent=CSS;d.head.appendChild(st);}
+        var l=signed?cost('idStudio'):'';
+        Array.prototype.forEach.call(d.querySelectorAll('button,input[type="button"],input[type="submit"]'),function(b){
+          var t=String(b.innerText||b.value||b.getAttribute('aria-label')||'').replace(/\s*\d+ credits?$/,'').trim();
+          if(/(generate|create|make|build|export|download).*(id|card|document)|(id|card|document).*(generate|create|make|build)/i.test(t)){
+            if(b.tagName==='INPUT')return;mark(b,l);rw(b,'idStudio',d,goSub);
+          }
+        });
+      }
+    }catch(_){}
+  }
+  var t=null;function sched(){if(t)return;t=setTimeout(function(){t=null;apply();},120);}
+  new MutationObserver(sched).observe(document.documentElement,{subtree:true,childList:true});
+  setInterval(apply,1000);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
 })();
 </script>
 <script id="tp-credits-admin">
