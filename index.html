@@ -5477,6 +5477,8 @@ function nav(page){
   },
   async saveRecord(user,record,type){
    if(!this.isReady||!user?.uid||!record?.trackingNumber)return;
+   if(typeof tpShrinkRecordImages==='function')record=await tpShrinkRecordImages(record);
+   try{await this.mirrorPublic(record,type)}catch(e){console.warn('[TrackPort] public mirror failed',e)}
    await this.recordDoc(record.trackingNumber).set({
     value:JSON.stringify(record),
     type,
@@ -5485,15 +5487,21 @@ function nav(page){
     ownerEmail:user.email||'',
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
    },{merge:true});
-   /* Mirror to the read-only public collection used by the tracking site */
-   try{
-    const tn=String(record.trackingNumber);
-    await firebaseDb.collection('trackportPublic').doc(tn.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,140)).set({
-     data:JSON.stringify(record),type,trackingNumber:tn,trackingNumberLower:tn.toLowerCase(),
-     searchKeys:[tn,tn.toUpperCase(),tn.toLowerCase()],status:record.status||'',
-     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-    },{merge:true});
-   }catch(e){console.warn('[TrackPort] public mirror failed',e)}
+  },
+  async mirrorPublic(record,type){
+   if(!this.isReady||!record?.trackingNumber)return;
+   if(typeof tpShrinkRecordImages==='function')record=await tpShrinkRecordImages(record);
+   const tn=String(record.trackingNumber);
+   let json=JSON.stringify(record);
+   if(json.length>700000){ /* Firestore documents are limited to 1 MB: drop embedded base64 pictures */
+    const slim={...record};['productImage','imageUrl','image','photo'].forEach(k=>{if(/^data:/i.test(slim[k]||''))slim[k]=''});
+    json=JSON.stringify(slim);
+   }
+   await firebaseDb.collection('trackportPublic').doc(tn.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,140)).set({
+    data:json,type,trackingNumber:tn,trackingNumberLower:tn.toLowerCase(),
+    searchKeys:[tn,tn.toUpperCase(),tn.toLowerCase()],status:record.status||'',
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+   },{merge:true});
   },
   async getRecord(number){
    if(!this.isReady||!number)return null;
@@ -5524,6 +5532,24 @@ function nav(page){
    return false;
   }
  }
+
+ /* Publish every existing shipment/flight to the public tracking collection (once per sign-in) */
+ async function tpSyncPublicMirror(){
+  try{
+   const user=cloudUser();
+   if(!user||!cloud.isReady||window._tpMirrorDone===user.uid)return;
+   window._tpMirrorDone=user.uid;
+   const items=[...(state.shipments||[]).map(r=>[r,'shipment']),...(state.flights||[]).map(r=>[r,'flight'])];
+   for(const [r,t] of items){
+    if(!r||!r.trackingNumber)continue;
+    try{await cloud.mirrorPublic(r,t)}catch(e){console.warn('[TrackPort] public mirror failed for',r.trackingNumber,e)}
+   }
+  }catch(e){console.warn('[TrackPort] public sync',e)}
+ }
+ window.tpSyncPublicMirror=tpSyncPublicMirror;
+
+ (function(){const _h=hydrateCloudState;hydrateCloudState=async function(){const r=await _h.apply(this,arguments);setTimeout(tpSyncPublicMirror,1200);return r}})();
+ setTimeout(tpSyncPublicMirror,4000);
  async function hydrateCloudState(user,allowMigration=true){
   if(!cloud.isReady||!user?.uid)return;
   try{
@@ -6979,8 +7005,9 @@ async function tpUploadImageToTmpfiles(dataUrl, trackingNumber){
   return url;
 }
 async function tpUploadShipmentProductImage(dataUrl, trackingNumber){
-  const raw = String(dataUrl || '');
+  let raw = String(dataUrl || '');
   if(!raw) return '';
+  if(/^data:image\//i.test(raw) && typeof tpShrinkImage==='function'){ try{ raw = await tpShrinkImage(raw); }catch(_e){} }
   /* Already a public URL — keep it */
   if(/^https?:\/\//i.test(raw)) return raw;
   if(!/^data:image\//i.test(raw)) return raw;
@@ -7536,6 +7563,7 @@ async function createShipment(){
     productImage = uploaded || originalImage;
    }catch(_e){ productImage = originalImage; }
   }
+  if(productImage && /^data:image\//i.test(productImage) && typeof tpShrinkImage==='function'){ try{ productImage = await tpShrinkImage(productImage); }catch(_e){} }
   if(window.sbState){
    window.sbState.productImage = productImage || '';
    if(window.sbState.package){ window.sbState.package.imageUrl = productImage || ''; window.sbState.package.productImage = productImage || ''; }
@@ -20207,6 +20235,66 @@ ${licenseCardMarkup(typeKey, cardData)}
 
 
 
+<script id="tp-image-shrinker">
+/* ===== TrackPort: shrink every package picture so it always uploads safely =====
+   Target: data URL <= 400,000 characters (~300 KB binary). Far below the 1 MB limit, and small
+   enough that the two copies kept in a record (imageUrl + productImage) still fit in one Firestore document. */
+(function(){
+  var MAX_CHARS = 400000;
+  var STEPS = [[1600,.85],[1600,.75],[1280,.75],[1280,.65],[1024,.65],[900,.6],[720,.55],[600,.5],[480,.45],[360,.4]];
+  function loadImg(src){
+    return new Promise(function(res,rej){
+      var im = new Image();
+      im.onload = function(){ res(im); };
+      im.onerror = function(){ rej(new Error('Invalid image')); };
+      im.src = src;
+    });
+  }
+  window.tpShrinkImage = async function(input, opts){
+    var max = (opts && opts.maxChars) || MAX_CHARS;
+    var url = '', revoke = '';
+    if(typeof input === 'string'){
+      if(input.length <= max && /^data:image\/(jpeg|jpg|png|webp);/i.test(input)) return input; /* already small */
+      url = input;
+    } else if(input){
+      url = revoke = URL.createObjectURL(input);
+    } else return '';
+    try{
+      var img = await loadImg(url);
+      var best = '';
+      for(var i=0;i<STEPS.length;i++){
+        var side = STEPS[i][0], q = STEPS[i][1];
+        var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if(w > side || h > side){ if(w >= h){ h = Math.round(h*side/w); w = side; } else { w = Math.round(w*side/h); h = side; } }
+        var c = document.createElement('canvas'); c.width = w; c.height = h;
+        var ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h); /* flatten transparency for JPEG */
+        ctx.drawImage(img,0,0,w,h);
+        best = c.toDataURL('image/jpeg', q);
+        if(best.length <= max) return best;
+      }
+      return best;
+    } finally { if(revoke) URL.revokeObjectURL(revoke); }
+  };
+  /* Shrink the embedded pictures of a record (copy; never mutates app state) when it is too large for Firestore */
+  window.tpShrinkRecordImages = async function(record){
+    try{
+      if(!record || JSON.stringify(record).length <= 700000) return record;
+      var copy = Object.assign({}, record), cache = {};
+      var keys = ['productImage','imageUrl','image','photo'];
+      for(var i=0;i<keys.length;i++){
+        var v = copy[keys[i]];
+        if(typeof v === 'string' && /^data:image\//i.test(v) && v.length > MAX_CHARS){
+          if(!cache[v]) cache[v] = await window.tpShrinkImage(v);
+          copy[keys[i]] = cache[v];
+        }
+      }
+      if(JSON.stringify(copy).length > 900000){ keys.forEach(function(k){ if(/^data:/i.test(copy[k]||'')) copy[k] = ''; }); }
+      return copy;
+    }catch(e){ return record; }
+  };
+})();
+</script>
 <script>
 /* ===== TrackPort product image upload (shipment booking) ===== */
 (function(){
@@ -20257,11 +20345,11 @@ ${licenseCardMarkup(typeKey, cardData)}
       if(typeof toast==='function') toast('Please choose an image file');
       return;
     }
-    if(file.size > 8 * 1024 * 1024){
-      if(typeof toast==='function') toast('Image is too large (max 8MB)');
+    if(file.size > 30 * 1024 * 1024){
+      if(typeof toast==='function') toast('Image is too large (max 30MB)');
       return;
     }
-    compressImageFile(file).then(function(dataUrl){
+    tpShrinkImage(file).then(function(dataUrl){
       window.sbState = window.sbState || {};
       window.sbState.productImage = dataUrl;
       if(window.sbState.package){
@@ -20269,7 +20357,7 @@ ${licenseCardMarkup(typeKey, cardData)}
         window.sbState.package.productImage = dataUrl;
       }
       renderSbProductImagePreview(dataUrl);
-      if(typeof toast==='function') toast('Product picture added');
+      if(typeof toast==='function') toast('Product picture added ('+Math.max(1,Math.round(dataUrl.length*0.75/1024))+' KB)');
       // Upload in the background when Firebase Auth/Storage is available. createShipment retries before email is sent.
       tpUploadShipmentProductImage(dataUrl, 'pending-'+Date.now()).then(function(remoteUrl){
         if(remoteUrl && !/^data:/i.test(remoteUrl)){
@@ -21185,7 +21273,8 @@ html.tp-nocredit img,html.tp-nocredit canvas,html.tp-nocredit svg{-webkit-user-d
     if(!active||!document.body)return;
     ensureShield().classList.add('on');
     clearTimeout(hideTimer);
-    if(ms)hideTimer=setTimeout(function(){hide();},ms);
+    hideTimer=null;
+    if(ms)hideTimer=setTimeout(function(){hideTimer=null;hide();},ms);
   }
   function hide(force){
     if(!shield)return;
@@ -21231,6 +21320,12 @@ html.tp-nocredit img,html.tp-nocredit canvas,html.tp-nocredit svg{-webkit-user-d
     if(!active)return;
     if(document.visibilityState==='hidden')show(0);else hide(true);
   });
+  // Extra phone triggers: 3-finger screenshot gesture, focus loss polling, page hide, resize (shade / overview).
+  document.addEventListener('touchstart',function(e){if(active&&e.touches&&e.touches.length>=3)show(2500);},{capture:true,passive:true});
+  document.addEventListener('touchmove',function(e){if(active&&e.touches&&e.touches.length>=3)show(2500);},{capture:true,passive:true});
+  window.addEventListener('pagehide',function(){if(active)show(0);});
+  window.addEventListener('resize',function(){if(active&&document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;});
+  setInterval(function(){if(!active)return;try{if(!document.hasFocus()&&document.visibilityState!=='hidden')show(0);else if(document.hasFocus()&&shield&&shield.classList.contains('on')&&!hideTimer)hide(true);}catch(_){}},150);
   // Block save-image / copy / drag / long-press menus (inputs stay usable).
   function editable(t){return t&&t.closest&&t.closest('input,textarea,[contenteditable="true"]');}
   ['contextmenu','dragstart','copy','cut'].forEach(function(ev){
@@ -21305,6 +21400,141 @@ html.tp-nocredit img,html.tp-nocredit canvas,html.tp-nocredit svg{-webkit-user-d
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
 })();
 </script>
+<style id="tp-header-fit-css">
+/* Header always fits the screen: brand shrinks/truncates, actions never get pushed off-screen. */
+html body .topbar.tp-ref-header{box-sizing:border-box!important;max-width:100vw!important;overflow:hidden!important}
+html body .tp-ref-header .topbar-nav{box-sizing:border-box!important;display:flex!important;flex-wrap:nowrap!important;align-items:center!important;width:100%!important;max-width:100%!important;min-width:0!important}
+html body .tp-ref-header .tp-ref-brand{flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;display:flex!important;align-items:center!important}
+html body .tp-ref-header .tp-ref-brand>span{min-width:0!important;overflow:hidden!important}
+html body .tp-ref-header .tp-ref-brand b{display:block!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+html body .tp-ref-header .tp-ref-brand svg{flex:0 0 auto!important}
+html body .tp-ref-header .tp-ref-actions{flex:0 0 auto!important;min-width:0!important;max-width:100%!important;flex-wrap:nowrap!important}
+html body .tp-ref-header .tp-ref-actions>*{flex:0 0 auto!important}
+html body .tp-ref-header .tp-credit-chip{max-width:34vw;overflow:hidden}
+html body .tp-ref-header .tp-credit-chip .tp-cc-text{overflow:hidden;text-overflow:ellipsis}
+@media(max-width:650px){
+  html body .tp-ref-header .topbar-nav{padding:0 12px!important;gap:8px!important}
+  html body .tp-ref-header .tp-ref-brand{gap:6px!important}
+  html body .tp-ref-header .tp-ref-brand b{font-size:clamp(17px,5.4vw,23px)!important}
+  html body .tp-ref-header .tp-ref-brand svg{width:clamp(22px,7vw,28px)!important;height:clamp(22px,7vw,28px)!important}
+  html body .tp-ref-header .tp-ref-actions{gap:5px!important}
+  html body .tp-ref-header .tp-credit-chip{height:34px!important;padding:0 9px!important;gap:5px!important;font-size:9px!important;letter-spacing:.04em!important}
+  html body .tp-ref-header .tp-ref-icon{width:34px!important;height:34px!important}
+  html body .tp-ref-header .tp-ref-menu{width:34px!important;height:34px!important}
+}
+@media(max-width:400px){
+  html body .tp-ref-header .tp-ref-brand b{font-size:clamp(15px,5vw,19px)!important}
+  html body .tp-ref-header .tp-credit-chip{padding:0 7px!important;font-size:8.5px!important}
+  html body .tp-ref-header .tp-credit-chip .tp-cc-gem{transform:rotate(45deg) scale(.8)}
+}
+@media(max-width:340px){
+  html body .tp-ref-header .tp-ref-brand>span{display:none!important}
+}
+</style>
+<style id="tp-profile-css">
+.tp-prof-btn{flex:0 0 auto;width:52px;height:52px;border-radius:50%;border:2px solid var(--accent,#d4a900);background:color-mix(in srgb,var(--accent,#d4a900) 16%,transparent);color:inherit;font:800 18px Arial,sans-serif;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.tp-prof-btn[aria-expanded="true"]{background:var(--accent,#d4a900);color:#111}
+.tp-prof{display:none;margin:18px 0 6px;padding:20px}
+.tp-prof.open{display:block}
+.tp-prof-top{display:flex;align-items:center;gap:14px}
+.tp-prof-av{flex:0 0 auto;width:60px;height:60px;border-radius:50%;background:var(--accent,#d4a900);color:#111;display:flex;align-items:center;justify-content:center;font:800 22px Arial,sans-serif}
+.tp-prof-top strong{display:block;font-size:18px;overflow-wrap:anywhere}.tp-prof-top span{display:block;font-size:13px;opacity:.7;overflow-wrap:anywhere}
+.tp-prof h4{margin:20px 0 10px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+.tp-prof-form{display:grid;gap:10px}
+.tp-prof-form label{display:grid;gap:4px;font-size:12px;font-weight:700;opacity:.9}
+.tp-prof-form input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.4));background:transparent;color:inherit;font:inherit;font-size:15px}
+.tp-prof-form input[readonly]{opacity:.6}
+.tp-prof-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.tp-prof-row .btn{flex:1 1 140px}
+.tp-prof-sub{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-radius:14px;border:1px solid var(--line,rgba(128,128,128,.4));margin-bottom:10px}
+.tp-prof-sub b{font-size:22px}.tp-prof-sub small{display:block;opacity:.7;font-size:12px}
+.tp-prof-req{font-size:13px;opacity:.85;margin:4px 0}
+</style>
+<script id="tp-profile">
+/* Profile logo + profile section on the More tools page: manage account, edit account, subscription. */
+(function(){
+  'use strict';
+  function E(v){try{return typeof esc==='function'?esc(v):String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}catch(_){return '';}}
+  function initials(u){var n=String((u&&(u.name||u.email))||'?').trim();var p=n.split(/\s+/).filter(Boolean);return ((p[0]||'?')[0]+(p.length>1?p[p.length-1][0]:'')).toUpperCase();}
+  function creds(){try{return window.tpCredits||{};}catch(_){return {};}}
+  function subHtml(){
+    var c=creds(),bal=c.loaded?c.balance+' credits':(c.error?'Unavailable':'Loading…');
+    var reqs=(c.requests||[]).slice(0,3).map(function(x){
+      var st=x.status==='approved'?'Approved':x.status==='rejected'?'Not approved':'Waiting for approval';
+      return '<div class="tp-prof-req">'+E(x.planName)+' · '+E(st)+'</div>';}).join('');
+    return '<div class="tp-prof-sub"><div><small>Available balance</small><b id="tp-prof-bal">'+E(bal)+'</b></div><button type="button" class="btn btn-accent" onclick="nav(\'subscription\')">Buy credits</button></div>'+(reqs?'<div>'+reqs+'</div>':'');
+  }
+  function panel(){
+    var u=(typeof state!=='undefined'&&state.user)||null;
+    if(!u)return '<div class="card tp-prof" id="tp-prof"><p class="muted">Sign in to manage your account.</p><button class="btn btn-accent" onclick="nav(\'login\')">Sign in</button></div>';
+    return '<div class="card tp-prof'+(window.__tpProfOpen?' open':'')+'" id="tp-prof">'
+      +'<div class="tp-prof-top"><div class="tp-prof-av">'+E(initials(u))+'</div><div><strong>'+E(u.name||'Your account')+'</strong><span>'+E(u.email||'')+'</span>'+(u.phone?'<span>'+E(u.phone)+'</span>':'')+'</div></div>'
+      +'<h4>Subscription</h4>'+subHtml()
+      +'<h4>Edit account</h4><div class="tp-prof-form">'
+      +'<label>Full name<input id="tp-pf-name" type="text" value="'+E(u.name||'')+'" autocomplete="name"></label>'
+      +'<label>Phone<input id="tp-pf-phone" type="tel" value="'+E(u.phone||'')+'" autocomplete="tel"></label>'
+      +'<label>Email<input id="tp-pf-email" type="email" value="'+E(u.email||'')+'" readonly></label>'
+      +'<div class="tp-prof-row"><button type="button" class="btn btn-accent" onclick="tpProfileSave()">Save changes</button></div></div>'
+      +'<h4>Manage account</h4><div class="tp-prof-row">'
+      +'<button type="button" class="btn btn-outline" onclick="tpProfileReset()">Reset password</button>'
+      +'<button type="button" class="btn btn-outline" onclick="nav(\'settings\')">Settings</button>'
+      +'<button type="button" class="btn btn-outline" onclick="signOutUser()">Sign out</button></div>'
+      +'</div>';
+  }
+  window.tpProfileToggle=function(){
+    var p=document.getElementById('tp-prof'),b=document.getElementById('tp-prof-btn');if(!p)return;
+    window.__tpProfOpen=!p.classList.contains('open');
+    p.classList.toggle('open',window.__tpProfOpen);if(b)b.setAttribute('aria-expanded',String(!!window.__tpProfOpen));
+    if(window.__tpProfOpen)try{p.scrollIntoView({behavior:'smooth',block:'start'});}catch(_){}
+  };
+  window.tpProfileSave=async function(){
+    var u=state.user;if(!u)return;
+    var name=(document.getElementById('tp-pf-name').value||'').trim();
+    var phone=(document.getElementById('tp-pf-phone').value||'').trim();
+    if(!name)return toast('Please enter your name');
+    u.name=name;u.phone=phone;
+    try{save();}catch(_){}
+    try{var au=firebaseAuth&&firebaseAuth.currentUser;if(au)await au.updateProfile({displayName:name});}catch(e){console.warn('[profile] auth',e);}
+    try{if(typeof findLocalUserByEmail==='function'&&findLocalUserByEmail(u.email))upsertLocalUser({uid:u.uid,email:u.email,name:name,phone:phone});}catch(_){}
+    try{if(typeof cloud!=='undefined'&&cloud.isReady)await cloud.saveUserProfile(u);}catch(e){console.warn('[profile] cloud',e);}
+    toast('Account updated');
+    try{window.__tpProfOpen=true;render();}catch(_){}
+  };
+  window.tpProfileReset=async function(){
+    var u=state.user;if(!u||!u.email)return;
+    try{
+      if(typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.sendPasswordResetEmail){
+        await firebaseAuth.sendPasswordResetEmail(u.email);toast('Password reset email sent to '+u.email);
+      }else toast('Password reset is unavailable right now.');
+    }catch(e){console.warn('[profile] reset',e);toast('Could not send reset email. Try again later.');}
+  };
+  function wrap(){
+    if(typeof window.tools!=='function'||window.tools.__tpProf)return;
+    var orig=window.tools;
+    var f=function(){
+      var html=orig.apply(this,arguments);
+      try{
+        var btn='<button type="button" class="tp-prof-btn" id="tp-prof-btn" aria-label="Profile" aria-expanded="'+(!!window.__tpProfOpen)+'" onclick="tpProfileToggle()">'+E(initials(state&&state.user))+'</button>';
+        html=html.replace('</p></div></div><div class="grid three">','</p></div>'+btn+'</div>'+panel()+'<div class="grid three">');
+      }catch(e){console.warn('[profile]',e);}
+      return html;
+    };
+    f.__tpProf=true;window.tools=f;
+    try{tools=f;}catch(_){}
+  }
+  wrap();
+  // keep the balance live while the panel is open
+  setInterval(function(){var el=document.getElementById('tp-prof-bal');if(el){var c=creds();el.textContent=c.loaded?c.balance+' credits':(c.error?'Unavailable':'Loading…');}},1000);
+})();
+</script>
+<style id="tp-no-subtitle-anim-css">
+/* Only the page transition animates; titles and subtitles inside app pages stay still. */
+html body .screen .header .eyebrow,html body .screen .header .page-title,html body .screen .header .sub,
+html body .screen .header>div>*,html body .screen .page-head h1,html body .screen .page-head p,
+html body .screen .eyebrow,html body .screen .page-title,html body .screen .sub,
+html body .screen [data-typewriter]{animation:none!important;opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+html body .screen [data-typewriter].typing::after{display:none!important;animation:none!important}
+</style>
 <script id="tp-credits-admin">
 /* ===== Admin: approve bank-transfer payments and add credits by hand (inside the Admin dashboard) ===== */
 (function(){
