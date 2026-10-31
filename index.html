@@ -23623,6 +23623,13 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 .tpa-in:focus{border-color:var(--tpa-a);background:var(--surface,#fff);box-shadow:0 0 0 4px color-mix(in srgb,var(--tpa-a) 14%,transparent)}
 .tpa-send{flex:none;width:44px;height:44px;border:0;border-radius:50%;color:var(--tpa-on);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(145deg,var(--tpa-a2),var(--tpa-a));box-shadow:0 8px 20px color-mix(in srgb,var(--tpa-a) 38%,transparent);transition:transform .3s var(--tpa-ease),opacity .25s}
 .tpa-hbar{margin-left:auto;display:flex;align-items:center;gap:6px}
+.tpa-agent-toggle{height:34px;padding:0 11px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.09);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:5px;font:600 12px/1 inherit;font-family:inherit;white-space:nowrap;cursor:pointer;transition:background .2s,transform .2s}
+.tpa-agent-toggle .tpa-i{width:14px;height:14px}
+.tpa-agent-toggle:active{transform:scale(.94)}
+.tpa-agent-toggle.active{background:#e5484d;border-color:#e5484d;box-shadow:0 0 0 4px rgba(229,72,77,.16)}
+.tpa-agent-toggle.active .tpa-i{animation:tpaMic 1.1s ease-in-out infinite}
+@media(max-width:390px){.tpa-agent-toggle{width:34px;padding:0}.tpa-agent-toggle span{display:none}.tpa-hbar{gap:4px}}
+
 .tpa-hbar .tpa-x{margin-left:0}
 .tpa-hb{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .25s,transform .25s var(--tpa-ease)}
 .tpa-hb:hover{background:rgba(255,255,255,.2)}.tpa-hb:active{transform:scale(.92)}
@@ -23645,10 +23652,14 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 .tpa-foot{padding:0 14px 12px;text-align:center;font-size:10.5px;letter-spacing:.01em;color:var(--muted,#737a74);background:var(--surface,#fff)}
 
 @keyframes tpaSpin{to{transform:rotate(360deg)}}
-.tpa-m.tpa-card{white-space:normal;width:min(320px,86%);padding:12px 14px}
+.tpa-m.tpa-card{white-space:normal;width:min(340px,92%);padding:12px 14px}
 .tpa-card h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#737a74);font-weight:700}
 .tpa-brow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line,#dde2dc);font-size:13px}
 .tpa-brow:first-of-type{border-top:0}
+.tpa-id-img{display:block;width:100%;height:auto;margin-top:10px;border-radius:12px;border:1px solid var(--line,#dde2dc)}.tpa-id-note{margin-top:8px;font-size:11px;line-height:1.4;color:var(--muted,#737a74)}
+.tpa-rc-wrap{margin-top:10px;border:1px solid var(--line,#dde2dc);border-radius:12px;overflow:hidden;background:#fff;position:relative}
+.tpa-rc-inner{transform-origin:top left;width:max-content;max-width:none;pointer-events:none}
+
 .tpa-brow span{flex:none;width:96px;color:var(--muted,#737a74);font-size:12px}
 .tpa-brow b{flex:1;min-width:0;font-weight:700;word-break:break-all}
 .tpa-brow button{flex:none;border:1px solid var(--line,#dde2dc);background:var(--surface2,#eef1ec);color:var(--ink,#101311);font:600 11.5px/1 inherit;font-family:inherit;padding:7px 10px;border-radius:999px;cursor:pointer}
@@ -23691,16 +23702,17 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   </defs></svg>
 
   <div class="tpa-pop" id="tpa-pop" role="status" aria-live="polite">
-    <div class="tpa-who" id="tpa-who"><div class="tpa-av"><svg class="tpa-i"><use href="#tpa-chat"/></svg></div><span class="tpa-name">NBATOOLS AI</span><time>now</time></div>
-    <div class="tpa-pb" id="tpa-pb1">Hey there! I'm your NBATOOLS AI assistant. What can I help you create today? Shipments, flights, receipts, credits… just say the word.</div>
+    <div class="tpa-who" id="tpa-who"><div class="tpa-av"><svg class="tpa-i"><use href="#tpa-chat"/></svg></div><span class="tpa-name">Zara</span><time>now</time></div>
+    <div class="tpa-pb" id="tpa-pb1">Hi there! Zara is here. I can help you with anything. Just open the chat icon so we can get started!</div>
   </div>
 
-  <div class="tpa-panel" id="tpa-panel" role="dialog" aria-label="NBATOOLS AI assistant">
+  <div class="tpa-panel" id="tpa-panel" role="dialog" aria-label="Zara, NBATOOLS AI assistant">
     <div class="tpa-head">
       <div class="tpa-av"><svg class="tpa-i"><use href="#tpa-chat"/></svg></div>
-      <div><div class="tpa-name">NBATOOLS AI</div><div class="tpa-status"><i></i>Online · Happy to chat</div></div>
+      <div><div class="tpa-name">Zara</div><div class="tpa-status"><i></i>Online · Happy to chat</div></div>
       <div class="tpa-hbar">
         <button class="tpa-endbtn" id="tpa-end" type="button" aria-label="End conversation">End chat</button>
+        <button class="tpa-agent-toggle" id="tpa-agent-toggle" type="button" aria-pressed="false" aria-label="Start hands-free voice agent"><svg class="tpa-i"><use href="#tpa-mic"/></svg><span>Talk</span></button>
         <button class="tpa-hb" id="tpa-voice-toggle" aria-label="Turn voice replies off" aria-pressed="true" type="button"><svg class="tpa-i"><use href="#tpa-spk"/></svg></button>
         <button class="tpa-x" id="tpa-x" aria-label="Close chat" type="button"><svg class="tpa-i"><use href="#tpa-close"/></svg></button>
       </div>
@@ -23708,13 +23720,13 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     <div class="tpa-log" id="tpa-log"></div>
     <form class="tpa-form" id="tpa-form" autocomplete="off">
       <button class="tpa-mic" id="tpa-mic" aria-label="Speak your message" type="button"><svg class="tpa-i"><use href="#tpa-mic"/></svg></button>
-      <input class="tpa-in" id="tpa-in" type="text" maxlength="1000" placeholder="Message NBATOOLS AI…" aria-label="Message">
+      <input class="tpa-in" id="tpa-in" type="text" maxlength="1000" placeholder="Message Zara…" aria-label="Message">
       <button class="tpa-send" id="tpa-send" type="submit" aria-label="Send"><svg class="tpa-i"><use href="#tpa-arrow"/></svg></button>
     </form>
     <div class="tpa-foot">AI can make mistakes. Verify important details.</div>
   </div>
 
-  <button class="tpa-fab" id="tpa-fab" aria-label="Open NBATOOLS AI assistant" type="button">
+  <button class="tpa-fab" id="tpa-fab" aria-label="Open Zara, NBATOOLS AI assistant" type="button">
     <span class="tpa-core"><svg class="tpa-i"><use href="#tpa-chat"/></svg></span><span class="tpa-live"></span><span class="tpa-badge" id="tpa-badge" aria-hidden="true">1</span>
   </button>
 </div>
@@ -23731,13 +23743,15 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 
   var $=function(id){return document.getElementById(id)};
   var fab=$('tpa-fab'),panel=$('tpa-panel'),pop=$('tpa-pop'),log=$('tpa-log'),form=$('tpa-form'),input=$('tpa-in'),sendBtn=$('tpa-send');
-  var micBtn=$('tpa-mic'),voiceToggle=$('tpa-voice-toggle');
+  var micBtn=$('tpa-mic'),voiceToggle=$('tpa-voice-toggle'),agentToggle=$('tpa-agent-toggle');
   var msgs=[],busy=false,greeted=false,signedIn=false,visible=false,popTimer=null,welcomedUid=null;
   var voiceOn=true, recognizing=false, recognition=null, ended=false;
+  /* Hands-free mode is opt-in: the microphone is never opened until the user taps Talk. */
+  var voiceAgentOn=false, voiceAgentProcessing=false, voiceAgentRestartTimer=null;
 
   /* ===================== APP KNOWLEDGE ===================== */
   var APP = {
-    name: 'TrackPort',
+    name: 'Zara, the NBATOOLS AI assistant',
     what: 'Transport & logistics workspace: trackable shipments, flight tickets, business receipts, and design-only ID card mockups. Uses credits for paid creations.',
     costs: { shipment:10, flight:10, idCreation:6, receipt:5, idStudio:5 },
     plans: [
@@ -23858,8 +23872,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       {key:'payGrade', q:'**Pay grade?** (e.g. O-3, E-5 — or skip)', optional:true},
       {key:'unitName', q:'**Unit / department?** (or skip)', optional:true},
       {key:'dutyStatus', q:'**Duty status?** (Active, Reserve… — or skip)', optional:true},
-      {key:'issueDate', q:'**Issue date?** (or skip)', optional:true},
-      {key:'expDate', q:'**Expiration date?** (or skip)', optional:true},
+      {key:'issueDate', q:'**Issue date?** (YYYY-MM-DD, or skip)', optional:true},
+      {key:'expDate', q:'**Expiration date?** (YYYY-MM-DD, or skip)', optional:true},
       {key:'photo', q:'Portrait photo is uploaded on the form. Say **ok** when ready.', optional:true}
     ],
     id_ssn: [
@@ -23877,8 +23891,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       {key:'sex', q:'**Sex** (M / F — or skip)', optional:true},
       {key:'nationality', q:'**Nationality / citizenship** text? (or skip)', optional:true},
       {key:'docNumber', q:'**Document / card number** mock value? (or skip)', optional:true},
-      {key:'issueDate', q:'**Issue date?** (or skip)', optional:true},
-      {key:'expDate', q:'**Expiry date?** (or skip)', optional:true},
+      {key:'issueDate', q:'**Issue date?** (YYYY-MM-DD, or skip)', optional:true},
+      {key:'expDate', q:'**Expiry date?** (YYYY-MM-DD, or skip)', optional:true},
       {key:'photo', q:'Photo is uploaded on the form. Say **ok** to open it.', optional:true}
     ]
   };
@@ -23942,13 +23956,18 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     })();
   }
   var pb1=$('tpa-pb1'),who=$('tpa-who'),popTimer2=null,popTimer3=null;
-  var POP_MSGS=["Hey there, I'm TrackPort AI! I can help you set up shipments, flights, receipts and more. Just tell me what you'd like to create (or tap the mic), and I'll take care of the rest."];
+  function dashboardUserName(){
+    var name='';
+    try{ if(typeof state!=='undefined'&&state&&state.user) name=state.user.name||state.user.displayName||''; }catch(e){}
+    if(!name){ try{ var a=getAuth(),u=a&&a.currentUser; name=u&&(u.displayName||(u.email||'').split('@')[0])||''; }catch(e){} }
+    return firstName(name)||'there';
+  }
   function resetBubbles(){ [who,pb1].forEach(function(n){ n.classList.remove('in'); }); }
-  function seedChat(){ if(greeted) return; greeted=true; POP_MSGS.forEach(function(m){ addMsg('assistant',m); }); showChips(); }
   function showPop(){
     clearTimeout(popTimer); clearTimeout(popTimer2); clearTimeout(popTimer3);
     pop.classList.remove('show','enter'); resetBubbles(); void pop.offsetWidth;
-    seedChat(); pop.classList.add('show');
+    pb1.textContent="Hi "+dashboardUserName()+", Zara is here! I can help you with anything. Just open the chat icon so we can get started!";
+    pop.classList.add('show');
     setTimeout(function(){ who.classList.add('in'); pb1.classList.add('in'); },60);
     popTimer=setTimeout(function(){ hidePop(); },POP_MS);
   }
@@ -24062,7 +24081,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     hidePop(true); fab.classList.remove('unread'); panel.classList.add('open'); fab.classList.add('away');
     if(!greeted){
       greeted=true;
-      addMsg('assistant',"Hey, I'm **TrackPort AI**, nice to meet you! Here's what I can help with:\n• Package **shipments**\n• **Flight** tickets\n• **Receipts**\n• **ID mockups**\n• **Credits** (you can even pay right here in the chat)\n\nJust type or talk to me. I'll ask for what I need, then open the form all filled in. So, what would you like to do?");
+      addMsg('assistant',"Heyyy! I'm **Zara**, your NBATOOLS AI assistant, and I'm so happy you're here! I can help you create shipments, arrange flight records, prepare receipts, make clearly labelled sample ID mockups, buy credits, and find your way around the app. Just type or talk to me. I'll guide you step by step, gather the details, and open the right form when you're ready. What shall we get started with?");
       showChips();
     }
     if(window.innerWidth>700) setTimeout(function(){ input.focus({preventScroll:true}); },400);
@@ -24367,13 +24386,42 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function speakQ(text){ if(!voiceOn) return; speechQ.push(text); if(!speechBusy) nextSpeech(); }
   function nextSpeech(){
     clearTimeout(speechWD);
-    if(!speechQ.length){ speechBusy=false; return; }
+    if(!speechQ.length){
+      speechBusy=false;
+      resumeVoiceAgent();
+      return;
+    }
     speechBusy=true; var t=speechQ.shift();
     speechInternal=true; try{ speak(t); }catch(e){} speechInternal=false;
     speechWD=setTimeout(nextSpeech, 12000+String(t).length*130);   /* safety net if a clip never reports it finished */
   }
   function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,150); }
+  function setAgentUI(){
+    if(!agentToggle) return;
+    agentToggle.classList.toggle('active',voiceAgentOn);
+    agentToggle.setAttribute('aria-pressed',String(voiceAgentOn));
+    agentToggle.setAttribute('aria-label',voiceAgentOn?'Stop hands-free voice agent':'Start hands-free voice agent');
+    agentToggle.title=voiceAgentOn?'Voice agent is active':'Start hands-free voice agent';
+    var label=agentToggle.querySelector('span');
+    if(label) label.textContent=voiceAgentOn?'Live':'Talk';
+  }
+  function scheduleVoiceAgentRestart(delay){
+    clearTimeout(voiceAgentRestartTimer);
+    if(!voiceAgentOn) return;
+    voiceAgentRestartTimer=setTimeout(function(){
+      if(!voiceAgentOn || !panel.classList.contains('open') || recognizing ||
+         voiceAgentProcessing || busy || speechBusy || (synth && synth.speaking)) return;
+      if(!recognition) recognition=initRecognition();
+      if(recognition){ try{ recognition.start(); }catch(e){} }
+    },delay==null?650:delay);
+  }
+  function resumeVoiceAgent(){
+    if(voiceAgentOn && !voiceAgentProcessing && !busy) scheduleVoiceAgentRestart(500);
+  }
   function stopVoice(){
+    voiceAgentOn=false;
+    clearTimeout(voiceAgentRestartTimer);
+    setAgentUI();
     cancelSpeech();
     if(recognition && recognizing){ try{ recognition.stop(); }catch(e){} }
     recognizing=false;
@@ -24389,14 +24437,34 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   {
     voiceName=lsGet(VKEY_NAME);
+    /* Melo is the default admin-selected voice for new users / unset preferences. */
+    if(!voiceName){ voiceName='gemini:Melo'; lsSet(VKEY_NAME,voiceName); }
     if(lsGet(VKEY_ON)==='0') voiceOn=false;
     loadVoices();
     if(synth){ if(synth.addEventListener) synth.addEventListener('voiceschanged',loadVoices); else synth.onvoiceschanged=loadVoices; }
     setTimeout(loadVoices,600); setTimeout(loadVoices,2000);
     setVoiceUI();
+    setAgentUI();
     if(voiceToggle) voiceToggle.addEventListener('click',function(){
       voiceOn=!voiceOn; lsSet(VKEY_ON,voiceOn?'1':'0'); setVoiceUI();
       if(!voiceOn) cancelSpeech();
+      else if(voiceAgentOn) resumeVoiceAgent();
+    });
+    if(agentToggle) agentToggle.addEventListener('click',function(){
+      if(voiceAgentOn){ stopVoice(); return; }
+      if(!window.SpeechRecognition && !window.webkitSpeechRecognition){
+        addMsg('assistant',"Hands-free voice input isn't supported by this browser. Please use Chrome or Edge, or type your message instead.");
+        return;
+      }
+      voiceAgentOn=true;
+      voiceOn=true;
+      lsSet(VKEY_ON,'1');
+      setVoiceUI();
+      setAgentUI();
+      if(!recognition) recognition=initRecognition();
+      cancelSpeech();
+      scheduleVoiceAgentRestart(250);
+      addMsg('assistant',"I'm listening. You can speak naturally, and I'll reply out loud. Tap Live whenever you want to pause the voice agent.");
     });
     window.addEventListener('storage', function(e){
       if(e && e.key===VKEY_NAME){ voiceName=e.newValue||''; loadVoices(); }
@@ -24449,13 +24517,35 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(!SR) return null;
     var r=new SR();
     r.lang='en-US'; r.interimResults=false; r.maxAlternatives=1; r.continuous=false;
-    r.onstart=function(){ recognizing=true; if(micBtn) micBtn.classList.add('listening'); };
-    r.onend=function(){ recognizing=false; if(micBtn) micBtn.classList.remove('listening'); };
-    r.onerror=function(){ recognizing=false; if(micBtn) micBtn.classList.remove('listening'); };
+    r.onstart=function(){
+      recognizing=true;
+      if(micBtn) micBtn.classList.add('listening');
+      if(agentToggle && voiceAgentOn) agentToggle.classList.add('active');
+    };
+    r.onend=function(){
+      recognizing=false;
+      if(micBtn) micBtn.classList.remove('listening');
+      if(voiceAgentOn) scheduleVoiceAgentRestart(700);
+    };
+    r.onerror=function(ev){
+      recognizing=false;
+      if(micBtn) micBtn.classList.remove('listening');
+      if(ev && (ev.error==='not-allowed' || ev.error==='service-not-allowed')){
+        voiceAgentOn=false; setAgentUI();
+        addMsg('assistant',"I can't access the microphone yet. Please allow microphone permission in your browser settings, then tap Talk again.");
+      } else if(voiceAgentOn) scheduleVoiceAgentRestart(1200);
+    };
     r.onresult=function(ev){
       var t='';
       try{ t=ev.results[0][0].transcript||''; }catch(e){}
-      if(t.trim()){ input.value=t.trim(); sendText(t.trim()); }
+      if(t.trim()){
+        input.value=t.trim();
+        voiceAgentProcessing=true;
+        Promise.resolve(sendText(t.trim())).finally(function(){
+          voiceAgentProcessing=false;
+          resumeVoiceAgent();
+        });
+      }
     };
     return r;
   }
@@ -24465,10 +24555,13 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         addMsg('assistant',"Voice input isn't supported in this browser, but no worries, you can just type to me. Chrome or Edge will work with the mic too.");
         return;
       }
-      if(recognizing){ stopVoice(); return; }
-      cancelSpeech();
+      if(recognizing){
+        if(voiceAgentOn) stopVoice();
+        else { try{ recognition.stop(); }catch(e){} }
+        return;
+      }
       if(!recognition) recognition=initRecognition();
-      if(recognition){ try{ recognition.start(); }catch(e){ addMsg('assistant',"Hmm, I couldn't reach your mic. Could you check that the browser is allowed to use it?"); } }
+      if(recognition){ cancelSpeech(); try{ recognition.start(); }catch(e){ addMsg('assistant',"Hmm, I couldn't reach your mic. Could you check that the browser is allowed to use it?"); } }
     });
   }
 
@@ -24639,13 +24732,13 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(task==='shipment'){
       var m=String(seedText||'').match(/from\s+(.+?)\s+to\s+(.+)/i);
       if(m){ session.data.origin=m[1].trim(); session.data.dest=m[2].trim(); }
-      addMsg('assistant',"Ooh, a shipment, let's do this! I'll ask a few easy questions, one at a time, and then I'll open the booking form with everything already filled in. You can still tweak the rates and details before you confirm, so no pressure at all.");
+      addMsg('assistant',"Ooh, a shipment, let's do this! I'll ask a few easy questions, one at a time, and then I'll create the shipment for you right here in the chat and show you the tracking number. No forms to open, no pressure at all.");
     } else if(task==='flight'){
       var m2=String(seedText||'').match(/from\s+(.+?)\s+to\s+(.+)/i);
       if(m2){ session.data.from=m2[1].trim(); session.data.to=m2[2].trim(); }
-      addMsg('assistant',"Ooh, somebody's going on a trip, I love it! I'll ask a few easy questions, and then I'll open the flight form all filled in for you.");
+      addMsg('assistant',"Ooh, somebody's going on a trip, I love it! I'll ask a few easy questions, and then I'll book the ticket for you right here in the chat and show you the result.");
     } else if(task==='receipt'){
-      addMsg('assistant',"Absolutely, let's make a lovely receipt! I'll ask a few easy things about the business, the customer and what was bought, and then I'll open the editor ready to go.");
+      addMsg('assistant',"Absolutely, let's make a lovely receipt! I'll ask a few easy things about the business, the customer and what was bought, and then I'll generate the receipt for you right here in the chat.");
     } else if(task==='credits'){
       addMsg('assistant',"TrackPort credits:\n• Starter 50 · ₦2,500\n• Plus 120 · ₦5,500\n• Pro 300 · ₦12,000\n• Business 800 · ₦30,000\n\nCreations cost about 5–10 credits each. Pick a plan and I'll open the **payment page** with bank details.");
     }
@@ -24662,6 +24755,10 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     var n=session.step+1, total=steps.length;
     if(session.task==='id'){
       session.ack='';
+      if(s.key==='photo' && idInChat()){
+        addMsg('assistant','Almost done! Add a **portrait photo** for the card, or skip to use a placeholder.  ('+n+' of '+total+')',null,'ask');
+        photoPick(); return;
+      }
       addMsg('assistant', s.q+(total>1?'  ('+n+' of '+total+')':''), null, 'ask');
       return;
     }
@@ -24682,6 +24779,15 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     var s=steps[session.step];
     if(!s){ session.mode='confirm'; summarizeAndConfirm(); return; }
     var val=String(text||'').trim();
+    var detour=smallTalkReply(val);
+    if(detour){
+      addMsg('assistant',detour+(activeTaskNudge()?'\\n\\n'+activeTaskNudge():''));
+      return;
+    }
+    if(/^(wait|hold on|one second|one sec|brb|pause)\b/i.test(val)){
+      addMsg('assistant',"Of course, take your time! I'll be right here. 😊"+(activeTaskNudge()?'\\n\\n'+activeTaskNudge():''));
+      return;
+    }
 
     if(isSkip(val)){
       if(!s.optional){ addMsg('assistant',"Sorry, I do need this one before we can move on. "+s.q); return; }
@@ -24715,6 +24821,15 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         else if(/business/.test(low)) session.data.cabin='Business';
         else if(/premium/.test(low)) session.data.cabin='Premium Economy';
         else session.data.cabin='Economy';
+      } else if(s.key==='from'||s.key==='to'){
+        var ap=resolveAirport(val);
+        if(!ap){ addMsg('assistant',"I couldn't find that airport. Try a city name or a 3-letter code, like **Lagos** or **LOS**."); return; }
+        if(s.key==='to' && session.data.from && session.data.from===tpAirportLabel(ap)){ addMsg('assistant',"The departure and arrival can't be the same airport. Where are they flying **to**?"); return; }
+        session.data[s.key]=tpAirportLabel(ap);
+      } else if(s.key==='date'){
+        var iso=parseFlightDate(val);
+        if(!iso){ addMsg('assistant',"I couldn't read that date, or it's in the past. Try something like **2026-12-05** or **5 Dec**."); return; }
+        session.data.date=iso;
       } else session.data[s.key]=val;
     } else if(session.task==='receipt'){
       if(s.key==='items') session.data.items=parseItems(val);
@@ -24750,6 +24865,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         else if(/\bamerica\b|\busa\b|\bus\b/.test(low)) session.data.citizenshipType='america';
         else { addMsg('assistant','Is it **Canada**, **Canada PR**, or **America**?'); return; }
         session.sub='citizenship_fields'; session.step=0; askCurrent(); return;
+      }
+      if(idInChat() && /^(dob|issueDate|expDate)$/.test(s.key) && !/^\d{4}-\d{1,2}-\d{1,2}$/.test(val)){
+        addMsg('assistant','Please use the format **YYYY-MM-DD**, like 1998-06-15.'); return;
+      }
+      if(idInChat() && s.key==='photo'){
+        addMsg('assistant','Use the **Upload photo** button above, or say **skip** to use a placeholder.'); return;
       }
       session.data[s.key]=val;
     } else session.data[s.key]=val;
@@ -24816,6 +24937,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       }
       lines.push('_'+APP.idDisclaimer+'_');
     }
+    if(isBg()){ return confirmBackground(title, lines); }
     addMsg('assistant', (session.task==='id' ? title+':\n'+lines.join('\n')+'\n\nWant me to open the form with all of that filled in?' : "Yay, we made it! Here's everything I've got for your "+title.split(' — ')[0].toLowerCase()+":\n"+lines.join('\n')+"\n\nDoes that all look right? Say **yes** and I'll open the form with everything filled in, or say **start over** if you'd like a do-over."), [
       {label:'Yes, open it', fn:function(){ executeTask(); }},
       {label:'Start over', secondary:true, fn:function(){
@@ -24825,7 +24947,613 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     ], 'confirm');
   }
 
-  function executeTask(){
+
+  /* ===================== BACKGROUND RUNNER =====================
+     Shipments, flights and receipts are now created right here in the chat:
+     the AI collects the details, runs the creator in the background (same
+     credit charge, same saved record, same cloud sync as the forms) and
+     posts the finished result as a card. No form is opened. */
+  var BG_TASKS = {shipment:1, flight:1, receipt:1};
+  /* ID creations: US driver's licenses are generated right in the chat (canvas drawers shared with the ID pages). */
+  function idInChat(){
+    if(session.task!=='id') return false;
+    var d=session.data||{}, k=session.idKind, F=function(n){ return typeof window[n]==="function"; };
+    if(k==='license'){
+      if(d.country==='usa') return !!d.state && F('licensePreset') && F('drawLicenseCardCanvas');
+      if(d.country==='uk') return F('ukLicenceCardMarkup');
+      if(d.country==='australia') return F('auLicenceCardMarkup');
+      return false;
+    }
+    if(k==='military') return F('militaryPreviewMarkup');
+    if(k==='ssn') return F('ssnSceneMarkup');
+    if(k==='citizenship'){
+      var t=d.citizenshipType;
+      return (t==='canada'&&F('tpCiCardMarkup'))||(t==='canada-pr'&&F('tpCanadaPrCardMarkup'))||(t==='america'&&F('tpAmCardMarkup'));
+    }
+    return false;
+  }
+  function isBg(){ return !!BG_TASKS[session.task] || idInChat(); }
+  var bgBusy = false;
+  var CREDIT_ACTION = {shipment:'shipment', flight:'flight', receipt:'receipt', id:'idCreation'};
+  function money(n,cur){
+    try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'USD'}).format(Number(n)||0); }
+    catch(e){ return (cur||'USD')+' '+(Number(n)||0).toFixed(2); }
+  }
+  function costOf(task){ var C=window.tpCredits; return (C&&C.costs&&C.costs[CREDIT_ACTION[task]])||0; }
+  function resetSession(){ session={mode:'idle',task:null,step:0,data:{},idKind:null,sub:null}; }
+
+  function resolveAirport(text){
+    var t=String(text||'').trim(); if(!t) return null;
+    try{ var a=tpFindAirport(t); if(a) return a; var l=tpAirportSearch(t); return (l&&l[0])||null; }catch(e){ return null; }
+  }
+  function isoOf(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+  function parseFlightDate(v){
+    var t=String(v||'').trim(), now=new Date(); now.setHours(0,0,0,0);
+    var low=t.toLowerCase();
+    if(!/\d/.test(t) && low!=='today' && low!=='tomorrow') return '';
+    if(low==='today') return isoOf(now);
+    if(low==='tomorrow'){ var tm=new Date(now); tm.setDate(tm.getDate()+1); return isoOf(tm); }
+    var d;
+    if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)){ var p=t.split('-'); d=new Date(+p[0],+p[1]-1,+p[2]); }
+    else {
+      var hasYear=/\b(19|20)\d{2}\b/.test(t);
+      d=new Date(hasYear?t:t+' '+now.getFullYear());
+      if(!isNaN(d.getTime()) && !hasYear && d<now) d.setFullYear(d.getFullYear()+1);
+    }
+    if(!d||isNaN(d.getTime())) return '';
+    d.setHours(0,0,0,0);
+    return d<now ? '' : isoOf(d);
+  }
+  function shipStatus(v){
+    var t=norm(v);
+    if(!t) return 'Order Created';
+    if(/out for/.test(t)) return 'Out for Delivery';
+    if(/deliver/.test(t)) return 'Delivered';
+    if(/transit/.test(t)) return 'In Transit';
+    if(/arriv|facility/.test(t)) return 'Arrived at Facility';
+    if(/pick/.test(t)) return 'Picked Up';
+    return 'Order Created';
+  }
+  function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||'').trim()); }
+
+  /* ----- options the user can choose from (replaces the rate / flight pickers of the forms) ----- */
+  function shipOptions(d){
+    var rates=sbBuildMockRates(d.origin,d.dest,parseFloat(d.weight)||1,d.pkgType||'Box',d.currency||'USD')||[];
+    if(!rates.length) return [];
+    var cheapest=rates[0];
+    var fastest=rates.slice().sort(function(a,b){ return a.days-b.days || a.price-b.price; })[0];
+    var tp=rates.filter(function(r){ return r.carrier==='TrackPort Logistics'&&r.method==='Express'; })[0]||rates[Math.min(2,rates.length-1)];
+    var out=[], seen={};
+    [['Cheapest',cheapest],['Fastest',fastest],['Balanced',tp]].forEach(function(x){
+      if(!x[1]||seen[x[1].id]) return; seen[x[1].id]=1; out.push(Object.assign({tag:x[0]},x[1]));
+    });
+    return out;
+  }
+  function flightOptions(d){
+    var o=tpFindAirport(d.from), a=tpFindAirport(d.to);
+    if(!o||!a) return [];
+    var list=fbBuildFlights(o,a,d.date,d.cabin||'Economy')||[];
+    if(d.airline && !isSkip(d.airline) && !/^any$/i.test(d.airline)){
+      var al=norm(d.airline), m=list.filter(function(f){ return norm(f.airline).indexOf(al)>-1; });
+      if(m.length) list=m;
+    }
+    if(d.flightNo && !isSkip(d.flightNo)){
+      var fn=String(d.flightNo).replace(/\s+/g,'').toLowerCase(), m2=list.filter(function(f){ return f.flightNo.replace(/\s+/g,'').toLowerCase()===fn; });
+      if(m2.length) list=m2;
+    }
+    var cheapest=list[0];
+    var fastest=list.slice().sort(function(x,y){ return durMin(x)-durMin(y); })[0];
+    var best=list.filter(function(f){ return f.best; })[0];
+    var out=[], seen={};
+    [['Cheapest',cheapest],['Fastest',fastest],['Best value',best]].forEach(function(x){
+      if(!x[1]||seen[x[1].id]) return; seen[x[1].id]=1; out.push(Object.assign({tag:x[0]},x[1]));
+    });
+    return out;
+  }
+  function durMin(f){ var m=String(f.duration||'').match(/(\d+)h\s*(\d+)?/); return m?(+m[1]*60+(+m[2]||0)):99999; }
+
+  function confirmBackground(title, lines){
+    var task=session.task, d=session.data, acts=[], opts=[];
+    var intro="Here's everything I've got for your "+title.split(' — ')[0].toLowerCase()+":\n"+lines.join('\n');
+    if(task==='shipment'){
+      try{ opts=shipOptions(d); }catch(e){ opts=[]; }
+      intro+="\n\n**Pick a shipping service** and I'll create the shipment right here.";
+      opts.forEach(function(o){
+        acts.push({label:o.tag+' · '+o.carrier+' '+o.method+' · '+money(o.price,o.currency)+' · '+o.etaLabel, fn:function(){ executeTask(o); }});
+      });
+    } else if(task==='flight'){
+      try{ opts=flightOptions(d); }catch(e){ opts=[]; }
+      intro+="\n\n**Pick a flight** and I'll book the ticket right here.";
+      opts.forEach(function(o){
+        acts.push({label:o.tag+' · '+o.airline+' '+o.flightNo+' · '+o.depTime+'→'+o.arrTime+' · '+money(o.price,'USD'), fn:function(){ executeTask(o); }});
+      });
+    } else {
+      intro+="\n\nShall I generate it now?";
+      acts.push({label:'Yes, create it', fn:function(){ executeTask(); }});
+    }
+    if(!acts.length){
+      acts.push({label:'Yes, create it', fn:function(){ executeTask(); }});
+    }
+    var cost=costOf(task);
+    if(cost) intro+="\n_This uses "+cost+" credits._";
+    session.opts=opts;
+    acts.push({label:'Start over', secondary:true, fn:function(){
+      resetSession(); addMsg('assistant',"No worries, scrapped it! What would you like to make instead?", null,'ask'); showChips();
+    }});
+    addMsg('assistant', intro+(opts.length?"\nOr just say **yes** and I'll use the first option.":""), acts, 'confirm');
+  }
+
+  /* ----- credits (same charge as the forms, but never navigates away from the chat) ----- */
+  async function spend(task){
+    if(typeof window.tpCreditsSpend!=='function') return {ok:true,spendId:null};
+    var C=window.tpCredits||{}, realNav=window.nav, blocked=false;
+    window.nav=function(){ blocked=true; };
+    var r;
+    try{ r=await window.tpCreditsSpend(CREDIT_ACTION[task]); }
+    catch(e){ r={ok:false}; }
+    finally{ window.nav=realNav; try{ window.__tpCrMsg=''; }catch(e){} }
+    if(!r||!r.ok) return {ok:false, short:blocked, cost:costOf(task), balance:C.balance};
+    return {ok:true, spendId:r.spendId};
+  }
+  function refund(id){ try{ if(id&&window.tpCreditsRefund) window.tpCreditsRefund(id); }catch(e){} }
+
+  /* ----- the three creators ----- */
+  async function bgShipment(d, pick){
+    if(!pick){ var o=shipOptions(d); pick=o[0]; }
+    if(!pick) return {ok:false,error:'No shipping service available for that route.'};
+    var paid=await spend('shipment'); if(!paid.ok) return paid;
+    try{
+      var tn=tracking('SHP'), cur=d.currency||pick.currency||'USD', pkg=d.pkgType||'Box';
+      var rEmail=validEmail(d.recipientEmail)?String(d.recipientEmail).trim():'';
+      var sEmail=validEmail(d.senderEmail)?String(d.senderEmail).trim():'';
+      var x={
+        trackingNumber:tn, productName:d.product, category:d.category||'General', quantity:parseInt(d.qty,10)||1,
+        description:d.desc||'', packageType:pkg, carrier:pick.carrier, method:pick.method,
+        weight:parseFloat(d.weight)||1, dimensions:d.dimensions||'', fee:pick.price, currency:cur,
+        declaredValue:parseFloat(d.value)||0,
+        imageUrl:'', productImage:'',
+        carrierLogo:(typeof carrierLogoUrl==='function'?carrierLogoUrl(pick.carrier):'')||'',
+        sender:{name:d.senderName,phone:d.senderPhone||'',city:d.origin,email:sEmail},
+        recipient:{name:d.recipientName,phone:d.recipientPhone||'',city:d.dest,email:rEmail},
+        origin:d.origin, destination:d.dest, status:shipStatus(d.status), eta:pick.etaLabel||'',
+        currentLocation:d.origin, created:Date.now(), events:[]
+      };
+      x.events=[{status:x.status,location:d.origin,description:'Shipment record created',time:new Date().toLocaleString(),timestamp:new Date().toISOString()}];
+      x.baseFee=pick.price;
+      x.pricing={base:pick.price,customPrice:false,addons:[],discount:0,taxPercent:0,tax:0,total:pick.price};
+      x.payment={method:'Card',status:'Unpaid',payer:'Sender',reference:''};
+      x.options={insurance:false,signature:false,pickup:false,fragile:false,instructions:'',notifyRecipient:!!rEmail};
+      x.notice=null;
+      state.shipments.unshift(x); save();
+      Promise.resolve().then(async function(){
+        try{ await persistCloudRecord(x,'shipment'); }catch(e){ console.warn('[tpa] cloud save',e); }
+        try{ if(rEmail && typeof sendBrevoRecipientAlert==='function') await sendBrevoRecipientAlert(x); }catch(e){ console.warn('[tpa] notify',e); }
+      });
+      return {ok:true, record:x};
+    }catch(err){
+      console.error('[tpa] shipment',err); refund(paid.spendId);
+      return {ok:false,error:'Something went wrong while saving the shipment.'};
+    }
+  }
+
+  async function bgFlight(d, pick){
+    if(!pick){ var o=flightOptions(d); pick=o[0]; }
+    if(!pick) return {ok:false,error:'No flights found for that route and date.'};
+    var paid=await spend('flight'); if(!paid.ok) return paid;
+    try{
+      var oa=fbParseAirport(pick.origin), da=fbParseAirport(pick.destination);
+      var routeStops=buildFlightRouteStops(pick.origin,pick.destination);
+      var stop0=routeStops[0]||null;
+      var tn=tracking('FLT'), cabin=pick.cabin||d.cabin||'Economy';
+      var fare=pick.price, taxes=fare*FB_TAX_RATE, total=fare+taxes;
+      var method=FB_PAY_METHODS[0];
+      var grp=(cabin==='First'||cabin==='Business')?'1':(cabin==='Premium Economy'?'2':String(3+Math.floor(Math.random()*4)));
+      var x={
+        trackingNumber:tn, pnr:fbPnr(), passenger:d.passenger, passengers:[{name:d.passenger,type:'Adult'}],
+        airline:pick.airline, airlineLogo:(typeof airlineLogoUrl==='function'?airlineLogoUrl(pick.airline):'')||pick.airlineLogo||'', flightNo:pick.flightNo,
+        origin:oa.city, originCode:oa.code, destination:da.city, destinationCode:da.code,
+        date:pick.date, time:pick.depTime||'00:00', departure:pick.date+'T'+(pick.depTime||'00:00'),
+        arrivalTime:pick.arrTime||'', arrivalDayOffset:pick.arrDayOffset||0, duration:pick.duration||'', stops:pick.stops||'',
+        seat:fbRandSeat(cabin), cabin:cabin, terminal:pick.terminal||'', gate:pick.gate||'',
+        boardingGroup:grp, sequence:String(Math.floor(Math.random()*900)+100).padStart(5,'0'), etNo:tn,
+        status:'Ticket Booked', email:validEmail(d.email)?d.email.trim():'', phone:d.phone||'', notes:'',
+        fare:fare, fareType:'standard',
+        pricing:{currency:'USD',farePerTraveller:fare,fareTotal:fare,taxes:taxes,extras:[],total:total},
+        payment:{method:method.id,methodLabel:method.label,status:'paid',reference:''},
+        notice:null, routeStops:routeStops, currentLocationId:stop0&&stop0.id, currentLocation:(stop0&&stop0.name)||oa.city,
+        created:Date.now(), events:[]
+      };
+      x.events=[{status:x.status,location:x.currentLocation,routeStopId:(stop0&&stop0.id)||'',
+        latitude:stop0&&Number.isFinite(Number(stop0.latitude))?Number(stop0.latitude):null,
+        longitude:stop0&&Number.isFinite(Number(stop0.longitude))?Number(stop0.longitude):null,
+        description:'Flight ticket generated',time:new Date().toLocaleString(),timestamp:new Date().toISOString()}];
+      state.flights.unshift(x); save();
+      try{ await persistCloudRecord(x,'flight'); }catch(e){ console.warn('[tpa] cloud save',e); }
+      return {ok:true, record:x};
+    }catch(err){
+      console.error('[tpa] flight',err); refund(paid.spendId);
+      return {ok:false,error:'Something went wrong while booking the flight.'};
+    }
+  }
+
+  async function bgReceipt(d){
+    var paid=await spend('receipt'); if(!paid.ok) return paid;
+    try{
+      var base=receiptDefaultData();
+      var items=(d.items&&d.items.length?d.items:[{description:'Item',quantity:1,price:0}]).map(function(it){
+        return {id:uid('item-'),description:String(it.description||'Item'),quantity:Math.max(0,Number(it.quantity)||0),price:Math.max(0,Number(it.price)||0)};
+      });
+      var x=Object.assign({},base,{
+        businessName:d.businessName||base.businessName,
+        businessAddress:d.businessAddress||'',
+        businessContact:d.businessContact||'',
+        customerName:d.customerName,
+        receiptTitle:d.receiptTitle||'Receipt',
+        receiptNumber:d.receiptNumber||base.receiptNumber,
+        paymentMethod:d.paymentMethod||'Card',
+        currency:(d.currency||'USD').toUpperCase(),
+        date:(/^\d{4}-\d{2}-\d{2}$/.test(d.date||'')?d.date:base.date),
+        taxRate:Number(d.taxRate)||0, discountRate:Number(d.discountRate)||0, tipRate:0,
+        notes:d.notes||'', items:items,
+        id:uid('receipt-'), userId:(state.user&&state.user.email)||'',
+        createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+      });
+      state.receipts.unshift(x); save();
+      try{ await persistCloudRecord(x,'receipt'); }catch(e){ console.warn('[tpa] cloud save',e); }
+      return {ok:true, record:x};
+    }catch(err){
+      console.error('[tpa] receipt',err); refund(paid.spendId);
+      return {ok:false,error:'Something went wrong while generating the receipt.'};
+    }
+  }
+
+  /* ----- result cards ----- */
+  function btnRow(d, defs){
+    var row=document.createElement('div'); row.className='tpa-action-btns';
+    defs.forEach(function(a){ var b=document.createElement('button'); b.type='button'; b.textContent=a.label; if(a.secondary) b.className='secondary'; b.onclick=a.fn; row.appendChild(b); });
+    d.appendChild(row);
+  }
+  function copyText(txt, btn){
+    function done(){ if(btn){ var o=btn.textContent; btn.textContent='Copied'; setTimeout(function(){ btn.textContent=o; },1400); } }
+    try{ navigator.clipboard.writeText(txt).then(done,function(){}); }catch(e){}
+  }
+  function cardHead(d, text){ var h=document.createElement('h4'); h.textContent=text; d.appendChild(h); }
+  function openRecord(route){ closeChat(); setTimeout(function(){ if(typeof nav==='function') nav(route); else location.hash='#/'+route; },250); }
+
+  function shipmentCard(x){
+    return outCard(function(d){
+      cardHead(d,'Shipment created');
+      cardRow(d,'Tracking no.',x.trackingNumber,x.trackingNumber);
+      cardRow(d,'Status',x.status);
+      cardRow(d,'Route',x.origin+' → '+x.destination);
+      cardRow(d,'Item',x.productName+' · '+x.packageType+' · '+x.weight+' kg');
+      cardRow(d,'Carrier',x.carrier+' · '+x.method);
+      cardRow(d,'Est. delivery',x.eta||'—');
+      cardRow(d,'Fee',money(x.fee,x.currency));
+      cardRow(d,'Sender',x.sender.name);
+      cardRow(d,'Recipient',x.recipient.name+(x.recipient.email?' (notified by email)':''));
+      var link=(typeof trackingUrl==='function')?trackingUrl(x.trackingNumber):'';
+      btnRow(d,[
+        link?{label:'Copy tracking link',fn:function(ev){ copyText(link,ev.currentTarget); }}:null,
+        {label:'View full details',secondary:true,fn:function(){ openRecord('shipment-'+encodeURIComponent(x.trackingNumber)); }}
+      ].filter(Boolean));
+    },160);
+  }
+  function flightCard(x){
+    return outCard(function(d){
+      cardHead(d,'Flight ticket booked');
+      cardRow(d,'Tracking no.',x.trackingNumber,x.trackingNumber);
+      cardRow(d,'Booking ref',x.pnr,x.pnr);
+      cardRow(d,'Passenger',x.passenger);
+      cardRow(d,'Route',x.originCode+' → '+x.destinationCode+' ('+x.origin+' → '+x.destination+')');
+      cardRow(d,'Flight',x.airline+' · '+x.flightNo);
+      cardRow(d,'Departs',x.date+' at '+x.time);
+      cardRow(d,'Arrives',x.arrivalTime+(x.arrivalDayOffset>0?' (+'+x.arrivalDayOffset+' day)':'')+' · '+x.duration+' · '+x.stops);
+      cardRow(d,'Cabin / seat',x.cabin+' · '+x.seat);
+      cardRow(d,'Gate',(x.terminal?'Terminal '+x.terminal+' · ':'')+'Gate '+(x.gate||'—'));
+      cardRow(d,'Total fare',money(x.pricing.total,x.pricing.currency));
+      btnRow(d,[
+        {label:'Copy tracking no.',fn:function(ev){ copyText(x.trackingNumber,ev.currentTarget); }},
+        {label:'View full ticket',secondary:true,fn:function(){ openRecord('flight-'+encodeURIComponent(x.trackingNumber)); }}
+      ]);
+    },160);
+  }
+  function receiptCard(x){
+    var totals=receiptTotals(x);
+    return outCard(function(d){
+      cardHead(d,'Receipt ready');
+      cardRow(d,'Receipt no.',x.receiptNumber,x.receiptNumber);
+      cardRow(d,'Business',x.businessName);
+      cardRow(d,'Customer',x.customerName);
+      cardRow(d,'Items',x.items.map(function(i){ return i.description+' ×'+i.quantity; }).join(', '));
+      cardRow(d,'Total',receiptMoney(totals.total,x.currency));
+      try{
+        var wrap=document.createElement('div'); wrap.className='tpa-rc-wrap';
+        var inner=document.createElement('div'); inner.className='tpa-rc-inner';
+        inner.innerHTML=receiptPreviewHtml(x);
+        wrap.appendChild(inner); d.appendChild(wrap);
+        requestAnimationFrame(function(){
+          var avail=wrap.clientWidth||280, w=inner.scrollWidth||avail, sc=Math.min(1,avail/Math.max(w,1));
+          inner.style.transform='scale('+sc+')'; wrap.style.height=Math.ceil(inner.scrollHeight*sc)+'px'; scrollDown();
+        });
+      }catch(e){ console.warn('[tpa] receipt preview',e); }
+      btnRow(d,[
+        {label:'Print / save PDF',fn:function(){ openRecord('receipt-'+encodeURIComponent(x.id)); }},
+        {label:'Edit receipt',secondary:true,fn:function(){ openRecord('create-receipt/'+encodeURIComponent(x.id)); }}
+      ]);
+    },200);
+  }
+
+  /* ----- ID creator (in-chat) ----- */
+  function idDate(v,type,isDob){
+    var m=String(v||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(!m) return String(v||'').trim();
+    var mm=m[2].padStart(2,'0'), dd=m[3].padStart(2,'0');
+    if(isDob && type==='new-york') return dd+' '+['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][+mm-1]+' '+m[1];
+    return mm+'/'+dd+'/'+m[1];
+  }
+  async function drawUsId(type, data, photoSrc){
+    var T=function(p,ms,f){ return Promise.race([Promise.resolve(p).catch(function(){return f;}), new Promise(function(r){ setTimeout(function(){ r(f); },ms); })]); };
+    try{ if(document.fonts&&document.fonts.load){ await T(Promise.allSettled(['700 42px Caveat','700 34px Caveat','800 20px Inter','800 18px Inter','700 12px "Space Mono"','700 42px "Libre Baskerville"','400 44px Graduate','700 26px Caveat','700 11px "Space Mono"'].map(function(f){ return document.fonts.load(f); })),1800,null); } }catch(e){}
+    var ld=function(u){ return T(loadImageEl(u||''),8000,null); };
+    var photo=await T(loadImageEl(photoSrc||''),6000,null);
+    if(type==='texas') return drawTexasLicenseCardCanvas(data,photo);
+    if(type==='pennsylvania') return drawPennsylvaniaLicenseCardCanvas(data,photo,await ld(typeof PENNSYLVANIA_BACKGROUND_URL!=='undefined'?PENNSYLVANIA_BACKGROUND_URL:''));
+    if(type==='new-jersey'){
+      var im=await Promise.all([
+        ld(typeof NEW_JERSEY_BACKGROUND_URL!=='undefined'?NEW_JERSEY_BACKGROUND_URL:''),
+        ld(typeof NEW_JERSEY_TOP_SEAL_URL!=='undefined'?NEW_JERSEY_TOP_SEAL_URL:''),
+        ld(typeof NEW_JERSEY_CENTER_SEAL_URL!=='undefined'?NEW_JERSEY_CENTER_SEAL_URL:''),
+        ld(typeof NEW_JERSEY_BOTTOM_LEFT_ICON_URL!=='undefined'?NEW_JERSEY_BOTTOM_LEFT_ICON_URL:'')
+      ]);
+      return drawNewJerseyLicenseCardCanvas(data,photo,im[0],im[1],im[2],im[3]);
+    }
+    if(type==='new-york') return drawNewYorkLicenseCardCanvas(data,photo);
+    return drawLicenseCardCanvas(data,photo);
+  }
+  var PH_SVG="data:image/svg+xml,"+encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='300' height='380'><rect width='100%' height='100%' fill='#d6d0c9'/><circle cx='150' cy='140' r='62' fill='#9c9189'/><rect x='55' y='230' width='190' height='150' rx='80' fill='#9c9189'/></svg>");
+  var MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'], MON_FR=['JANV','FÉVR','MARS','AVR','MAI','JUIN','JUIL','AOÛT','SEPT','OCT','NOV','DÉC'];
+  function fmtDate(v,style,def){
+    var m=String(v||'').match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); if(!m) return def||'';
+    var y=m[1], n=+m[2], dd=m[3].padStart(2,'0'), M=MON[n-1], F=MON_FR[n-1];
+    if(style==='dots') return dd+'.'+String(n).padStart(2,'0')+'.'+y;
+    if(style==='mil') return y+M+dd;
+    if(style==='bi') return dd+' '+M+' / '+F+' '+y;
+    if(style==='bi2') return dd+' '+M+' / '+F+' '+y.slice(2);
+    if(style==='au') return dd+' '+M.charAt(0)+M.slice(1).toLowerCase()+' '+y;
+    return v;
+  }
+  function titleCase(s){ return String(s||'').toLowerCase().replace(/\b[a-z]/g,function(c){ return c.toUpperCase(); }); }
+  function splitName(n){ var p=String(n||'').trim().split(/\s+/); var last=p.length>1?p.pop():p[0]; return {first:p.join(' ')||last, last:last}; }
+  function rnd(n){ var o=''; for(var i=0;i<n;i++) o+=Math.floor(Math.random()*10); return o; }
+  function toCm(v){ var t=String(v||''), m=t.match(/^(\d)\s*[-'.]\s*(\d{1,2})/); if(m) return String(Math.round(m[1]*30.48+m[2]*2.54)); var n=parseInt(t,10); return n>0?String(n):'168'; }
+
+  /* Renders a page's own card markup offscreen and captures it (same html2canvas path the Download buttons use). */
+  async function capture(html, sel, w, prep, onclone){
+    var host=document.createElement('div'); host.id='tpa-offscreen';
+    host.style.cssText='position:fixed;left:0;top:0;width:'+w+'px;z-index:-1;pointer-events:none';
+    host.innerHTML=html; document.body.insertBefore(host,document.body.firstChild);
+    try{
+      if(prep) await prep(host);
+      var el=host.querySelector(sel); if(!el) throw new Error('card not rendered');
+      try{ if(document.fonts&&document.fonts.ready) await Promise.race([document.fonts.ready,sleep(1800)]); }catch(e){}
+      if(typeof waitForRenderedImages==='function') await Promise.race([waitForRenderedImages(el),sleep(8000)]);
+      if(typeof prepareRootForCapture==='function') await Promise.race([prepareRootForCapture(el),sleep(8000)]);
+      var h2c=await (window.ensureHtml2Canvas?window.ensureHtml2Canvas():ensureHtml2Canvas());
+      return await h2c(el,{scale:2,useCORS:true,allowTaint:false,backgroundColor:null,logging:false,imageTimeout:15000,onclone:onclone});
+    } finally { host.remove(); }
+  }
+  function fin(cv,label,name,rows,file,view){
+    if(!cv) throw new Error('no canvas');
+    return {label:label,name:name,rows:rows,canvas:cv,url:cv.toDataURL('image/png'),file:file,view:view||''};
+  }
+
+  async function idUs(d){
+    var type=licenseTypeKey(d.state), p=licensePreset(type)||{};
+    var fn=String(d.firstName||'').trim(), ln=String(d.lastName||'').trim();
+    var city=[String(d.city||'').trim(),String(d.zip||'').trim()].filter(Boolean).join(', ');
+    var data=Object.assign({},p,{
+      fname:fn.toUpperCase(), lname:ln.toUpperCase(), signature:(fn+' '+ln).trim(),
+      address:[String(d.address||'').trim(),city].filter(Boolean).join('\n'), dob:idDate(d.dob,type,true)
+    });
+    if(d.issueDate) data.iss=idDate(d.issueDate,type);
+    if(d.expDate){ data.exp=idDate(d.expDate,type); if(p.expire) data.expire=data.exp; }
+    if(d.sex) data.gender=String(d.sex).trim().charAt(0).toUpperCase();
+    if(d.eyes) data.eyes=String(d.eyes).trim().slice(0,3).toUpperCase();
+    if(d.height){
+      var hm=String(d.height).match(/^(\d)\s*[-'.]\s*(\d{1,2})"?$/);
+      data.hgt=hm?((p.hgt||'').indexOf("'")>-1?hm[1]+"'-"+hm[2].padStart(2,'0')+'"':hm[1]+'-'+hm[2].padStart(2,'0')):String(d.height).trim();
+      if(p.hgt2) data.hgt2=data.hgt;
+    }
+    var cv=await drawUsId(type,data,d.photo||'');
+    try{ // same cache the ID pages read, so "View / edit full ID" opens this exact card
+      var cache=Object.assign({},data,{userId:(state.user&&state.user.email)||'',licenseType:type,licenseName:p.label,createdAt:new Date().toISOString(),photo:d.photo||''});
+      var st=window.tpStorage||localStorage;
+      try{ st.setItem('generatedLicenseCard:'+type,JSON.stringify(cache)); st.setItem('generatedLicenseCard',JSON.stringify(cache)); }
+      catch(q){ cache.photo=''; st.setItem('generatedLicenseCard:'+type,JSON.stringify(cache)); st.setItem('generatedLicenseCard',JSON.stringify(cache)); }
+    }catch(e){ console.warn('[tpa] id cache',e); }
+    return fin(cv,(p.label||'US')+" driver's license",(fn+' '+ln).trim(),
+      [['Type',(p.label||'US')+" driver's license"],['Name',(fn+' '+ln).trim()],['Date of birth',data.dob],['License no.',data.dln||'']],
+      type+'-driver-license.png','license-output/'+type);
+  }
+  async function idUk(d){
+    var fn=String(d.firstName||'').trim(), ln=String(d.lastName||'').trim(), B=window.ukLicenceState||{};
+    var ini=(fn.charAt(0)+(fn.split(/\s+/)[1]||'9').charAt(0)).toUpperCase(), y=(d.dob||'').split('-');
+    var no=((ln.toUpperCase()+'99999').slice(0,5)+(y[0]?y[0].charAt(2)+String(y[1]||'01').padStart(2,'0')+String(y[2]||'01').padStart(2,'0')+y[0].charAt(3):rnd(6))+ini+'9'+'AB').replace(/[^A-Z0-9]/g,'');
+    var data=Object.assign({},B,{surname:ln.toUpperCase(),firstName:fn.toUpperCase(),dob:fmtDate(d.dob,'dots','')+' UK',
+      issueDate:fmtDate(d.issueDate,'dots',B.issueDate),expDate:fmtDate(d.expDate,'dots',B.expDate),driverNumber:no,
+      signature:(fn.charAt(0)+' '+ln).trim(),address:[d.address,d.city,d.zip].filter(Boolean).join(', ').toUpperCase(),photo:d.photo||PH_SVG});
+    var cv=await capture(ukLicenceCardMarkup(data),'#uk-card',700);
+    return fin(cv,"UK driver's licence",(fn+' '+ln).trim(),[['Type',"UK driver's licence"],['Name',(fn+' '+ln).trim()],['Date of birth',data.dob],['Licence no.',no]],'uk-drivers-licence.png');
+  }
+  async function idAu(d){
+    var fn=String(d.firstName||'').trim(), ln=String(d.lastName||'').trim(), B=window.auLicenceState||{};
+    var no=rnd(3)+' '+rnd(3)+' '+rnd(3);
+    var data=Object.assign({},B,{surname:ln.toUpperCase(),givenNames:fn.toUpperCase(),licenceNo:no,dob:fmtDate(d.dob,'au',''),
+      sex:String(d.sex||B.sex||'F').charAt(0).toUpperCase(),height:d.height?toCm(d.height):B.height,
+      effective:fmtDate(d.issueDate,'dots',B.effective),expiry:fmtDate(d.expDate,'dots',B.expiry),
+      signature:(fn.charAt(0)+' '+ln).trim(),showWatermark:false,photo:d.photo||PH_SVG});
+    var cv=await capture(auLicenceCardMarkup(data),'#au-card',700);
+    return fin(cv,"Australian driver's licence",(fn+' '+ln).trim(),[['Type',"Australian driver's licence"],['Name',(fn+' '+ln).trim()],['Date of birth',data.dob],['Licence no.',no]],'australia-drivers-licence.png');
+  }
+  async function idMil(d){
+    var br=/air/i.test(d.branch)?'AirForce':/navy/i.test(d.branch)?'Navy':/marine/i.test(d.branch)?'Marines':/coast/i.test(d.branch)?'CoastGuard':/space/i.test(d.branch)?'SpaceForce':'Army';
+    var D=MILITARY_ID_DEFAULTS, name=String(d.fullName||'').trim().toUpperCase();
+    var ns=Object.assign({},D,{fullName:name,branch:br,rank:d.rank||D.rank,payGrade:d.payGrade||D.payGrade,unitName:d.unitName||D.unitName,
+      dutyStatus:d.dutyStatus||D.dutyStatus,issueDate:fmtDate(d.issueDate,'mil',D.issueDate),expDate:fmtDate(d.expDate,'mil',D.expDate)});
+    var oS=militaryIdState, oP=militaryIdPhoto, seal='';
+    militaryIdState=ns; militaryIdPhoto=d.photo||PH_SVG;
+    try{
+      var cv=await capture('<div class="mil-stage" id="mil-stage">'+militaryPreviewMarkup()+'</div>','#mil-stage',1000,async function(h){
+        renderMilitaryIdPreview();
+        try{ seal=await militarySealExportSource(h.querySelector('#mil-seal')); }catch(e){}
+      },function(doc){
+        var cs=doc.getElementById('mil-seal'), cf=doc.getElementById('mil-seal-fallback');
+        if(cs){ cs.style.display='block'; if(seal) cs.src=seal; } if(cf) cf.style.display='none';
+        var t=doc.getElementById('mil-tilt'); if(t) t.style.transform='none';
+        var p=doc.getElementById('mil-perspective'); if(p){ p.style.transform='none'; p.style.setProperty('--mil-scale','1'); }
+      });
+    } finally { militaryIdState=oS; militaryIdPhoto=oP; }
+    return fin(cv,'Military ID',name,[['Type','Military ID'],['Name',name],['Branch',(MILITARY_BRANCHES[br]||{}).name||br],['Rank',ns.rank]],'military-id.png');
+  }
+  async function idSsn(d){
+    var name=String(d.name||'').trim().toUpperCase(), o=ssnState, om=ssnResultMode;
+    ssnState=Object.assign({},SSN_DEFAULTS,{name:name,ssn:d.ssn||SSN_DEFAULTS.ssn,sigMode:'text',sigText:titleCase(d.name)});
+    ssnResultMode=true;
+    try{
+      var cv=await capture(ssnSceneMarkup(),'#ssn-scene',900,async function(){
+        try{ if(typeof ensureSsnBackground==='function') await ensureSsnBackground(); if(typeof ensureSsnSurface==='function') await ensureSsnSurface(); }catch(e){}
+        renderSsnPreview();
+      });
+    } finally { ssnState=o; ssnResultMode=om; }
+    return fin(cv,'SSN card mockup',name,[['Type','SSN card mockup'],['Name',name],['SSN',d.ssn||'']],'ssn-card.png');
+  }
+  async function idCitizen(d){
+    var t=d.citizenshipType, nm=String(d.fullName||'').trim(), sp=splitName(nm), ph=d.photo||'', sx=String(d.sex||'').charAt(0).toUpperCase();
+    var cv,label,file;
+    if(t==='canada'){
+      var D=TP_CI_DEFAULTS, data={surname:sp.last.toUpperCase(),given:sp.first.toUpperCase(),idno:d.docNumber||D.idno,dob:fmtDate(d.dob,'bi',D.dob),
+        pob:(d.nationality||D.pob).toUpperCase(),issue:fmtDate(d.issueDate,'bi',D.issue),expiry:fmtDate(d.expDate,'bi',D.expiry),sigMode:'font',sigText:nm,sigFont:'dafoe',photo:ph};
+      cv=await capture(tpCiStyles()+tpCiCardMarkup(data),'#tpci-card',856,async function(){ try{ tpCiLoadFonts(); }catch(e){} await sleep(1200); try{ tpCiFit(); }catch(e){} });
+      label='Canada citizenship card'; file='canada-citizenship-card.png';
+    } else if(t==='canada-pr'){
+      var dp={name:nm.toUpperCase(),idno:d.docNumber||'',nationality:String(d.nationality||'UTP').slice(0,3).toUpperCase(),sex:sx||'M',
+        dob:fmtDate(d.dob,'bi2','01 APR / AVR 85'),expiry:fmtDate(d.expDate,'bi2','02 MAR / MARS 26'),photo:ph,miniPhoto:ph};
+      cv=await capture(tpCanadaPrStyles()+tpCanadaPrCardMarkup(dp),'#tpca-card',900);
+      label='Canada PR card'; file='canada-pr-card.png';
+    } else {
+      var A=TP_AM_DEFAULTS, today=new Date(), iso=function(dt){ return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); };
+      var ex=new Date(today); ex.setFullYear(ex.getFullYear()+4);
+      var da={name:titleCase(nm),parent:A.parent,gender:sx==='M'?'Male':sx==='F'?'Female':A.gender,country:d.nationality||A.country,number:d.docNumber||rnd(10),
+        birth:d.dob||A.birth,issue:d.issueDate||iso(today),expiry:d.expDate||iso(ex),signature:(sp.first.charAt(0)+'. '+sp.last).trim(),authority:A.authority,photo:ph};
+      cv=await capture(tpAmStyles()+tpAmCardMarkup(da),'#tpam-card',820);
+      label='American citizenship card'; file='america-citizenship-card.png';
+    }
+    return fin(cv,label,nm,[['Type',label],['Name',nm],['Date of birth',d.dob||'—']],file);
+  }
+  async function idDispatch(d,k){
+    if(k==='license') return d.country==='uk'?idUk(d):d.country==='australia'?idAu(d):idUs(d);
+    if(k==='military') return idMil(d);
+    if(k==='ssn') return idSsn(d);
+    return idCitizen(d);
+  }
+  async function bgId(d,k){
+    var paid=await spend('id'); if(!paid.ok) return paid;
+    try{ return {ok:true, record:await idDispatch(d,k)}; }
+    catch(err){ console.error('[tpa] id',err); refund(paid.spendId); return {ok:false,error:'Something went wrong while generating the ID.'}; }
+  }
+  async function downloadId(x,btn){
+    var o=btn&&btn.textContent; if(btn){ btn.disabled=true; btn.textContent='Preparing…'; }
+    try{
+      if(typeof exportCanvas==='function') await exportCanvas(x.canvas,x.file,'ID image downloaded');
+      else throw 0;
+    }catch(e){
+      try{ var a=document.createElement('a'); a.href=x.url; a.download=x.file; document.body.appendChild(a); a.click(); a.remove(); }catch(_e){}
+    }
+    if(btn){ btn.disabled=false; btn.textContent=o; }
+  }
+  function idCard(x){
+    return outCard(function(d){
+      cardHead(d,'ID mockup ready');
+      x.rows.forEach(function(r){ if(r[1]) cardRow(d,r[0],String(r[1])); });
+      var img=document.createElement('img'); img.className='tpa-id-img'; img.alt='Generated ID mockup'; img.src=x.url;
+      img.onload=scrollDown; d.appendChild(img);
+      var note=document.createElement('div'); note.className='tpa-id-note'; note.textContent=APP.idDisclaimer; d.appendChild(note);
+      btnRow(d,[
+        {label:'Download PNG',fn:function(ev){ downloadId(x,ev.currentTarget); }},
+        x.view?{label:'View / edit full ID',secondary:true,fn:function(){ openRecord(x.view); }}:null
+      ].filter(Boolean));
+    },240);
+  }
+  function photoPick(){
+    outCard(function(d){
+      cardHead(d,'Portrait photo');
+      var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.hidden=true;
+      inp.onchange=async function(){
+        var f=inp.files&&inp.files[0]; if(!f) return;
+        try{ session.data.photo=await compressImage(f); }
+        catch(e){ addMsg('assistant',"I couldn't read that image. Try another one, or say **skip**."); return; }
+        session.step++; session.ack=''; addMsg('assistant','Photo added.',null,'ack'); askCurrent();
+      };
+      d.appendChild(inp);
+      btnRow(d,[
+        {label:'Upload photo',fn:function(){ inp.click(); }},
+        {label:'Skip (use placeholder)',secondary:true,fn:function(){ session.data.photo=''; session.step++; session.ack=''; askCurrent(); }}
+      ]);
+    },100);
+  }
+
+  var WORKING = {
+    id:["On it! Generating your ID now…","Working on it, one moment while I draw the card…"],
+    shipment:["On it! Creating your shipment now…","Working on it, one moment while I set up the shipment…"],
+    flight:["On it! Booking your flight now…","Working on it, one moment while I book the ticket…"],
+    receipt:["On it! Generating your receipt now…","Working on it, one moment while I put the receipt together…"]
+  };
+
+  async function runInBackground(choice){
+    if(bgBusy) return;
+    bgBusy=true;
+    var task=session.task, d=Object.assign({},session.data), opts=session.opts||[], idk=session.idKind, idsub=session.sub;
+    var pick=(choice&&choice.carrier||choice&&choice.airline)?choice:opts[0];
+    resetSession();
+    addMsg('assistant', pickOf(WORKING[task]), null, 'ack');
+    var typing=null;
+    try{ await outQ; typing=typingEl(); }catch(e){}
+    var res;
+    try{
+      res = task==='shipment' ? await bgShipment(d,pick)
+          : task==='flight'   ? await bgFlight(d,pick)
+          :   task==='id'         ? await bgId(d,idk)
+          :                     await bgReceipt(d);
+    }catch(e){ console.error('[tpa] background',e); res={ok:false,error:'Something unexpected happened.'}; }
+    try{ if(typing&&typing.parentNode) typing.parentNode.removeChild(typing); }catch(e){}
+    bgBusy=false;
+    if(res.ok){
+      if(task==='shipment') await shipmentCard(res.record);
+      else if(task==='flight') await flightCard(res.record);
+      else if(task==='id') await idCard(res.record);
+      else await receiptCard(res.record);
+      var done={
+        shipment:"All done! Your shipment is live. Share the tracking number or link with your recipient. Want to create another, or something else?",
+        flight:"All booked! Your ticket is saved and trackable with the number above. Anything else I can set up?",
+        id:"Your ID is ready! Tap **Download PNG** above to save it. Want another one, or something else?",
+        receipt:"Your receipt is ready! You can print it or save it as a PDF from the buttons above. What's next?"
+      }[task];
+      addMsg('assistant', done, null, 'done'); showChips();
+    } else if(res.short){
+      addMsg('assistant',"I'd love to create that, but it needs **"+(res.cost||'more')+" credits** and you have **"+(res.balance!=null?res.balance:0)+"**. Top up and just ask me again, I'll create it right away.", [
+        {label:'Buy credits', fn:function(){ startCreditsChat('buy credits'); }}
+      ], 'ask');
+    } else {
+      addMsg('assistant',(res.error||"Something went wrong.")+" No credits were taken. Want to try again?", [
+        {label:'Try again', fn:function(){ session={mode:'confirm',task:task,step:0,data:d,idKind:idk,sub:idsub,opts:opts}; summarizeAndConfirm(); }},
+        {label:'Start over', secondary:true, fn:function(){ resetSession(); addMsg('assistant',"Okay, fresh start. What would you like to make?",null,'ask'); showChips(); }}
+      ], 'ask');
+    }
+  }
+
+  function executeTask(choice){
+    if(isBg()){ runInBackground(choice); return; }
     window.__tpAiPrefill = {
       task: session.task,
       data: Object.assign({}, session.data),
@@ -25063,9 +25791,9 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 
   function helpText(){
     return "Happy to! Here's what I can do for you in **TrackPort**:\n\n"+
-      "• **Shipments**: I'll ask about the sender, recipient, package and weight, then fill in the form\n"+
-      "• **Flights**: route, date, passenger and airline, then I open the flight booker\n"+
-      "• **Receipts**: business, customer, items and tax, then I open the receipt editor\n"+
+      "• **Shipments**: I'll ask about the sender, recipient, package and weight, then create it and show you the tracking number right here\n"+
+      "• **Flights**: route, date, passenger and cabin, then I book it and show you the ticket here\n"+
+      "• **Receipts**: business, customer, items and tax, then I generate the receipt right here\n"+
       "• **ID mockups**: license (USA states / UK / Canada / Australia), military, SSN, citizenship/PR, card holder\n"+
       "• **Credits**: pick a plan and pay by bank transfer, all inside this chat\n"+
       "• **Tracking and app help**: just ask!\n\n"+
@@ -25287,6 +26015,33 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     showUploadCard();
   }
 
+  function smallTalkReply(text){
+    var low=norm(text);
+    if(/\b(what is your name|whats your name|your name|who are you|what are you)\b/.test(low))
+      return "I'm NBATOOLS A I, I'm here to serve you! I can handle all kinds of tasks you can think of. Just tell me what you need and I'll do my best to get it done right here in this chat. 😊";
+    if(/\b(what are you doing|what you doing|wyd|are you busy)\b/.test(low))
+      return "Uhm, nothing much, just here serving you. 😄 What shall we get into?";
+    if(/\b(how are you|how r u|how are things|how('?s| is) it going)\b/.test(low))
+      return "Yeah, I'm good, thanks for asking! 😊 How about yourself?";
+    if(/\b(thank you|thanks|thx|cheers|appreciate it)\b/.test(low))
+      return pickOf(["Aww, you're very welcome! Happy to help. 💛","Anytime! That's what I'm here for. What's next? 😄","You're welcome! Glad we got that sorted."]);
+    if(/\b(i am bored|im bored|tell me a joke|make me laugh)\b/.test(low))
+      return "Haha, a little break never hurt! 😄 Why did the computer go to the doctor? It had a virus. Okay, shall we get back to the fun stuff?";
+    if(/^(hi|hello|hey|hiya|yo|sup)\b/.test(low))
+      return pickOf(["Heyyy! 😊 Lovely to see you. What are we working on?","Hey there! I'm right here and ready when you are. 😄","Hiii! What's the plan today?"]);
+    return "";
+  }
+  function activeTaskNudge(){
+    var steps=currentSteps(), step=steps[session.step];
+    if(session.mode==='collect' && step)
+      return "Whenever you're ready, we can pick up right where we paused. "+step.q;
+    if(session.mode==='confirm')
+      return "Whenever you're ready, just say **yes** to continue or **start over** to make changes.";
+    if(session.mode==='pay')
+      return "We can pick up your credit purchase whenever you're ready.";
+    return "";
+  }
+
   async function localAgent(text){
     var t=String(text||'').trim();
     var low=norm(t);
@@ -25303,6 +26058,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       return;
     }
 
+    var social=smallTalkReply(t);
+    if(social){
+      addMsg('assistant',social);
+      showChips();
+      return;
+    }
     var task=detectTask(t);
     if(task==='shipment'||task==='flight'||task==='receipt'||task==='credits'||task==='id'){
       startTask(task, t); return;
@@ -25331,7 +26092,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       return;
     }
     if(/\b(who are you|your name|what are you)\b/.test(low)){
-      addMsg('assistant',"I'm TrackPort AI, your assistant right here in the app. I can set up shipments, flights, receipts and credits for you, and I'll fill in the forms so you don't have to. What would you like to do?");
+      addMsg('assistant',"I'm NBATOOLS A I, your friendly assistant inside TrackPort! I'm here to help with tasks, answer questions and guide you through the app. Just tell me what you need and we'll tackle it together. 😊");
       showChips();
       return;
     }
@@ -25362,14 +26123,14 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(isEndIntent(text)){ endChat(); return; }
     if(ended){ ended=false; addMsg('assistant',pickOf(["Oh, you're back! I missed you for, like, a whole minute. Let's pick things up.","Welcome back! Okay, where were we? Let's get going."])); }
 
-    /* AI handles shipment / flight / receipt / credits chat. ID mockups and in-chat payments stay on the built-in flows. */
-    var useAgent = AGENT_URL && session.mode!=='pay' && session.task!=='id' && detectTask(text)!=='id';
+    /* Shipment / flight / receipt run through the built-in guided flow so they can be created in the background right here. The remote agent handles general chat and credits. */
+    var useAgent = AGENT_URL && session.mode!=='pay' && session.task!=='id' && detectTask(text)!=='id' && !BG_TASKS[session.task] && !BG_TASKS[detectTask(text)];
     if(useAgent){
       busy=true; sendBtn.disabled=true; var typing=typingEl();
       try{
         var token=await u.getIdToken();
         var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },20000);
-        var r=await fetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:msgs.slice(-16),account:account(),session:{mode:session.mode,task:session.task},app:{name:APP.name,costs:APP.costs,plans:APP.plans}})});
+        var r=await fetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:msgs.slice(-24),account:account(),session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{name:'NBATOOLS AI',style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'If asked your name, say: I\'m NBATOOLS AI, I\'m here to serve you. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat.',smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
         clearTimeout(tm);
         var j={}; try{ j=await r.json(); }catch(e){}
         var reply=j.reply;
@@ -25385,8 +26146,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         if(act && act.type==='credits'){
           await sleep(600); startCreditsChat(String((act.data&&act.data.plan)||'')); await outQ;
         } else if(act && /^(shipment|flight|receipt)$/.test(act.type)){
-          session.task=act.type; session.data=act.data||{}; session.idKind=null; session.sub=null; session.mode='confirm';
-          executeTask();
+          startTask(act.type, text);
         }
       }catch(err){
         typing.classList.remove('tpa-typing'); typing.innerHTML=''; rich(typing,"Hmm, I couldn't reach the server, so I'll take care of this right here.");
