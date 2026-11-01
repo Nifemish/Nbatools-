@@ -24345,7 +24345,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function openChat(){
     if(!visible) return;
-    hidePop(true); fab.classList.remove('unread'); panel.classList.add('open'); fab.classList.add('away');
+    hidePop(true); fab.classList.remove('unread'); panel.classList.add('open'); fab.classList.add('away'); try{ wakeStop(); }catch(e){}
     if(!greeted){
       greeted=true;
       var _wl=zaraIntro(); addMsg('assistant',_wl); msgs.push({role:'assistant',text:_wl});
@@ -24399,7 +24399,15 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     {id:'Fenrir',label:'Fenrir · Gemini · Excitable'},
     {id:'Gacrux',label:'Gacrux · Gemini · Mature'}
   ];
-  var geminiDeadUntil=0, gp={};
+  var geminiDeadUntil=0, gp={}, ttsCache={};
+  /* Call mode: start fetching a sentence's audio the moment it is queued, so the next sentence is ready before the current one ends. */
+  function ttsPrefetch(text){
+    var gn=geminiName(); if(!gn) return;
+    var ch=chunkText(prepSpeech(text)); if(!ch.length) return;
+    var k=geminiSegments(ch)[0].text+'|'+gn;
+    if(ttsCache[k]) return;
+    var pr=fetchGemini(geminiSegments(ch)[0].text,gn); ttsCache[k]=pr; pr.catch(function(){ delete ttsCache[k]; });
+  }
   function geminiName(){
     if(Date.now()<geminiDeadUntil) return '';
     var n=previewName||voiceName;
@@ -24455,7 +24463,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function playGemini(ch,segs,k,gen,gn){
     if(gen!==speakGen) return;
     if(k>=segs.length){ setSpeaking(false); speechDone(gen); return; }
-    var seg=segs[k], key=k+'|'+gen, p=gp[key]||fetchGemini(seg.text,gn); delete gp[key];
+    var seg=segs[k], key=k+'|'+gen, ck=seg.text+'|'+gn, p=gp[key]||(k===0&&ttsCache[ck])||fetchGemini(seg.text,gn); delete gp[key]; if(k===0) delete ttsCache[ck];
     if(k+1<segs.length){ gp[(k+1)+'|'+gen]=fetchGemini(segs[k+1].text,gn); gp[(k+1)+'|'+gen].catch(function(){}); }
     var failed=false;
     function fail(){
@@ -24469,7 +24477,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var a=new Audio(url); curAudio=a;
       function done(){ try{ URL.revokeObjectURL(url); }catch(e){} }
       a.onplaying=function(){ clearTimeout(watchT); if(gen===speakGen) setSpeaking(true); };
-      a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },60); };
+      a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },call.on?0:60); };
       a.onerror=function(){ done(); fail(); };
       var pr=a.play(); if(pr&&pr.catch) pr.catch(function(){ done(); fail(); });
     }).catch(fail);
@@ -24645,12 +24653,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var ch=chunkText(prepSpeech(text));
       if(!ch.length) return;
       cancelSpeech(); var gen=speakGen;
-      setTimeout(function(){ playChunk(ch,0,gen); },90);
+      setTimeout(function(){ playChunk(ch,0,gen); },call.on?0:90);
     }catch(e){}
   }
   /* Speech queue: a new bubble waits for the previous one to finish instead of cutting it off mid-sentence */
   var speechQ=[], speechBusy=false, speechInternal=false, speechWD=null, ackSpeech='';
-  function speakQ(text){ if(!voiceOn) return; speechQ.push(text); if(!speechBusy) nextSpeech(); }
+  function speakQ(text){ if(!voiceOn) return; try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(call.on){ try{ ttsPrefetch(text); }catch(e){} } if(!speechBusy) nextSpeech(); }
   function nextSpeech(){
     clearTimeout(speechWD);
     if(!speechQ.length){
@@ -24662,7 +24670,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     speechInternal=true; try{ speak(t); }catch(e){} speechInternal=false;
     speechWD=setTimeout(nextSpeech, 12000+String(t).length*130);   /* safety net if a clip never reports it finished */
   }
-  function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,150); }
+  function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,call.on?10:150); }
   function setAgentUI(){
     if(!agentToggle) return;
     agentToggle.classList.toggle('active',voiceAgentOn);
@@ -26378,7 +26386,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function smallTalkReply(text){
     var low=norm(text);
     if(/\b(what is your name|whats your name|your name|who are you|what are you)\b/.test(low))
-      return "I'm NBATOOLS A I, I'm here to serve you! I can handle all kinds of tasks you can think of. Just tell me what you need and I'll do my best to get it done right here in this chat. 😊";
+      return "I'm Zara, your NBATOOLS assistant, and I'm here to help! Just tell me what you need and I'll get it done right here. 😊";
     if(/\b(what are you doing|what you doing|wyd|are you busy)\b/.test(low))
       return "Uhm, nothing much, just here serving you. 😄 What shall we get into?";
     if(/\b(how are you|how r u|how are things|how('?s| is) it going)\b/.test(low))
@@ -26681,34 +26689,96 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callMute(){ call.muted=!call.muted; call.speech=false; call.buf=[]; call.frames=0; callSync(); }
   function callState(){
     if(!call.on) return;
+    if(isSpeaking()) call.spokeEnd=Date.now();
     var st=call.muted?'muted':(call.busy||busy)?'thinking':isSpeaking()?'speaking':call.speech?'hearing':'listening';
     cEl.time.textContent=callClock(); cEl.btxt.textContent='On call · '+callClock();
     if(st===call.state) return; call.state=st;
     cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0');
-    cEl.st.textContent={muted:'Mic muted',thinking:'Thinking…',speaking:(call.mobile?'Zara is speaking · tap the orb to interrupt':'Zara is speaking · talk to interrupt'),hearing:'Listening…',listening:'Listening…'}[st];
+    cEl.st.textContent={muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk or tap to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
   }
-  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); }catch(e){} }
+  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); ttsCache={}; }catch(e){} }
+  /* You started talking while Zara was still working out her answer: drop that answer so she can listen to you instead. */
+  function callAbortReply(){ try{ call.aborted=true; if(call.ctrl) call.ctrl.abort(); }catch(e){} bargeIn(); }
   function callAudio(e){
     if(!call.on) return;
     var d=e.inputBuffer.getChannelData(0), n=d.length, sum=0, i; for(i=0;i<n;i++) sum+=d[i]*d[i];
     var rms=Math.sqrt(sum/n), spk=isSpeaking();
     if(call.state==='listening'||call.state==='hearing') cEl.orb.style.setProperty('--lvl',Math.min(1,rms*9).toFixed(2));
     if(call.muted) return;
-    var thr=Math.max(0.018,call.noise*3.2)*(spk?2.2:1);
-    if(rms>thr&&spk){ if(++call.frames>=4){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
+    var thr=Math.max(0.02,call.noise*4)*(spk?1.6:1);
+    if(rms>thr&&spk){ if(++call.frames>=3){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
     else { call.frames=0; if(!spk) call.noise=call.noise*0.96+rms*0.04; }
   }
   /* Speech is recognised by the browser (free). The mic stream above is only used for the orb level and to detect you interrupting Zara. */
   /* Free listening: the browser's built-in speech recognition (no server, no Cloudflare neurons).
      It is paused while Zara talks so she never hears herself; loud sustained speech then interrupts her. */
+  /* ---- Fast voice replies: a small fast model on the worker streams its answer, and Zara starts speaking after the FIRST sentence ---- */
+  var VOICE_URL=AGENT_URL.replace(/\/chat$/,'/voice'), voiceRouteDeadUntil=0;
+  function callStreamable(text){
+    if(Date.now()<voiceRouteDeadUntil) return false;
+    if(session.task||session.mode!=='idle') return false;
+    if(detectTask(text)) return false;
+    return !/\b(create|make|book|buy|credit|credits|plan|upgrade|ship|shipment|flight|receipt|id card|license|track|go to|open|click|tap|press|scroll|type|fill|change|switch|log ?out|theme|dark|light|page|screen|button|menu|settings|profile|request)\b/i.test(text);
+  }
+  async function callStream(text,u){
+    var typing=typingEl(), acc='', spokeFirst=false, spoken=0, t0=Date.now();
+    function pump(){
+      for(;;){
+        var m=/^\s*([\s\S]{8,}?[.!?])(?=\s)/.exec(acc.slice(spoken)); if(!m) break;
+        spoken+=m[0].length; var t=m[1].trim();
+        if(t&&!call.aborted){ if(!spokeFirst){ spokeFirst=true; console.log('[tpa] first sentence in',Date.now()-t0,'ms'); } speakQ(t); }
+      }
+    }
+    call.aborted=false;
+    function fail(){ try{ typing.remove(); }catch(e){} }
+    try{
+      var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },12000); call.ctrl=ctrl;
+      var res=await fetch(VOICE_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({userName:zaraUser(),messages:msgs.slice(-8).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',content:String(m.text||'').slice(0,600)}; }),app:{name:APP.name,costs:APP.costs,plans:APP.plans}})});
+      if(!res.ok||!res.body){ clearTimeout(tm); if(res.status===404||res.status===405||res.status>=500) voiceRouteDeadUntil=Date.now()+60000; fail(); return false; }
+      var rd=res.body.getReader(), dec=new TextDecoder(), buf='';
+      typing.classList.remove('tpa-typing'); typing.innerHTML='';
+      for(;;){
+        var ch=await rd.read(); if(ch.done) break; clearTimeout(tm);
+        buf+=dec.decode(ch.value,{stream:true});
+        var lines=buf.split('\n'); buf=lines.pop();
+        for(var i=0;i<lines.length;i++){
+          var ln=lines[i].trim(); if(ln.indexOf('data:')!==0) continue; ln=ln.slice(5).trim(); if(!ln||ln==='[DONE]') continue;
+          var tok=''; try{ var j=JSON.parse(ln); tok=j.response||(j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content)||''; }catch(e){ continue; }
+          if(!tok) continue; acc+=tok; typing.textContent=acc;
+          pump();
+        }
+      }
+      clearTimeout(tm);
+      acc=acc.trim(); if(!acc){ fail(); return false; }
+      typing.innerHTML=''; rich(typing,acc); msgs.push({role:'assistant',text:acc});
+      if(!call.aborted){ var tail=acc.slice(spoken).trim(); if(tail) speakQ(tail); }
+      return true;
+    }catch(e){
+      if(call.aborted){ if(acc.trim()){ typing.innerHTML=''; rich(typing,acc.trim()); msgs.push({role:'assistant',text:acc.trim()}); } else fail(); return true; }
+      console.warn('[tpa] voice stream failed',e); voiceRouteDeadUntil=Date.now()+30000;
+      if(acc.trim()){ typing.innerHTML=''; rich(typing,acc.trim()); msgs.push({role:'assistant',text:acc.trim()}); if(!spokeFirst) speakQ(acc.trim()); return true; }
+      fail(); return false;
+    }
+  }
   function callHeard(text){
     call.q=call.q.then(async function(){
       if(!call.on) return;
+      if(busy){ callAbortReply(); for(var a=0;a<30&&busy;a++) await sleep(40); }
       for(var w=0;w<120&&busy;w++) await sleep(200);
       if(!call.on) return;
       cEl.cap.textContent='You: '+text.slice(0,150);
       await sendText(text);
     }).catch(function(e){ console.warn('[tpa] call send',e); });
+  }
+  /* Pause grace: a short or finished sentence goes out quickly; if you trail off ("and...", "so...", "umm") or are still mid-thought, Zara waits longer. */
+  function callFlush(){ clearTimeout(call.pendT); var x=String(call.pend||'').trim(); call.pend=''; if(x&&call.on&&!call.muted) callHeard(x); }
+  function callQueue(fin){
+    call.pend=(call.pend?call.pend+' ':'')+fin; clearTimeout(call.pendT);
+    var t=call.pend.trim(), w=t.split(/\s+/).length;
+    var trail=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$|,$/i.test(t);
+    var wait=trail?1100:(/[?.!]$/.test(t)||w>=5)?120:(w<3?420:220);
+    call.pendT=setTimeout(callFlush,wait);
   }
   function callRecInit(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
@@ -26727,20 +26797,50 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         cEl.cap.textContent="Your browser's speech service isn't reachable right now. You can type to me instead.";
       }
     };
+    function norm(x){ return String(x||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').replace(/\s+/g,' ').trim(); }
     r.onresult=function(e){
-      if(call.muted||isSpeaking()) return;
+      if(call.muted) return;
       var fin='', interim='';
       for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t; else interim+=t; }
-      call.srErr=0; if(interim){ call.speech=true; if(call.mobile) cEl.orb.style.setProperty('--lvl',(0.35+Math.random()*0.5).toFixed(2)); cEl.cap.textContent='You: '+interim.slice(-150); }
-      if(fin.trim()){ call.speech=false; callHeard(fin.trim()); }
+      /* While Zara talks (and for a moment after), only react to words that are NOT her own voice coming back through the mic. */
+      var sp=isSpeaking();
+      if(sp||Date.now()-(call.spokeEnd||0)<900){
+        var heard=(fin+' '+interim).toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).filter(Boolean);
+        if(heard.length<1||heard.join('').length<3) return;
+        var said={}; String(call.said||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).forEach(function(w){ if(w) said[w]=1; });
+        var hit=0; heard.forEach(function(w){ if(said[w]) hit++; });
+        if(hit/heard.length>=0.6) return;
+        if(sp){ bargeIn(); call.lastSpk=0; call.said=''; }
+      }
+      call.srErr=0; clearTimeout(call.specT);
+      if(interim&&call.pend){ clearTimeout(call.pendT); call.pendT=setTimeout(callFlush,2600); }
+      if(interim){
+        call.speech=true; if(call.mobile) cEl.orb.style.setProperty('--lvl',(0.35+Math.random()*0.5).toFixed(2)); cEl.cap.textContent='You: '+interim.slice(-150);
+        var iv=interim.trim(), iw=iv.split(/\s+/).length;
+        if((call.busy||busy)&&iw>=2) callAbortReply();
+        /* Don't wait for the browser to "finalise": once the words stop changing for a moment, answer. */
+        var trl=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$/i.test(iv);
+        var dly=trl?1300:(iw>=4?380:800);
+        call.specT=setTimeout(function(){
+          if(!call.on||call.muted) return;
+          var tt=((call.pend?call.pend+' ':'')+iv).trim(); call.pend=''; clearTimeout(call.pendT);
+          call.specSent=tt; call.speech=false; callHeard(tt);
+        },dly);
+      }
+      if(fin.trim()){
+        call.speech=false; var f=fin.trim(), a=norm(f), b=norm(call.specSent); clearTimeout(call.specT);
+        if(b&&a.indexOf(b)===0){
+          var rem=f.split(/\s+/).slice(b.split(' ').length).join(' ').trim(); call.specSent='';
+          if(rem.split(/\s+/).filter(Boolean).length>=2) callQueue(rem);
+        } else { call.specSent=''; callQueue(f); }
+      }
     };
     call.sr=r; return true;
   }
   function srTick(){
     if(!call.sr||!call.on||call.srDead) return;
     if(call.muted){ if(call.srOn){ try{ call.sr.abort(); }catch(e){} } return; }
-    if(isSpeaking()){ call.lastSpk=Date.now(); if(call.srOn){ try{ call.sr.abort(); }catch(e){} } return; }
-    if(!call.srOn&&Date.now()-(call.lastSpk||0)>450){ try{ call.sr.start(); }catch(e){} }
+    if(!call.srOn&&Date.now()-(call.lastSpk||0)>300){ try{ call.sr.start(); }catch(e){} }
   }
   function callIntroLocal(){
     var n=dashboardUserName(), nm=(n&&n!=='there')?', '+n:'';
@@ -26771,6 +26871,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(!currentUser()){ addMsg('assistant',"Sign in first and then we can chat by voice."); return; }
     if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){ addMsg('assistant',"Voice calls use your browser's built-in speech recognition, which this browser doesn't have. Chrome, Edge or Safari will work, or you can keep typing."); return; }
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ addMsg('assistant',"This browser can't open the microphone for calls. You can still type, or use the mic button."); return; }
+    var hadWake=false; try{ hadWake=!!(wake&&wake.rec); wakeStop(); }catch(e){}
+    if(hadWake) await sleep(900);
     try{ call.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
     catch(e){ addMsg('assistant',"I couldn't reach your microphone. Allow microphone access in your browser settings, then tap Call again."); return; }
     try{ stopVoice(); }catch(e){}
@@ -26779,10 +26881,10 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     var mobileMic=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
     if(mobileMic){
       try{ call.stream.getTracks().forEach(function(x){ x.stop(); }); }catch(e){} call.stream=null; call.ctx=null; call.src=null; call.proc=null;
-      await sleep(350);
+      await sleep(700);
     } else {
       var AC=window.AudioContext||window.webkitAudioContext; call.ctx=new AC(); try{ if(call.ctx.state==='suspended') await call.ctx.resume(); }catch(e){}
-      call.src=call.ctx.createMediaStreamSource(call.stream); call.proc=call.ctx.createScriptProcessor(4096,1,1); call.proc.onaudioprocess=callAudio;
+      call.src=call.ctx.createMediaStreamSource(call.stream); call.proc=call.ctx.createScriptProcessor(1024,1,1); call.proc.onaudioprocess=callAudio;
       var mute=call.ctx.createGain(); mute.gain.value=0; call.src.connect(call.proc); call.proc.connect(mute); mute.connect(call.ctx.destination);
     }
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),noise:0.008,frames:0,speech:false,buf:[],pre:[],busy:0,q:Promise.resolve(),state:'',sr:null,srOn:false,useSR:false,srErr:0,srDead:false,lastSpk:0,mobile:mobileMic,quick:!!(opts&&opts.quick)});
@@ -26793,7 +26895,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     var hi=(opts&&opts.quick)?wakeReply():await callIntro(); if(!call.on) return; addMsg('assistant',hi); msgs.push({role:'assistant',text:hi}); speakQ(hi);
   }
   function callEnd(){
-    if(!call.on) return; var t=callClock(); call.on=false; clearInterval(call.timer);
+    if(!call.on) return; var t=callClock(); call.on=false; clearInterval(call.timer); clearTimeout(call.pendT); call.pend='';
     try{ call.proc.disconnect(); call.src.disconnect(); }catch(e){} try{ call.stream.getTracks().forEach(function(x){ x.stop(); }); }catch(e){} try{ if(call.ctx) call.ctx.close(); }catch(e){}
     try{ if(call.sr){ call.sr.onend=null; call.sr.abort(); } }catch(e){} call.sr=null; call.srOn=false; call.useSR=false;
     bargeIn(); call.speech=false; call.buf=[]; callSync();
@@ -26806,12 +26908,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   })();
 
   /* ===== "Hey Zara" wake word: always listening while the app is open and Zara is idle ===== */
-  var WK='tpa_wake', WAKE_RE=/\b(?:(?:hey|hay|hi|hello|ok|okay)[\s,]+)?(?:zara|zarah|zahra|zaara|zaira)\b[\s,.!?:-]*/i;
-  var wake={on:true,rec:null,run:false,err:0,dead:false,t:null,armed:false,fired:0};
+  var WK='tpa_wake', WAKE_RE=/\b(?:(?:hey|hay|hi|hello|ok|okay)[\s,]+(?:zara|zarah|zahra|zaara|zaira|sara|sarah|zora|zarra|xara|sahra|zahara)|zara|zarah|zaara|zaira)\b[\s,.!?:-]*/i;
+  var wake={on:true,rec:null,run:false,err:0,dead:false,needTap:false,tapAt:0,t:null,armed:false,fired:0};
   try{ if(localStorage.getItem(WK)==='0') wake.on=false; }catch(e){}
   function wakeReply(){ var n=zaraUser(), nm=n?', '+n:''; return pickOf(["Yes"+nm+", I'm here. How can I help?","Hi"+nm+"! I'm listening. Go ahead.","Hello"+nm+"! What can I do for you?"]); }
   function wakeSupported(){ return !!(window.SpeechRecognition||window.webkitSpeechRecognition); }
-  function wakeShouldRun(){ return wake.on&&!wake.dead&&wakeSupported()&&signedIn&&!call.on&&!panel.classList.contains('open')&&!document.hidden; }
+  function wakeShouldRun(){ return wake.on&&!wake.dead&&!wake.needTap&&wakeSupported()&&signedIn&&!call.on&&!panel.classList.contains('open')&&!document.hidden; }
   function wakeUI(){ var run=wake.on&&!wake.dead&&wakeSupported(); fab.classList.toggle('tpa-fab-wake',run&&wake.run); var b=$('tpa-wake-btn'); if(b){ b.classList.toggle('on',wake.on&&!wake.dead); b.textContent=wake.dead?'Wake: blocked':(wake.on?'Hey Zara: on':'Hey Zara: off'); } }
   function wakeStop(){
     clearTimeout(wake.t); var r=wake.rec; wake.rec=null; wake.run=false;
@@ -26840,7 +26942,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     };
     r.onerror=function(e){
       var c=e&&e.error;
-      if(c==='not-allowed'||c==='service-not-allowed'){ wake.dead=true; wakeStop(); }
+      console.warn('[tpa] wake error',c);
+      if(c==='not-allowed'||c==='service-not-allowed'){ if(Date.now()-wake.tapAt<1500){ wake.dead=true; wake.deadAt=Date.now(); } else wake.needTap=true; wakeStop(); }
       else if(c==='audio-capture'||c==='network'){ if(++wake.err>=5){ wake.dead=true; wakeStop(); } }
     };
     r.onend=function(){ wake.run=false; wake.rec=null; wakeUI(); setTimeout(wakeStart,wake.err?2500:600); };
@@ -26848,7 +26951,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function wakeSync(){ if(wakeShouldRun()) wakeStart(); else if(wake.rec) wakeStop(); else wakeUI(); }
   /* Browsers only allow the very first microphone prompt after a tap, so we also arm on the first touch/click. */
-  function wakeArm(){ if(wake.armed) return; wake.armed=true; ['pointerdown','keydown'].forEach(function(ev){ document.addEventListener(ev,function h(){ document.removeEventListener(ev,h,true); wake.dead=false; wakeSync(); },true); }); }
+  function wakeArm(){ if(wake.armed) return; wake.armed=true; ['pointerdown','touchstart','click','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){
+      if(!wake.on||wake.rec||call.on) return; wake.needTap=false; wake.err=0; wake.tapAt=Date.now(); if(wake.dead&&Date.now()-wake.deadAt<4000) return; wake.dead=false; wakeSync(); },true); }); }
   (function(){
     var hb=panel.querySelector('.tpa-hbar'); if(hb&&wakeSupported()){
       var b=document.createElement('button'); b.id='tpa-wake-btn'; b.type='button'; b.className='tpa-wakebtn'; b.setAttribute('aria-label','Toggle the Hey Zara wake word');
@@ -26874,13 +26978,24 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       if(uiSteps){ busy=true; sendBtn.disabled=true; try{ await runUi(uiSteps); }finally{ busy=false; sendBtn.disabled=false; } return; }
     }
     /* Shipment / flight / receipt run through the built-in guided flow so they can be created in the background right here. The remote agent handles general chat and credits. */
+    var inCall=!!call.on;
+    if(inCall && !session.task && session.mode==='idle'){
+      var quick=smallTalkReply(text);
+      if(quick){ quick=quick.replace(/\s*[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu,''); addMsg('assistant',quick); msgs.push({role:'assistant',text:quick}); speakQ(quick); return; }
+    }
+    if(inCall && AGENT_URL && callStreamable(text)){
+      busy=true; sendBtn.disabled=true;
+      var okS=false; try{ okS=await callStream(text,u); }finally{ busy=false; sendBtn.disabled=false; }
+      if(okS){ scrollDown(); return; }
+    }
     var useAgent = AGENT_URL && session.mode!=='pay' && session.task!=='id' && detectTask(text)!=='id' && !BG_TASKS[session.task] && !BG_TASKS[detectTask(text)];
     if(useAgent){
       busy=true; sendBtn.disabled=true; var typing=typingEl();
       try{
         var token=await u.getIdToken();
-        var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },45000);
-        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:msgs.slice(-24),account:account(),ui:uiSpec(),session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:UI_HELP,name:'Zara',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'Your name is Zara. If asked your name or who you are, say: I\'m Zara, your NBATOOLS assistant, and I\'m here to help. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat. '+zaraRule(),smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
+        var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },inCall?20000:45000);
+        var wantsUi=!inCall||/\b(go to|open|click|tap|press|scroll|type|fill|change|switch|log ?out|theme|dark|light|page|screen|button|menu|settings|profile)\b/i.test(text);
+        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({voiceCall:inCall,messages:msgs.slice(inCall?-8:-24),account:account(),ui:wantsUi?uiSpec():undefined,session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:(wantsUi?UI_HELP:undefined),callMode:(inCall?'LIVE PHONE CALL. Reply like a person on the phone: one to three short spoken sentences, plain words, no lists, no markdown, no emojis. Answer first, then ask at most one short question.':undefined),name:'Zara',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'Your name is Zara. If asked your name or who you are, say: I\'m Zara, your NBATOOLS assistant, and I\'m here to help. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat. '+zaraRule(),smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
         clearTimeout(tm);
         var j={}; try{ j=await r.json(); }catch(e){}
         var reply=j.reply;
