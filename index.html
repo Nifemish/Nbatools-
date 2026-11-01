@@ -10762,12 +10762,13 @@ function adminDashboard(){
     ${typeof tpAdminContactsHtml==='function'?tpAdminContactsHtml():''}
     <div class="card pad" style="margin-top:18px" id="tp-admin-voice-card">
       <div class="section-row" style="margin-top:0"><h3>NBATOOLS AI voice</h3></div>
-      <p class="muted" style="margin:0 0 12px;font-size:13px;line-height:1.5">Choose the Cloudflare voice every user hears on real-time calls. Users cannot change it; their call screen has no voice selector.</p>
+      <p class="muted" style="margin:0 0 12px;font-size:13px;line-height:1.5">Choose the Cloudflare voice every user hears on real-time calls and in the chat voice agent. Tap Preview to hear it before you save. Users cannot change it.</p>
       <div class="field" style="margin-bottom:10px">
         <label for="tp_admin_voice_sel">Voice</label>
         <select id="tp_admin_voice_sel" style="width:100%"></select>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <button type="button" class="btn btn-soft" id="tp_admin_voice_preview" onclick="tpAdminPreviewVoice()">▶ Preview</button>
         <button type="button" class="btn btn-accent" id="tp_admin_voice_save" onclick="tpAdminSaveVoice()">Save voice</button>
         
         <span class="muted" id="tp_admin_voice_status" style="font-size:12.5px"></span>
@@ -12386,7 +12387,28 @@ boot();
       if(st)st.textContent='Saved. All users will hear '+label+' on their next voice call.';
     }).catch(function(e){if(st)st.textContent='Could not save: '+((e&&e.message)||'database error');});
   };
-  window.tpAdminPreviewVoice=function(){var st=document.getElementById('tp_admin_voice_status');if(st)st.textContent='Voice preview is not available here; the selected Cloudflare voice applies on the next call.';};
+  window.tpAdminPreviewVoice=function(){
+    var sel=document.getElementById('tp_admin_voice_sel'), st=document.getElementById('tp_admin_voice_status'), btn=document.getElementById('tp_admin_voice_preview');
+    if(!sel||!sel.value){ if(st)st.textContent='Choose a voice first.'; return; }
+    try{ if(window.__tpPrevAudio){ window.__tpPrevAudio.pause(); window.__tpPrevAudio=null; } }catch(e){}
+    var u=(typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||null;
+    if(!u){ if(st)st.textContent='Sign in as admin to preview.'; return; }
+    var label=sel.options[sel.selectedIndex].textContent, host=String(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
+    if(st)st.textContent='Loading preview of '+label+'…'; if(btn)btn.disabled=true;
+    u.getIdToken().then(function(tok){
+      return fetch('https://'+host+'/tts',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({text:"Hi, I'm Zara. This is how I will sound when we talk. How does this voice feel to you?",voice:sel.value})});
+    }).then(function(res){
+      return res.json().catch(function(){return {};}).then(function(j){
+        if(!res.ok||!j||!j.audio) throw new Error((j&&j.error)||('Preview failed ('+res.status+')'));
+        var bin=atob(j.audio), bytes=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+        var url=URL.createObjectURL(new Blob([bytes],{type:j.mime||'audio/mpeg'})), a=new Audio(url); window.__tpPrevAudio=a;
+        a.onended=function(){ if(st)st.textContent='Preview finished. Tap Save voice to use '+label+'.'; try{URL.revokeObjectURL(url);}catch(e){} };
+        a.onerror=function(){ if(st)st.textContent='Could not play the preview.'; };
+        if(st)st.textContent='Playing '+label+'…';
+        var pr=a.play(); if(pr&&pr.catch) pr.catch(function(){ if(st)st.textContent='Tap Preview again to allow sound.'; });
+      });
+    }).catch(function(e){ if(st)st.textContent='Preview failed: '+((e&&e.message)||'network error')+'. Make sure the voice Worker is deployed.'; }).then(function(){ if(btn)btn.disabled=false; });
+  };
   function watch(){var ref=voiceRef();if(!ref){setTimeout(watch,1200);return;}try{ref.onSnapshot(function(doc){var d=doc&&doc.exists?doc.data()||{}:{};window.tpCloudflareVoice=String(d.cloudflareVoice||'melo');try{localStorage.setItem('tp-cloudflare-voice-admin-cache',window.tpCloudflareVoice);}catch(e){}fill();},function(){fill();});}catch(e){fill();}}
   window.__tpAdminVoiceFill=fill; fill(); setTimeout(fill,500); watch();
   var app=document.getElementById('app');if(app&&window.MutationObserver)new MutationObserver(function(){if(document.getElementById('tp_admin_voice_sel'))fill();}).observe(app,{childList:true,subtree:true});
@@ -24384,8 +24406,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function geminiName(){
     if(Date.now()<geminiDeadUntil) return '';
-    var n=previewName||voiceName;
-    if(!n) return 'Melo';
+    var n=previewName;
+    if(!n) return 'Melo';   /* admin-selected Cloudflare voice applies to everyone */
     return n.indexOf('gemini:')===0 ? n.slice(7) : '';
   }
   function tpaAuthHeaders(){
@@ -24406,7 +24428,41 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     new Uint8Array(buf,44).set(bytes);
     return new Blob([buf],{type:'audio/wav'});
   }
+  var CF_TTS_URL='https://'+String(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'')+'/tts';
+  var cfVoiceVal='', cfVoiceAt=0;
+  function cfVoiceGet(){
+    if(cfVoiceVal && Date.now()-cfVoiceAt<60000) return Promise.resolve(cfVoiceVal);
+    function fallback(){ var v=''; try{ v=window.tpCloudflareVoice||localStorage.getItem('tp-cloudflare-voice-admin-cache')||''; }catch(e){} return v||'melo'; }
+    return Promise.resolve().then(function(){
+      if(typeof firebaseDb!=='undefined'&&firebaseDb){
+        return firebaseDb.collection('trackportSettings').doc('aiVoice').get().then(function(sn){ var d=sn&&sn.exists?sn.data()||{}:{}; return String(d.cloudflareVoice||'melo'); });
+      }
+      return fallback();
+    }).catch(fallback).then(function(v){ cfVoiceVal=v; cfVoiceAt=Date.now(); return v; });
+  }
+  function ttsResToUrl(res){
+    return res.json().catch(function(){ return {}; }).then(function(j){
+      if(!res.ok||!j||!j.audio) throw new Error((j&&j.error)||('TTS '+res.status));
+      var bin=atob(j.audio), bytes=new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+      var mime=String(j.mime||''), blob;
+      if(/wav|mpeg|mp3|ogg|webm|aac/i.test(mime)&&!/L16|pcm/i.test(mime)) blob=new Blob([bytes],{type:mime});
+      else { var m=/rate=(\d+)/i.exec(mime); blob=pcmToWav(bytes, m?parseInt(m[1],10):24000); }
+      return URL.createObjectURL(blob);
+    });
+  }
+  function fetchCfVoice(text){
+    return Promise.all([tpaAuthHeaders(),cfVoiceGet()]).then(function(r){
+      var h=r[0]; if(!h.Authorization) throw new Error('not signed in');
+      var hd={'Content-Type':'application/json'}; for(var k in h) hd[k]=h[k];
+      return fetch(CF_TTS_URL,{method:'POST',headers:hd,body:JSON.stringify({text:text,voice:r[1]})});
+    }).then(ttsResToUrl);
+  }
   function fetchGemini(text,voice){
+    if(previewName) return fetchGeminiOld(text,voice);
+    return fetchCfVoice(text).catch(function(){ return fetchGeminiOld(text,voice); });
+  }
+  function fetchGeminiOld(text,voice){
     return tpaAuthHeaders().then(function(h){
       var hd={'Content-Type':'application/json'}; for(var k in h) hd[k]=h[k];
       return fetch(TPA_TTS_URL,{method:'POST',headers:hd,body:JSON.stringify({text:text,voice:voice})});
@@ -27040,6 +27096,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function rtTranscriptChange(data){
     var rt=call.rt; if(!rt||!Array.isArray(data)) return;
+    rt.gotText=true;
     for(var i=rt.seen||0;i<data.length;i++){
       var m=data[i]||{}, role=m.role==='assistant'?'assistant':'user', txt=String(m.text||m.content||'').trim();
       if(!txt) continue;
@@ -27116,16 +27173,25 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
       client.addEventListener('interimtranscript',function(ev){
         var t=rtEventValue(ev); if(t&&typeof t==='object')t=t.text||t.transcript||'';
-        if(call.on&&call.rt===rt&&t)cEl.cap.textContent='You: '+String(t).slice(-180);
+        if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
       });
       client.addEventListener('audiolevelchange',function(ev){
-        var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n))cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2));
+        var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06){ rt.heardAt=rt.heardAt||Date.now(); } }
       });
       client.addEventListener('error',function(ev){
         var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
         if(call.on&&call.rt===rt){console.error('[TrackPort Cloudflare voice]',er);cEl.cap.textContent='Voice error: '+String(er||'The real-time voice service reported an error.').slice(0,150);}
       });
       client.connect();
+      rt.t0=Date.now();
+      rt.diag=setInterval(function(){
+        if(!call.on||call.rt!==rt){ clearInterval(rt.diag); return; }
+        if(rt.status!=='listening'||rt.gotText||call.muted) return;
+        var now=Date.now();
+        if(!rt.heardAt && !rt.listenAt){ rt.listenAt=now; }
+        if(!rt.heardAt && now-rt.listenAt>12000){ cEl.cap.textContent='No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
+        else if(rt.heardAt && now-rt.heardAt>7000){ cEl.cap.textContent='I can hear your mic, but Cloudflare speech recognition is not responding. The voice Worker needs checking.'; }
+      },1000);
     }catch(e){
       console.error('[TrackPort Cloudflare voice connect]',e);
       cEl.cap.textContent='Could not connect to the Cloudflare voice Worker. Check its deployment and try again.';
