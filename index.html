@@ -12369,7 +12369,9 @@ boot();
   function isUnlockedAdmin(){try{return typeof window.isHardcoreAdmin==='function'&&window.isHardcoreAdmin()&&sessionStorage.getItem('tp_admin_unlocked_v1')==='1';}catch(e){return false;}}
   function fill(){
     var sel=document.getElementById('tp_admin_voice_sel'); if(!sel)return;
-    var cur=window.tpCloudflareVoice||'melo'; sel.innerHTML='';
+    var cur=window.tpCloudflareVoice||'melo';
+    if(sel.options.length===VOICES.length){ if(sel.value!==cur) sel.value=cur; return; }
+    sel.innerHTML='';
     VOICES.forEach(function(v){var o=document.createElement('option');o.value=v.id;o.textContent=v.label;o.selected=v.id===cur;sel.appendChild(o);});
   }
   window.tpAdminSaveVoice=function(){
@@ -23805,6 +23807,14 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 @media(max-width:390px){.tpa-agent-toggle{width:34px;padding:0}.tpa-agent-toggle span{display:none}.tpa-hbar{gap:4px}}
 
 .tpa-hbar .tpa-x{margin-left:0}
+.tpa-head{gap:8px;padding-left:12px;padding-right:12px}
+.tpa-head>.tpa-av{flex:0 0 auto}
+.tpa-head>div:nth-child(2){min-width:0;flex:1 1 auto;overflow:hidden}
+.tpa-head .tpa-status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpa-hbar{flex:0 0 auto}
+.tpa-hbar>*{flex-shrink:0}
+.tpa-hbar .tpa-x{width:36px;height:36px;background:rgba(255,255,255,.2)}
+.tpa-endbtn{padding:0 10px}
 .tpa-hb{width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,255,255,.1);color:#fff;font-size:17px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .25s,transform .25s var(--tpa-ease)}
 .tpa-hb:hover{background:rgba(255,255,255,.2)}.tpa-hb:active{transform:scale(.92)}
 .tpa-hb.off{opacity:.55}
@@ -26918,7 +26928,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function wakeArm(){ if(wake.armed) return; wake.armed=true; ['pointerdown','touchstart','click','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){
       if(!wake.on||wake.rec||call.on) return; wake.needTap=false; wake.err=0; wake.tapAt=Date.now(); if(wake.dead&&Date.now()-wake.deadAt<4000) return; wake.dead=false; wakeSync(); },true); }); }
   (function(){
-    var hb=panel.querySelector('.tpa-hbar'); if(hb&&wakeSupported()){
+    var hb=panel.querySelector('.tpa-hbar'); if(false&&hb&&wakeSupported()){
       var b=document.createElement('button'); b.id='tpa-wake-btn'; b.type='button'; b.className='tpa-wakebtn'; b.setAttribute('aria-label','Toggle the Hey Zara wake word');
       hb.insertBefore(b,voiceToggle); b.addEventListener('click',function(){ wake.on=!wake.on; wake.dead=false; try{ localStorage.setItem(WK,wake.on?'1':'0'); }catch(e){} wakeSync(); wakeUI(); });
     }
