@@ -10703,6 +10703,8 @@ function adminDashboard(){
   if(!isHardcoreAdmin()) return adminGatePage();
   if(!isAdminUnlocked()) return adminGatePage();
   try{ if(typeof tpAdminTopupsEnsure==='function') setTimeout(tpAdminTopupsEnsure,0); }catch(_e){}
+  try{ if(typeof tpAdminRequestsEnsure==='function') setTimeout(tpAdminRequestsEnsure,0); }catch(_e){}
+  try{ if(typeof tpAdminContactsEnsure==='function') setTimeout(tpAdminContactsEnsure,0); }catch(_e){}
   const { users, shipments, flights, receipts } = adminAllRecords();
   const q = String(window._adminUserFilter || '').toLowerCase();
   const filteredUsers = users.filter(u=>{
@@ -10756,6 +10758,8 @@ function adminDashboard(){
       <div class="stat"><small>Receipts</small><strong>${receipts.length}</strong></div>
     </div>
     ${typeof tpAdminTopupsHtml==='function'?tpAdminTopupsHtml():''}
+    ${typeof tpAdminRequestsHtml==='function'?tpAdminRequestsHtml():''}
+    ${typeof tpAdminContactsHtml==='function'?tpAdminContactsHtml():''}
     <div class="card pad" style="margin-top:18px" id="tp-admin-voice-card">
       <div class="section-row" style="margin-top:0"><h3>NBATOOLS AI voice</h3></div>
       <p class="muted" style="margin:0 0 12px;font-size:13px;line-height:1.5">Choose the voice every user hears. Users can mute replies, but they cannot change this voice.</p>
@@ -23552,6 +23556,212 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   run();
 })();
 </script>
+<style id="tp-req-css">
+.tpa-reqbar{flex:none;display:flex;padding:8px 12px 0;background:var(--surface,#fff);border-top:1px solid var(--line,#dde2dc)}
+.tpa-reqbar+.tpa-form{border-top:0;padding-top:8px}
+.tpa-reqbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line,#dde2dc);background:var(--surface2,#eef1ec);color:var(--ink,#101311);font:600 12px/1 inherit;font-family:inherit;cursor:pointer;transition:border-color .2s,transform .15s}
+.tpa-reqbtn:hover{border-color:var(--tpa-a,#ffcc00)}
+.tpa-reqbtn:active{transform:scale(.95)}
+.tpa-reqbtn svg{width:14px;height:14px;color:var(--tpa-a,#ffcc00)}
+.tpa-reqcats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tpa-reqcats button{border:1px solid var(--line,#dde2dc);background:var(--surface,#fff);color:var(--ink,#101311);font:600 12px/1 inherit;font-family:inherit;padding:7px 12px;border-radius:999px;cursor:pointer}
+.tpa-reqcats button.on{background:var(--tpa-a,#ffcc00);color:#111;border-color:var(--tpa-a,#ffcc00)}
+.tpa-reqcard textarea{width:100%;resize:vertical;min-height:86px;max-height:200px;padding:10px 12px;border:1px solid var(--line,#dde2dc);border-radius:14px;background:var(--surface2,#eef1ec);color:var(--ink,#101311);font:500 16px/1.4 inherit;font-family:inherit;outline:none}
+.tpa-reqerr{color:#e5484d;font-size:12.5px;margin-top:6px;min-height:0}
+.tpa-reqact{display:flex;gap:8px;margin-top:10px}
+.tpa-reqact button{flex:1;border:0;border-radius:999px;padding:11px 14px;font:700 13px/1 inherit;font-family:inherit;cursor:pointer;background:var(--tpa-a,#ffcc00);color:#111}
+.tpa-reqact button.secondary{background:var(--surface2,#eef1ec);color:var(--ink,#101311);border:1px solid var(--line,#dde2dc)}
+.tpa-reqact button:disabled{opacity:.6;cursor:default}
+.tp-req-tabs{display:flex;gap:8px;margin:0 0 6px;flex-wrap:wrap}
+.tp-req-tabs button{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 13px/1 inherit;font-family:inherit;padding:8px 14px;border-radius:999px;cursor:pointer}
+.tp-req-tabs button.on{background:var(--accent);border-color:var(--accent);color:#111}
+.tp-req-item{padding:14px 0;border-top:1px solid var(--line)}
+.tp-req-item:first-child{border-top:0}
+.tp-req-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tp-req-cat,.tp-req-st{padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700;background:var(--surface2,#eef1ec);color:var(--muted)}
+.tp-req-st.st-new{background:rgba(255,94,20,.15);color:var(--accent)}
+.tp-req-st.st-progress{background:rgba(59,130,246,.16);color:#3b82f6}
+.tp-req-st.st-done{background:rgba(46,229,157,.18);color:#12a36b}
+.tp-req-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.tp-req-text{margin:8px 0 10px;white-space:pre-wrap;word-break:break-word;font-size:14.5px;line-height:1.45}
+</style>
+<script id="tp-req-js">
+/* ===== Requests: users send feature / tool / setting ideas to the admin (collection "trackportRequests") ===== */
+(function(){
+  var CATS=['Feature','Tool','Setting','Other'], lastSent=0;
+  function db(){ try{ return (typeof firebaseDb!=='undefined'&&firebaseDb)?firebaseDb:null; }catch(e){ return null; } }
+  function cu(){ try{ return (typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||null; }catch(e){ return null; } }
+  function lc(s){ return String(s||'').trim().toLowerCase(); }
+  window.tpRequestSubmit=async function(o){
+    var u=cu(), d=db(); if(!u||!d) return {ok:false,error:'Please sign in first.'};
+    var text=String((o&&o.text)||'').replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,1000);
+    if(text.length<5) return {ok:false,error:'Please describe your request in a few words.'};
+    if(Date.now()-lastSent<15000) return {ok:false,error:'Give it a few seconds before sending another request.'};
+    var cat=CATS.indexOf(o&&o.category)>-1?o.category:'Other', name='';
+    try{ name=(typeof state!=='undefined'&&state.user&&state.user.name)||u.displayName||''; }catch(e){}
+    try{
+      var ref=await d.collection('trackportRequests').add({uid:u.uid,email:lc(u.email),name:String(name).slice(0,80),category:cat,text:text,source:String((o&&o.source)||'chat').slice(0,30),status:'new',createdMs:Date.now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      lastSent=Date.now(); return {ok:true,id:ref.id};
+    }catch(e){
+      console.warn('[requests]',e);
+      return {ok:false,error:(e&&e.code==='permission-denied')?'Requests are not switched on yet. The admin needs to update the database rules.':'Could not send your request. Please try again.'};
+    }
+  };
+
+  /* ---- admin dashboard panel ---- */
+  var R={items:[],err:'',at:0,loading:false,tab:'open'};
+  var STLAB={'new':'New',progress:'In progress',done:'Done',declined:'Declined'};
+  function newCount(){ return R.items.filter(function(r){ return (r.status||'new')==='new'; }).length; }
+  function shown(){ return R.items.filter(function(r){ var st=r.status||'new'; return R.tab==='all'||(R.tab==='open'?(st==='new'||st==='progress'):(st==='done'||st==='declined')); }); }
+  function btn(id,st,label){ return '<button class="btn btn-soft" onclick="tpAdminRequestSet(\''+esc(id)+'\',\''+st+'\')">'+label+'</button>'; }
+  function item(r){
+    var st=r.status||'new', when=r.createdMs?new Date(r.createdMs).toLocaleString():'';
+    var b='';
+    if(st!=='progress') b+=btn(r.id,'progress','In progress');
+    if(st!=='done') b+=btn(r.id,'done','Done');
+    if(st!=='declined') b+=btn(r.id,'declined','Decline');
+    if(st==='done'||st==='declined') b+=btn(r.id,'new','Reopen');
+    b+='<button class="btn btn-outline" onclick="tpAdminRequestDel(\''+esc(r.id)+'\')">Delete</button>';
+    return '<div class="tp-req-item"><div class="tp-req-top"><b>'+esc(r.name||r.email||'User')+'</b><span class="tp-req-cat">'+esc(r.category||'Other')+'</span><span class="tp-req-st st-'+esc(st)+'">'+esc(STLAB[st]||st)+'</span></div>'
+      +'<div class="tp-req-meta">'+esc(r.email||'')+' · '+esc(when)+(r.source?' · via '+esc(r.source):'')+'</div>'
+      +'<p class="tp-req-text">'+esc(r.text||'')+'</p><div class="tp-adm-actions">'+b+'</div></div>';
+  }
+  function tabsHtml(){ return [['open','Open'],['closed','Closed'],['all','All']].map(function(t){ return '<button type="button" class="'+(R.tab===t[0]?'on':'')+'" onclick="tpAdminRequestTab(\''+t[0]+'\')">'+t[1]+'</button>'; }).join(''); }
+  function listHtml(){
+    if(R.err) return '<p class="muted" style="margin:0">'+esc(R.err)+'</p>';
+    if(!R.at) return '<p class="muted" style="margin:0">Loading requests…</p>';
+    var a=shown(); return a.length?a.map(item).join(''):'<p class="muted" style="margin:0">Nothing here yet.</p>';
+  }
+  function repaint(){
+    var l=document.getElementById('tp-admin-req-list'); if(l) l.innerHTML=listHtml();
+    var c=document.getElementById('tp-admin-req-count'); if(c) c.textContent=newCount()+' new';
+    var t=document.getElementById('tp-admin-req-tabs'); if(t) t.innerHTML=tabsHtml();
+  }
+  window.tpAdminRequestsHtml=function(){
+    return '<div class="card pad" style="margin-top:18px"><div class="section-row" style="margin-top:0"><h3>User requests<span class="tp-adm-pill" id="tp-admin-req-count">'+newCount()+' new</span></h3><button class="btn btn-soft" onclick="tpAdminRequestsEnsure(true)">Refresh</button></div>'
+      +'<p class="muted" style="margin:0 0 12px;font-size:13px">Features, tools, settings and ideas your users sent from the chat, the voice agent or a call with Zara.</p>'
+      +'<div class="tp-req-tabs" id="tp-admin-req-tabs">'+tabsHtml()+'</div><div id="tp-admin-req-list">'+listHtml()+'</div></div>';
+  };
+  window.tpAdminRequestsEnsure=async function(force){
+    if(R.loading) return; if(!force&&Date.now()-R.at<20000) return;
+    var d=db(); if(!d){ R.err='Not connected to the database.'; R.at=Date.now(); return repaint(); }
+    R.loading=true; R.err='';
+    try{
+      var q=await d.collection('trackportRequests').orderBy('createdMs','desc').limit(150).get(), a=[];
+      q.forEach(function(x){ var r=x.data(); r.id=x.id; a.push(r); }); R.items=a;
+    }catch(e){
+      console.warn('[admin requests]',e);
+      R.err=e&&e.code==='permission-denied'?'Not allowed: sign in as the admin account and make sure the Firestore rules were updated.':'Could not load requests.';
+    }
+    R.at=Date.now(); R.loading=false; repaint();
+  };
+  window.tpAdminRequestTab=function(t){ R.tab=t; repaint(); };
+  window.tpAdminRequestSet=async function(id,st){
+    try{ await db().collection('trackportRequests').doc(id).update({status:st,handledMs:Date.now(),handledBy:lc(cu()&&cu().email)}); R.items.forEach(function(r){ if(r.id===id) r.status=st; }); repaint(); }
+    catch(e){ console.warn('[admin requests]',e); toast('Could not update the request'); }
+  };
+  window.tpAdminRequestDel=async function(id){
+    if(!confirm('Delete this request?')) return;
+    try{ await db().collection('trackportRequests').doc(id).delete(); R.items=R.items.filter(function(r){ return r.id!==id; }); repaint(); }
+    catch(e){ console.warn('[admin requests]',e); toast('Could not delete the request'); }
+  };
+})();
+
+/* ===== Contact leads: people who ask Zara to reach the Nbaworld team (collection "trackportContacts") ===== */
+(function(){
+  var lastSent=0;
+  function db(){ try{ return (typeof firebaseDb!=='undefined'&&firebaseDb)?firebaseDb:null; }catch(e){ return null; } }
+  function cu(){ try{ return (typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||null; }catch(e){ return null; } }
+  function lc(s){ return String(s||'').trim().toLowerCase(); }
+  var EMAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  function cleanPhone(v){ return String(v||'').replace(/[^\d+()\-\s.]/g,'').replace(/\s+/g,' ').trim().slice(0,30); }
+  function phoneOk(v){ var n=String(v||'').replace(/\D/g,'').length; return n>=7&&n<=15; }
+
+  window.tpContactSubmit=async function(o){
+    var u=cu(), d=db(); if(!u||!d) return {ok:false,error:'Please sign in first.'};
+    o=o||{};
+    var name=String(o.name||'').replace(/\s+/g,' ').trim().slice(0,80);
+    var email=lc(o.email).slice(0,120), phone=cleanPhone(o.phone);
+    var msg=String(o.message||'').replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,500);
+    if(name.length<2) return {ok:false,error:'Please tell me your name so the team knows who to ask for.'};
+    if(!EMAIL_RE.test(email)) email='';
+    if(!phoneOk(phone)) phone='';
+    if(!email&&!phone) return {ok:false,error:'Please share a valid email or phone number so the team can reach you.'};
+    if(Date.now()-lastSent<15000) return {ok:false,error:'Give it a few seconds before sending another one.'};
+    var accName=''; try{ accName=(typeof state!=='undefined'&&state.user&&state.user.name)||u.displayName||''; }catch(e){}
+    try{
+      var ref=await d.collection('trackportContacts').add({uid:u.uid,accountEmail:lc(u.email),accountName:String(accName).slice(0,80),contactName:name,contactEmail:email,contactPhone:phone,message:msg,source:String(o.source||'chat').slice(0,30),status:'new',createdMs:Date.now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      lastSent=Date.now(); return {ok:true,id:ref.id};
+    }catch(e){
+      console.warn('[contacts]',e);
+      return {ok:false,error:(e&&e.code==='permission-denied')?'Contact requests are not switched on yet. The admin needs to update the database rules.':'Could not send your details. Please try again.'};
+    }
+  };
+
+  /* ---- admin dashboard panel ---- */
+  var C={items:[],err:'',at:0,loading:false,tab:'open'};
+  var STLAB={'new':'New',progress:'Contacted',done:'Closed'};
+  function newCount(){ return C.items.filter(function(r){ return (r.status||'new')==='new'; }).length; }
+  function shown(){ return C.items.filter(function(r){ var st=r.status||'new'; return C.tab==='all'||(C.tab==='open'?(st==='new'||st==='progress'):st==='done'); }); }
+  function btn(id,st,label){ return '<button class="btn btn-soft" onclick="tpAdminContactSet(\''+esc(id)+'\',\''+st+'\')">'+label+'</button>'; }
+  function item(r){
+    var st=r.status||'new', when=r.createdMs?new Date(r.createdMs).toLocaleString():'';
+    var em=EMAIL_RE.test(String(r.contactEmail||''))?String(r.contactEmail):'', ph=phoneOk(r.contactPhone)?cleanPhone(r.contactPhone):'';
+    var b='';
+    if(em) b+='<a class="btn btn-accent" href="mailto:'+esc(em)+'">Email</a>';
+    if(ph) b+='<a class="btn btn-accent" href="tel:'+esc(ph.replace(/[^\d+]/g,''))+'">Call</a>';
+    if(st!=='progress') b+=btn(r.id,'progress','Mark contacted');
+    if(st!=='done') b+=btn(r.id,'done','Close');
+    if(st==='done') b+=btn(r.id,'new','Reopen');
+    b+='<button class="btn btn-outline" onclick="tpAdminContactDel(\''+esc(r.id)+'\')">Delete</button>';
+    var lines=(em?'<div>Email: <b>'+esc(em)+'</b></div>':'')+(ph?'<div>Phone: <b>'+esc(ph)+'</b></div>':'');
+    return '<div class="tp-req-item"><div class="tp-req-top"><b>'+esc(r.contactName||r.accountName||'Visitor')+'</b><span class="tp-req-st st-'+esc(st)+'">'+esc(STLAB[st]||st)+'</span></div>'
+      +'<div class="tp-req-meta">Account: '+esc(r.accountEmail||'')+' · '+esc(when)+(r.source?' · via '+esc(r.source):'')+'</div>'
+      +'<div style="margin:8px 0 0;font-size:14.5px;line-height:1.5">'+lines+'</div>'
+      +(r.message?'<p class="tp-req-text">'+esc(r.message)+'</p>':'<div style="height:10px"></div>')
+      +'<div class="tp-adm-actions">'+b+'</div></div>';
+  }
+  function tabsHtml(){ return [['open','Open'],['done','Closed'],['all','All']].map(function(t){ return '<button type="button" class="'+(C.tab===t[0]?'on':'')+'" onclick="tpAdminContactTab(\''+t[0]+'\')">'+t[1]+'</button>'; }).join(''); }
+  function listHtml(){
+    if(C.err) return '<p class="muted" style="margin:0">'+esc(C.err)+'</p>';
+    if(!C.at) return '<p class="muted" style="margin:0">Loading contact leads…</p>';
+    var a=shown(); return a.length?a.map(item).join(''):'<p class="muted" style="margin:0">Nothing here yet.</p>';
+  }
+  function repaint(){
+    var l=document.getElementById('tp-admin-con-list'); if(l) l.innerHTML=listHtml();
+    var c=document.getElementById('tp-admin-con-count'); if(c) c.textContent=newCount()+' new';
+    var t=document.getElementById('tp-admin-con-tabs'); if(t) t.innerHTML=tabsHtml();
+  }
+  window.tpAdminContactsHtml=function(){
+    return '<div class="card pad" style="margin-top:18px"><div class="section-row" style="margin-top:0"><h3>Contact leads<span class="tp-adm-pill" id="tp-admin-con-count">'+newCount()+' new</span></h3><button class="btn btn-soft" onclick="tpAdminContactsEnsure(true)">Refresh</button></div>'
+      +'<p class="muted" style="margin:0 0 12px;font-size:13px">People who asked Zara to connect them with the Nbaworld team and shared their contact details.</p>'
+      +'<div class="tp-req-tabs" id="tp-admin-con-tabs">'+tabsHtml()+'</div><div id="tp-admin-con-list">'+listHtml()+'</div></div>';
+  };
+  window.tpAdminContactsEnsure=async function(force){
+    if(C.loading) return; if(!force&&Date.now()-C.at<20000) return;
+    var d=db(); if(!d){ C.err='Not connected to the database.'; C.at=Date.now(); return repaint(); }
+    C.loading=true; C.err='';
+    try{
+      var q=await d.collection('trackportContacts').orderBy('createdMs','desc').limit(150).get(), a=[];
+      q.forEach(function(x){ var r=x.data(); r.id=x.id; a.push(r); }); C.items=a;
+    }catch(e){
+      console.warn('[admin contacts]',e);
+      C.err=e&&e.code==='permission-denied'?'Not allowed: sign in as the admin account and make sure the Firestore rules were updated.':'Could not load contact leads.';
+    }
+    C.at=Date.now(); C.loading=false; repaint();
+  };
+  window.tpAdminContactTab=function(t){ C.tab=t; repaint(); };
+  window.tpAdminContactSet=async function(id,st){
+    try{ await db().collection('trackportContacts').doc(id).update({status:st,handledMs:Date.now(),handledBy:lc(cu()&&cu().email)}); C.items.forEach(function(r){ if(r.id===id) r.status=st; }); repaint(); }
+    catch(e){ console.warn('[admin contacts]',e); toast('Could not update the lead'); }
+  };
+  window.tpAdminContactDel=async function(id){
+    if(!confirm('Delete this contact lead?')) return;
+    try{ await db().collection('trackportContacts').doc(id).delete(); C.items=C.items.filter(function(r){ return r.id!==id; }); repaint(); }
+    catch(e){ console.warn('[admin contacts]',e); toast('Could not delete the lead'); }
+  };
+})();
+</script>
 <!-- NBATOOLS AI assistant (TrackPort) — signed-in users only -->
 <style id="tpa-css">
 #tpa-root{--tpa-a:var(--accent,#ffcc00);--tpa-a2:color-mix(in srgb,var(--tpa-a) 72%,#fff);--tpa-on:#111;--tpa-ease:var(--ease-smooth,cubic-bezier(.16,1,.3,1));--tpa-dark:var(--dark,#111);--tpa-dark2:color-mix(in srgb,var(--tpa-dark) 86%,#fff);font-family:var(--font-main,"Inter",system-ui,-apple-system,"Segoe UI",sans-serif);-webkit-font-smoothing:antialiased}
@@ -23656,6 +23866,31 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 .tpa-card h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#737a74);font-weight:700}
 .tpa-brow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line,#dde2dc);font-size:13px}
 .tpa-brow:first-of-type{border-top:0}
+.tpa-form .tpa-agent-toggle{flex:none;width:44px;height:44px;padding:0;gap:0;border:1px solid var(--line,#dde2dc);background:var(--surface2,#eef1ec);color:var(--ink,#101311)}
+.tpa-form .tpa-agent-toggle span{display:none}
+.tpa-form .tpa-agent-toggle .tpa-i{width:19px;height:19px}
+.tpa-form .tpa-agent-toggle.active{background:#e5484d;border-color:#e5484d;color:#fff;box-shadow:0 0 0 4px rgba(229,72,77,.16)}
+.tpa-callbtn{height:34px;padding:0 11px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.09);color:#fff;display:inline-flex;align-items:center;gap:5px;font:600 12px/1 inherit;font-family:inherit;cursor:pointer}
+.tpa-callbtn:active{transform:scale(.94)}.tpa-callbtn.active{background:#e5484d;border-color:#e5484d}
+@media(max-width:390px){.tpa-callbtn{width:34px;padding:0;justify-content:center}.tpa-callbtn span{display:none}}
+.tpa-call{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px));background:radial-gradient(120% 80% at 50% 0%,#26332c,#0d1210);color:#fff;border-radius:inherit}
+.tpa-call[hidden],.tpa-callbar[hidden]{display:none}
+.tpa-call-top{display:flex;align-items:center;gap:8px;width:100%;font-weight:700}
+.tpa-call-top i,.tpa-callbar i{width:8px;height:8px;border-radius:50%;background:#e5484d;animation:tpaMic 1.1s ease-in-out infinite}
+.tpa-call-top time{margin-left:auto;font-variant-numeric:tabular-nums;opacity:.8}
+.tpa-orb-wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%}
+.tpa-orb{--lvl:0;width:132px;height:132px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff6c9,var(--tpa-a,#ffd54a) 55%,#c98f00);box-shadow:0 0 0 calc(10px + var(--lvl)*34px) rgba(255,213,74,.14),0 0 60px rgba(255,213,74,.35);transform:scale(calc(1 + var(--lvl)*.18));transition:transform .08s,box-shadow .08s}
+.tpa-orb.listening{animation:tpaBreath 2.4s ease-in-out infinite}.tpa-orb.speaking{animation:tpaTalk .7s ease-in-out infinite}
+.tpa-orb.thinking{animation:tpaSpin 1.1s linear infinite;border-radius:42% 58% 55% 45%}.tpa-orb.muted{filter:grayscale(1) brightness(.6);box-shadow:none}
+@keyframes tpaBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}@keyframes tpaTalk{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}@keyframes tpaSpin{to{transform:rotate(360deg)}}
+.tpa-call-state{font-weight:700;font-size:15px;margin-bottom:6px}.tpa-call-cap{min-height:54px;max-width:100%;text-align:center;font-size:13px;line-height:1.4;opacity:.85;margin-bottom:14px;overflow:hidden}
+.tpa-call-btns{display:flex;gap:14px}
+.tpa-cb{width:60px;height:60px;border-radius:50%;border:0;background:rgba(255,255,255,.12);color:#fff;font:600 10px/1.1 inherit;font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.tpa-cb b{font-size:19px;line-height:1}.tpa-cb.on{background:#fff;color:#111}.tpa-cb.end{background:#e5484d}
+.tpa-callbar{display:flex;align-items:center;gap:8px;padding:7px 12px;background:#0f1412;color:#fff;font:600 12px/1 inherit;font-family:inherit}
+.tpa-callbar span{flex:1}.tpa-callbar button{height:28px;padding:0 10px;border-radius:999px;border:0;background:rgba(255,255,255,.14);color:#fff;font:inherit;cursor:pointer}.tpa-callbar .end{background:#e5484d}
+.tpa-fab.tpa-oncall{box-shadow:0 0 0 4px rgba(229,72,77,.4)}
+.tpa-hl{outline:3px solid #ffd54a!important;outline-offset:3px;border-radius:8px}
 .tpa-id-img{display:block;width:100%;height:auto;margin-top:10px;border-radius:12px;border:1px solid var(--line,#dde2dc)}.tpa-id-note{margin-top:8px;font-size:11px;line-height:1.4;color:var(--muted,#737a74)}
 .tpa-rc-wrap{margin-top:10px;border:1px solid var(--line,#dde2dc);border-radius:12px;overflow:hidden;background:#fff;position:relative}
 .tpa-rc-inner{transform-origin:top left;width:max-content;max-width:none;pointer-events:none}
@@ -23712,14 +23947,14 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       <div><div class="tpa-name">Zara</div><div class="tpa-status"><i></i>Online · Happy to chat</div></div>
       <div class="tpa-hbar">
         <button class="tpa-endbtn" id="tpa-end" type="button" aria-label="End conversation">End chat</button>
-        <button class="tpa-agent-toggle" id="tpa-agent-toggle" type="button" aria-pressed="false" aria-label="Start hands-free voice agent"><svg class="tpa-i"><use href="#tpa-mic"/></svg><span>Talk</span></button>
         <button class="tpa-hb" id="tpa-voice-toggle" aria-label="Turn voice replies off" aria-pressed="true" type="button"><svg class="tpa-i"><use href="#tpa-spk"/></svg></button>
         <button class="tpa-x" id="tpa-x" aria-label="Close chat" type="button"><svg class="tpa-i"><use href="#tpa-close"/></svg></button>
       </div>
     </div>
     <div class="tpa-log" id="tpa-log"></div>
+    <div class="tpa-reqbar"><button type="button" class="tpa-reqbtn" id="tpa-req-btn" aria-label="Make a request to the admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Make a request</button></div>
     <form class="tpa-form" id="tpa-form" autocomplete="off">
-      <button class="tpa-mic" id="tpa-mic" aria-label="Speak your message" type="button"><svg class="tpa-i"><use href="#tpa-mic"/></svg></button>
+      <button class="tpa-agent-toggle" id="tpa-agent-toggle" type="button" aria-pressed="false" aria-label="Start hands-free voice agent" title="Talk to Zara hands-free"><svg class="tpa-i"><use href="#tpa-mic"/></svg><span>Talk</span></button>
       <input class="tpa-in" id="tpa-in" type="text" maxlength="1000" placeholder="Message Zara…" aria-label="Message">
       <button class="tpa-send" id="tpa-send" type="submit" aria-label="Send"><svg class="tpa-i"><use href="#tpa-arrow"/></svg></button>
     </form>
@@ -23740,10 +23975,26 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   var AGENT_URL = 'https://trackport-ai.nbatoolz.workers.dev/chat';
   var HUMAN_URL = 'https://wa.link/q6bcsj';
   var POP_MS = 7500;
+  /* One automatic retry on a network error or a 5xx from the AI server (GLM can be slow or briefly overloaded). */
+  async function agentFetch(url,opts){
+    var last;
+    for(var n=0;n<2;n++){
+      try{
+        var r=await fetch(url,opts);
+        if(r.status<500||n===1) return r;
+        last=r; console.warn('[tpa] AI server HTTP '+r.status+', retrying');
+      }catch(e){
+        last=e; if(opts.signal&&opts.signal.aborted) throw e;
+        console.warn('[tpa] AI server unreachable, retrying',e);
+      }
+      await sleep(700);
+    }
+    if(last instanceof Error) throw last; return last;
+  }
 
   var $=function(id){return document.getElementById(id)};
   var fab=$('tpa-fab'),panel=$('tpa-panel'),pop=$('tpa-pop'),log=$('tpa-log'),form=$('tpa-form'),input=$('tpa-in'),sendBtn=$('tpa-send');
-  var micBtn=$('tpa-mic'),voiceToggle=$('tpa-voice-toggle'),agentToggle=$('tpa-agent-toggle');
+  var micBtn=null,voiceToggle=$('tpa-voice-toggle'),agentToggle=$('tpa-agent-toggle');
   var msgs=[],busy=false,greeted=false,signedIn=false,visible=false,popTimer=null,welcomedUid=null;
   var voiceOn=true, recognizing=false, recognition=null, ended=false;
   /* Hands-free mode is opt-in: the microphone is never opened until the user taps Talk. */
@@ -24069,10 +24320,11 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       ['ID card','Create an ID card mockup'],
       ['Receipt','Create a business receipt'],
       ['Buy credits','I want to buy credits'],
+      ['Make a request',null],
       ['App help','What can you do in TrackPort?']
     ].forEach(function(c,i){
       var b=document.createElement('button'); b.type='button'; b.className='tpa-chip'; b.style.setProperty('--i',i); b.textContent=c[0];
-      b.onclick=function(){ sendText(c[1]); }; wrap.appendChild(b);
+      b.onclick=function(){ if(c[1]) sendText(c[1]); else openRequestCard(); }; wrap.appendChild(b);
     });
     log.appendChild(wrap); scrollDown();
   }
@@ -24583,7 +24835,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       addMsg('assistant',"Hang on a second, your receipt is still on its way to the admin! Once that's done you can end the chat. I promise I'm not going anywhere.");
       return;
     }
-    var mid=(session.mode==='collect'||session.mode==='confirm'||session.mode==='pay');
+    var mid=(session.mode==='collect'||session.mode==='confirm'||session.mode==='pay'||session.mode==='request');
     ended=true;
     outGen++; outPending=0; outQ=Promise.resolve(); try{ setHeadTyping(false); }catch(e){}
     try{ cancelSpeech(); stopVoice(); }catch(e){}
@@ -25328,20 +25580,41 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function rnd(n){ var o=''; for(var i=0;i<n;i++) o+=Math.floor(Math.random()*10); return o; }
   function toCm(v){ var t=String(v||''), m=t.match(/^(\d)\s*[-'.]\s*(\d{1,2})/); if(m) return String(Math.round(m[1]*30.48+m[2]*2.54)); var n=parseInt(t,10); return n>0?String(n):'168'; }
 
-  /* Renders a page's own card markup offscreen and captures it (same html2canvas path the Download buttons use). */
-  async function capture(html, sel, w, prep, onclone){
-    var host=document.createElement('div'); host.id='tpa-offscreen';
-    host.style.cssText='position:fixed;left:0;top:0;width:'+w+'px;z-index:-1;pointer-events:none';
-    host.innerHTML=html; document.body.insertBefore(host,document.body.firstChild);
+  /* Renders a page's own card markup offscreen and captures it (same html2canvas path the Download buttons use).
+     Mode 0 parks the card far off-screen and moves it to 0,0 inside html2canvas' clone; mode 1 is a fallback that keeps
+     it in the page behind the app. A blank result in mode 0 automatically retries in mode 1. */
+  function isBlank(cv){
     try{
-      if(prep) await prep(host);
-      var el=host.querySelector(sel); if(!el) throw new Error('card not rendered');
-      try{ if(document.fonts&&document.fonts.ready) await Promise.race([document.fonts.ready,sleep(1800)]); }catch(e){}
-      if(typeof waitForRenderedImages==='function') await Promise.race([waitForRenderedImages(el),sleep(8000)]);
-      if(typeof prepareRootForCapture==='function') await Promise.race([prepareRootForCapture(el),sleep(8000)]);
-      var h2c=await (window.ensureHtml2Canvas?window.ensureHtml2Canvas():ensureHtml2Canvas());
-      return await h2c(el,{scale:2,useCORS:true,allowTaint:false,backgroundColor:null,logging:false,imageTimeout:15000,onclone:onclone});
-    } finally { host.remove(); }
+      var c=document.createElement('canvas'); c.width=24; c.height=24; var x=c.getContext('2d'); x.drawImage(cv,0,0,24,24);
+      var px=x.getImageData(0,0,24,24).data; for(var i=3;i<px.length;i+=4){ if(px[i]>8) return false; } return true;
+    }catch(e){ return false; }
+  }
+  async function capture(html, sel, w, prep, onclone){
+    var lastErr;
+    for(var mode=0; mode<2; mode++){
+      var host=document.createElement('div'); host.id='tpa-offscreen';
+      host.style.cssText=(mode===0?'position:fixed;left:-30000px;top:0;':'position:absolute;left:0;top:0;z-index:-1;')+'width:'+w+'px;pointer-events:none';
+      host.innerHTML=html; document.body.insertBefore(host,document.body.firstChild);
+      try{
+        if(prep) await prep(host);
+        var el=host.querySelector(sel); if(!el) throw new Error('card not rendered');
+        try{ if(document.fonts&&document.fonts.ready) await Promise.race([document.fonts.ready,sleep(1800)]); }catch(e){}
+        if(typeof waitForRenderedImages==='function') await Promise.race([waitForRenderedImages(el),sleep(8000)]);
+        if(typeof prepareRootForCapture==='function') await Promise.race([prepareRootForCapture(el),sleep(8000)]);
+        var h2c=await (window.ensureHtml2Canvas?window.ensureHtml2Canvas():ensureHtml2Canvas());
+        var cv=await h2c(el,{scale:2,useCORS:true,allowTaint:false,backgroundColor:null,logging:false,imageTimeout:15000,
+          scrollX:0,scrollY:0,windowWidth:w+40,windowHeight:Math.max(window.innerHeight||0,1400),
+          onclone:function(doc){
+            var h=doc.getElementById('tpa-offscreen');
+            if(h){ h.style.position='absolute'; h.style.left='0'; h.style.top='0'; h.style.zIndex='auto'; }
+            if(onclone) onclone(doc);
+          }});
+        if(cv && !isBlank(cv)) return cv;
+        lastErr=new Error('the card image came out blank');
+      }catch(e){ lastErr=e; console.warn('[tpa] capture mode '+mode+' failed',e); }
+      finally{ host.remove(); }
+    }
+    throw lastErr||new Error('capture failed');
   }
   function fin(cv,label,name,rows,file,view){
     if(!cv) throw new Error('no canvas');
@@ -25460,7 +25733,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   async function bgId(d,k){
     var paid=await spend('id'); if(!paid.ok) return paid;
     try{ return {ok:true, record:await idDispatch(d,k)}; }
-    catch(err){ console.error('[tpa] id',err); refund(paid.spendId); return {ok:false,error:'Something went wrong while generating the ID.'}; }
+    catch(err){ console.error('[tpa] id',err); refund(paid.spendId); return {ok:false,error:'Something went wrong while generating the ID ('+String((err&&err.message)||err).slice(0,90)+'). Your credits were refunded.'}; }
   }
   async function downloadId(x,btn){
     var o=btn&&btn.textContent; if(btn){ btn.disabled=true; btn.textContent='Preparing…'; }
@@ -25802,6 +26075,78 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
 
 
+  /* ===================== REQUESTS FOR THE ADMIN ===================== */
+  var REQ_CATS=['Feature','Tool','Setting','Other'];
+  function reqGuess(t){ t=norm(t); return /\b(setting|option|toggle|preference|theme|language)\b/.test(t)?'Setting':/\b(tool|generator|maker|calculator|converter)\b/.test(t)?'Tool':/\b(feature|function|ability|support|add)\b/.test(t)?'Feature':'Other'; }
+  function reqSource(){ return (typeof call!=='undefined'&&call.on)?'voice call':voiceAgentOn?'voice agent':'chat'; }
+  async function reqSend(o){
+    if(!window.tpRequestSubmit) return {ok:false,error:'Requests are not available right now.'};
+    o.source=o.source||reqSource(); return window.tpRequestSubmit(o);
+  }
+  async function contactSend(o){
+    if(!window.tpContactSubmit) return {ok:false,error:'Sending contact details is not available right now.'};
+    o.source=o.source||reqSource(); return window.tpContactSubmit(o);
+  }
+  /* spoken / typed: "I want to make a request", "feature request", "I wish the app had ..." */
+  function reqIntent(raw){
+    var t=norm(raw);
+    if(!/(make|send|submit|file|have|got) (a|an|my|one|another) (new )?(feature )?request|feature request|request (a|an|the|some) (new )?(feature|tool|function|setting|option)|suggest (a|an|the|some) (new )?(feature|tool|function|setting|option)|i wish (the|this) app|i wish you (had|could)/.test(t)) return null;
+    return {text:/i wish (the|this) app|i wish you/.test(t)?String(raw).trim():''};
+  }
+  function startRequestChat(text){
+    session={mode:'request',task:null,step:0,data:{stage:'text',text:'',category:''},idKind:null,sub:null};
+    if(text&&text.length>=8){
+      session.data.text=text.slice(0,1000); session.data.category=reqGuess(text); session.data.stage='confirm';
+      addMsg('assistant',"Love that idea. I'll send this to the admin: **"+text.slice(0,200)+"**. Shall I send it?",null,'confirm'); return;
+    }
+    addMsg('assistant',pickOf(["Of course! What would you like the admin to add or change? A feature, a tool, a setting, anything goes.","Yes please, I love ideas! Tell me what you'd like the admin to add, and I'll pass it on."]),null,'ask');
+  }
+  async function handleRequestChat(text){
+    var d=session.data, low=norm(text);
+    if(/\b(cancel|never ?mind|forget it|stop|skip)\b/.test(low)){ resetSession(); addMsg('assistant',"No problem, I won't send anything. What else can I help with?",null,'ask'); return; }
+    if(d.stage==='text'){
+      d.text=text.slice(0,1000); d.category=reqGuess(text); d.stage='confirm';
+      addMsg('assistant',"Got it: **"+d.text.slice(0,200)+"**. Shall I send that to the admin?",null,'confirm'); return;
+    }
+    if(/\b(yes|yeah|yep|yup|ok|okay|sure|send|go ahead|do it|confirm|please)\b/.test(low)){
+      var r=await reqSend({text:d.text,category:d.category}); resetSession();
+      addMsg('assistant',r.ok?"Done! It's on the admin's list now. Thank you for the idea!":(r.error||"I couldn't send that, sorry. Please try the Make a request button."),null,'done'); return;
+    }
+    if(/\b(no|nope|change|edit|redo)\b/.test(low)){ d.stage='text'; addMsg('assistant',"No problem. Tell me again what you'd like me to send.",null,'ask'); return; }
+    addMsg('assistant',"Say **yes** and I'll send it, or tell me what to change. You can also say cancel.",null,'confirm');
+  }
+  function openRequestCard(pre){
+    if(!currentUser()){ addMsg('assistant',"Sign in first and then you can send your request to the admin."); return; }
+    var chips=$('tpa-chips'); if(chips) chips.remove();
+    addMsg('assistant',"Tell me what you'd like the admin to add or change: a feature, a tool, a setting, anything at all. I'll pass it straight on.",null,'ask');
+    outCard(function(d){
+      d.classList.add('tpa-reqcard');
+      var h=document.createElement('h4'); h.textContent='Request for the admin'; d.appendChild(h);
+      var cat=(pre&&pre.category)||'Feature', row=document.createElement('div'); row.className='tpa-reqcats';
+      REQ_CATS.forEach(function(c){
+        var b=document.createElement('button'); b.type='button'; b.textContent=c; if(c===cat) b.className='on';
+        b.onclick=function(){ cat=c; Array.prototype.forEach.call(row.children,function(x){ x.classList.toggle('on',x===b); }); };
+        row.appendChild(b);
+      });
+      d.appendChild(row);
+      var ta=document.createElement('textarea'); ta.maxLength=1000; ta.placeholder='Describe what you want…'; ta.value=(pre&&pre.text)||''; d.appendChild(ta);
+      var err=document.createElement('div'); err.className='tpa-reqerr'; d.appendChild(err);
+      var act=document.createElement('div'); act.className='tpa-reqact';
+      var send=document.createElement('button'); send.type='button'; send.textContent='Send to admin';
+      var cancel=document.createElement('button'); cancel.type='button'; cancel.className='secondary'; cancel.textContent='Cancel';
+      send.onclick=async function(){
+        err.textContent=''; send.disabled=true; send.textContent='Sending…';
+        var r=await reqSend({text:ta.value,category:cat});
+        if(r.ok){ d.innerHTML=''; var ok=document.createElement('div'); ok.textContent='Request sent to the admin. Thank you!'; ok.style.fontWeight='700'; d.appendChild(ok); addMsg('assistant',"Sent! The admin will see it in their dashboard. Got another idea? Just tap Make a request again.",null,'done'); }
+        else { err.textContent=r.error||'Could not send your request.'; send.disabled=false; send.textContent='Send to admin'; }
+      };
+      cancel.onclick=function(){ if(d.parentNode) d.parentNode.removeChild(d); };
+      act.appendChild(send); act.appendChild(cancel); d.appendChild(act);
+      setTimeout(function(){ try{ ta.focus(); }catch(e){} },80);
+    },60,'tpa-card');
+  }
+  (function(){ var rb=$('tpa-req-btn'); if(rb) rb.addEventListener('click',function(){ openRequestCard(); }); })();
+
   /* ===================== BUY CREDITS — fully inside the chat ===================== */
   function crPlans(){ return (window.tpCredits&&window.tpCredits.plans&&window.tpCredits.plans.length)?window.tpCredits.plans:APP.plans; }
   function crBank(){ return (window.tpCredits&&window.tpCredits.bank)||{}; }
@@ -26114,6 +26459,301 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     showChips();
   }
 
+  /* ===== App control: Zara can drive the app (navigate, scroll, click, type, settings) ===== */
+  var UI_PAGES=[
+    ['home','Home / dashboard',['home','dashboard','main page','home page']],
+    ['create','Create hub',['create','create hub']],
+    ['create-shipment','Create shipment',['create shipment','shipment form','new shipment']],
+    ['create-flight','Create flight',['create flight','flight form','new flight','flight ticket']],
+    ['create-receipt','Create receipt',['create receipt','receipt form','new receipt']],
+    ['receipt-history','Receipt history',['receipt history','receipts','my receipts']],
+    ['id-creations','ID creations',['id creations','id creation','id cards','ids','create id']],
+    ['id-license','Driver licence hub',['driver license','drivers license','driver licence','license','licence']],
+    ['id-military','Military ID',['military id','military']],
+    ['id-ssn','SSN card',['ssn','ssn card','social security']],
+    ['id-citizenship','Citizenship cards',['citizenship','canada id','canada pr','pr card']],
+    ['id-scene','Card holder studio',['card holder','card holder studio','card studio']],
+    ['id-history','ID history',['id history','license history']],
+    ['track','Track',['track','tracking','track page']],
+    ['history','History',['history','my history','records']],
+    ['tools','Tools',['tools','toolbox']],
+    ['sharing','Sharing',['sharing','share page']],
+    ['route-planner','Route planner',['route planner','planner']],
+    ['settings','Profile & settings',['settings','profile','account','my account']],
+    ['subscription','Subscription & credits',['subscription','plans','pricing','credits page']],
+    ['document-creation','Document creation',['document creation','documents']]
+  ];
+  var UI_CLICK='a[href],button,[role=button],[data-action],[onclick],summary,.btn,[role=tab]';
+  var UI_FIELD='input:not([type=hidden]):not([type=password]):not([type=file]),select,textarea';
+  var UI_RISKY=/delete|remove|clear all|log ?out|sign ?out|\bpay\b|buy|purchase|subscribe|cancel|reset|deactivate/i;
+  var UI_HELP='You can operate the TrackPort app for the user. To do so, include in your JSON response an action {"type":"ui","data":{"steps":[...]}} (max 8 steps). Each step is one of {"do":"go","to":"<route>"}, {"do":"scroll","to":"up|down|top|bottom|<text on the page>"}, {"do":"click","target":"<visible button or link text>"}, {"do":"type","field":"<field label>","value":"<text>"}, {"do":"theme","value":"light|dark|toggle"}, {"do":"profile","name":"..","phone":".."}, {"do":"logout"}, {"do":"back"}, {"do":"read"}. Use only routes listed in ui.pages and only buttons/fields listed in ui.buttons / ui.fields for the current screen (ui.route). Never type passwords or payment details. Shipments, flights, receipts and IDs keep using their guided task actions. REQUESTS FOR THE ADMIN: users can ask the admin to add or change anything in the app (features, tools, settings, improvements). There is a Make a request button in the chat, and you can also take requests in chat, in the voice agent and on live calls. If the user says they wish the app could do something, complains about something missing, or is stuck because a tool or setting does not exist, kindly suggest once that you can pass it to the admin, and do not nag if they decline. When the user clearly wants to send a request and you have the details, repeat the idea back in one short sentence and ask for a yes. Only after they agree, include in your JSON response an action {"type":"request","data":{"text":"<the request in the user\'s own meaning, 5 to 1000 characters>","category":"Feature|Tool|Setting|Other"}}. Never include this action before the user confirms, never invent requests the user did not make, and never promise the admin will build it or give a date. After the action, the app tells the user it was sent, so just say a warm short thanks.';
+  function uiRoute(){ return String(location.hash||'').replace(/^#\/?/,'')||'home'; }
+  function uiVisible(el){
+    if(panel.contains(el)||el===fab) return false;
+    var r=el.getBoundingClientRect(); if(r.width<4||r.height<4) return false;
+    var cs=getComputedStyle(el); return cs.visibility!=='hidden'&&cs.display!=='none';
+  }
+  function uiEls(sel){ return Array.prototype.filter.call(document.querySelectorAll(sel),uiVisible); }
+  function uiLabel(el){
+    var t=el.getAttribute('aria-label')||'';
+    if(!t&&/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){ var lb=el.id&&document.querySelector('label[for="'+el.id+'"]'); t=(lb&&lb.innerText)||el.placeholder||el.name||el.id||''; }
+    if(!t) t=el.innerText||el.title||el.getAttribute('data-action')||'';
+    return t.replace(/\s+/g,' ').trim().slice(0,60);
+  }
+  function uiFind(q,sel){
+    q=String(q||'').toLowerCase().trim(); if(!q) return null;
+    var best=null,bs=0,bl=1e9;
+    uiEls(sel).forEach(function(el){
+      var l=uiLabel(el).toLowerCase(); if(!l) return;
+      var sc=l===q?100:l.indexOf(q)===0?80:l.indexOf(q)>-1?60:(l.length>3&&q.indexOf(l)>-1)?40:0;
+      if(sc&&(sc>bs||(sc===bs&&l.length<bl))){ best=el; bs=sc; bl=l.length; }
+    });
+    return best;
+  }
+  function uiFlash(el){ try{ el.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} el.classList.add('tpa-hl'); setTimeout(function(){ el.classList.remove('tpa-hl'); },1500); }
+  function uiResolve(q){
+    q=String(q||'').toLowerCase().replace(/^(the|my)\s+/,'').replace(/\s+(page|screen|tab|section)$/,'').trim(); if(!q) return null;
+    for(var i=0;i<UI_PAGES.length;i++){ var p=UI_PAGES[i]; if(p[0]===q||p[1].toLowerCase()===q||p[2].indexOf(q)>-1) return p; }
+    return null;
+  }
+  function uiSpec(){
+    var r=uiRoute(), pg=UI_PAGES.filter(function(p){ return p[0]===r; })[0], seen={};
+    var labels=function(sel,n){ var o=[]; uiEls(sel).forEach(function(el){ var l=uiLabel(el); if(l&&!seen[sel+l]){ seen[sel+l]=1; o.push(l); } }); return o.slice(0,n); };
+    return {route:r,pageName:pg?pg[1]:r,pages:UI_PAGES.map(function(p){ return {route:p[0],name:p[1]}; }),buttons:labels(UI_CLICK,40),fields:labels(UI_FIELD,25),theme:(state&&state.theme)||''};
+  }
+  function uiDescribe(){ var sp=uiSpec(); return 'You\'re on **'+sp.pageName+'**. I can see: '+(sp.buttons.slice(0,14).join(', ')||'nothing tappable yet')+'.'; }
+  function uiGo(to){
+    var p=uiResolve(to); if(!p) return 'I don\'t know a page called "'+to+'". I can open: '+UI_PAGES.map(function(x){ return x[1]; }).join(', ')+'.';
+    if(typeof nav==='function') nav(p[0]); else location.hash='#/'+p[0];
+    return 'Opened **'+p[1]+'**.';
+  }
+  function uiScroller(){
+    var el=document.elementFromPoint(window.innerWidth/2,window.innerHeight/2);
+    while(el&&el!==document.body){ var cs=getComputedStyle(el); if(/(auto|scroll)/.test(cs.overflowY)&&el.scrollHeight>el.clientHeight+20) return el; el=el.parentElement; }
+    return null;
+  }
+  function uiScroll(to){
+    to=String(to||'down').toLowerCase(); var sc=uiScroller(), se=document.scrollingElement||document.documentElement;
+    var by=function(y){ if(sc) sc.scrollBy({top:y,behavior:'smooth'}); else window.scrollBy({top:y,behavior:'smooth'}); };
+    if(to==='top'){ if(sc) sc.scrollTo({top:0,behavior:'smooth'}); else window.scrollTo({top:0,behavior:'smooth'}); return 'Scrolled to the top.'; }
+    if(to==='bottom'){ if(sc) sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'}); else window.scrollTo({top:se.scrollHeight,behavior:'smooth'}); return 'Scrolled to the bottom.'; }
+    if(to==='down'||to==='up'){ by((to==='down'?1:-1)*window.innerHeight*0.8); return 'Scrolled '+to+'.'; }
+    var el=uiFind(to,'h1,h2,h3,h4,h5,strong,label,button,a,summary,p,span');
+    if(!el) return 'I couldn\'t find "'+to+'" on this page.';
+    uiFlash(el); return 'Scrolled to **'+uiLabel(el)+'**.';
+  }
+  function uiConfirm(text){
+    return new Promise(function(res){
+      addMsg('assistant',text);
+      outCard(function(d){ btnRow(d,[{label:'Yes, go ahead',fn:function(){ res(true); }},{label:'No, cancel',secondary:true,fn:function(){ res(false); }}]); },100);
+    });
+  }
+  async function uiClick(q){
+    var el=uiFind(q,UI_CLICK); if(!el) return 'I couldn\'t find a button or link called "'+q+'" on this screen.';
+    var lab=uiLabel(el);
+    if(UI_RISKY.test(lab)){
+      openChat(); var ok=await uiConfirm('I\'m about to tap **'+lab+'**. Go ahead?'); closeChat(); await sleep(300);
+      if(!ok) return 'Okay, I left **'+lab+'** alone.';
+    }
+    uiFlash(el); await sleep(600); el.click(); await sleep(700); return 'Tapped **'+lab+'**.';
+  }
+  async function uiType(f,v){
+    var el=uiFind(f,UI_FIELD); if(!el) return 'I couldn\'t find a field called "'+f+'".';
+    uiFlash(el); await sleep(450);
+    var proto=el.tagName==='SELECT'?HTMLSelectElement.prototype:el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype;
+    var set=Object.getOwnPropertyDescriptor(proto,'value').set;
+    if(el.tagName==='SELECT'){
+      var want=String(v).toLowerCase(), o=Array.prototype.filter.call(el.options,function(x){ return x.value.toLowerCase()===want||x.text.toLowerCase().indexOf(want)>-1; })[0];
+      if(!o) return 'The **'+uiLabel(el)+'** list has no option "'+v+'".'; set.call(el,o.value);
+    } else set.call(el,String(v));
+    el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true}));
+    return 'Filled **'+uiLabel(el)+'** with "'+v+'".';
+  }
+  function uiTheme(v){
+    v=String(v||'toggle').toLowerCase(); var cur=(state&&state.theme)||'dark';
+    if(v==='toggle') v=cur==='dark'?'light':'dark';
+    if(v!==cur&&typeof setTheme==='function') setTheme(v);
+    return 'Switched to **'+v+'** mode.';
+  }
+  async function uiProfile(a){
+    if(typeof window.tpProfileSave!=='function'||!state.user) return 'I can\'t edit your profile right now.';
+    var u=state.user, name=String(a.name||u.name||'').trim(), phone=a.phone!=null?String(a.phone).trim():(u.phone||'');
+    var tmp=[['tp-pf-name',name],['tp-pf-phone',phone]].map(function(p){
+      var e=document.getElementById(p[0]), own=!e; if(own){ e=document.createElement('input'); e.id=p[0]; e.type='hidden'; document.body.appendChild(e); }
+      e.value=p[1]; return {e:e,own:own};
+    });
+    try{ await window.tpProfileSave(); } finally { tmp.forEach(function(t){ if(t.own) t.e.remove(); }); }
+    return 'Updated your account'+(a.name?': name is now **'+name+'**':'')+(a.phone!=null?(a.name?', ':': ')+'phone is now **'+phone+'**':'')+'.';
+  }
+  async function uiLogout(){
+    openChat(); var ok=await uiConfirm('Sign out of TrackPort now?');
+    if(!ok) return 'Okay, you stay signed in.';
+    closeChat(); await sleep(250); try{ await signOutUser(); }catch(e){} return 'LOGOUT';
+  }
+  async function runUi(steps){
+    var out=[]; closeChat(); await sleep(350);
+    try{
+      for(var i=0;i<steps.length&&i<8;i++){
+        var s=steps[i]||{}, d=String(s.do||'').toLowerCase(), r='';
+        if(d==='go'){ r=uiGo(s.to); await sleep(900); }
+        else if(d==='scroll'){ r=uiScroll(s.to); await sleep(750); }
+        else if(d==='click') r=await uiClick(s.target);
+        else if(d==='type') r=await uiType(s.field,s.value);
+        else if(d==='theme') r=uiTheme(s.value);
+        else if(d==='profile') r=await uiProfile(s);
+        else if(d==='logout'){ r=await uiLogout(); if(r==='LOGOUT') return; }
+        else if(d==='back'){ history.back(); await sleep(800); r='Went back.'; }
+        else if(d==='read') r=uiDescribe();
+        if(r) out.push(r);
+      }
+    }catch(e){ console.warn('[tpa] ui',e); out.push('Something got in the way: '+String((e&&e.message)||e).slice(0,80)); }
+    await sleep(450); openChat();
+    var msg=(out.join('\n\n')||'Done.')+'\n\nAnything else?'; addMsg('assistant',msg); msgs.push({role:'assistant',text:msg});
+  }
+  /* Plain-language commands handled instantly on the device (no server needed). Complex requests go to the AI with the screen map. */
+  function uiIntent(raw){
+    var t=String(raw||'').toLowerCase().replace(/[“”"]/g,'').trim().replace(/[.!?]+$/,''), m;
+    t=t.replace(/^(hey zara|zara|hey)[,\s]+/,'').replace(/^((please|pls|kindly|can you|could you)\s+)+/,'').trim();
+    if(/^(go back|back)$/.test(t)) return [{do:'back'}];
+    if(m=t.match(/^scroll (down|up)(?: a bit| a little| some| more)?$/)) return [{do:'scroll',to:m[1]}];
+    if(m=t.match(/^scroll (?:all the way )?(?:to )?(?:the )?(top|bottom)(?: of the page)?$/)) return [{do:'scroll',to:m[1]}];
+    if(m=t.match(/^scroll (?:down |up )?(?:to|until|till) (?:the )?(.+)$/)) return [{do:'scroll',to:m[1]}];
+    if(/^(?:turn on |switch to |enable |use |go )?dark (?:mode|theme)(?: on)?$/.test(t)) return [{do:'theme',value:'dark'}];
+    if(/^(?:turn on |switch to |enable |use |go )?light (?:mode|theme)(?: on)?$/.test(t)) return [{do:'theme',value:'light'}];
+    if(/^(toggle|switch|change) (the )?(theme|mode)$/.test(t)) return [{do:'theme',value:'toggle'}];
+    if(m=t.match(/^(?:change|update|set|edit) my (?:full )?name to (.+)$/)) return [{do:'go',to:'settings'},{do:'profile',name:raw.replace(/^.*\bname to\s+/i,'').replace(/[.!?]+$/,'').trim()}];
+    if(m=t.match(/^(?:change|update|set|edit) my (?:phone|phone number|number) to (.+)$/)) return [{do:'go',to:'settings'},{do:'profile',phone:m[1].trim()}];
+    if(/^(log ?out|sign ?out|log me out|sign me out)$/.test(t)) return [{do:'logout'}];
+    if(/^(what'?s on (this|the) (page|screen)|what can i do here|where am i|describe (this|the) (page|screen))$/.test(t)) return [{do:'read'}];
+    if(m=t.match(/^(?:type|enter|put|write) (.+?) (?:in|into) (?:the )?(.+?)(?: field| box| input)?$/)) return [{do:'type',field:m[2],value:m[1]}];
+    if(m=t.match(/^(?:fill|set) (?:the )?(.+?)(?: field| box| input)? (?:with|to) (.+)$/)) return [{do:'type',field:m[1],value:m[2]}];
+    if(m=t.match(/^(?:click|tap|press|hit) (?:on )?(?:the )?(.+?)(?: button| link| tab)?$/)) return [{do:'click',target:m[1]}];
+    if(m=t.match(/^(?:go to|goto|take me to|bring me to|navigate to|open|show me|switch to|visit|head to)\s+(?:the\s+|my\s+)?(.+?)(?:\s+(?:page|screen|tab|section))?$/)){ var p=uiResolve(m[1]); if(p) return [{do:'go',to:p[0]}]; }
+    return null;
+  }
+
+  /* ===== Voice call mode: hands-free, interruptible. Mic -> browser speech recognition (free) -> GLM (/chat) -> Melo voice ===== */
+  var PHONE='<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.6a1 1 0 01-.25 1z"/></svg>';
+  var call={on:false,mini:false,muted:false,stream:null,ctx:null,src:null,proc:null,t0:0,timer:null,noise:0.008,frames:0,speech:false,buf:[],pre:[],lastVoice:0,startedAt:0,busy:0,q:Promise.resolve(),state:''};
+  var cEl={};
+  function isSpeaking(){ return !!(speechBusy||(curAudio&&!curAudio.paused&&!curAudio.ended)||(synth&&synth.speaking)); }
+  function callClock(){ var t=Math.floor((Date.now()-call.t0)/1000); return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
+  function callBuild(){
+    if(cEl.ov) return;
+    var ov=document.createElement('div'); ov.className='tpa-call'; ov.hidden=true;
+    ov.innerHTML='<div class="tpa-call-top"><i></i>Zara<time>00:00</time></div><div class="tpa-orb-wrap"><div class="tpa-orb listening"></div></div><div class="tpa-call-state">Listening…</div><div class="tpa-call-cap"></div>'
+      +'<div class="tpa-call-btns"><button type="button" class="tpa-cb" data-c="mute"><b>🎙️</b>Mute</button><button type="button" class="tpa-cb" data-c="spk"><b>🔊</b>Speaker</button><button type="button" class="tpa-cb" data-c="kb"><b>⌨️</b>Type</button><button type="button" class="tpa-cb end" data-c="end"><b>🔴</b>End</button></div>';
+    panel.appendChild(ov);
+    var bar=document.createElement('div'); bar.className='tpa-callbar'; bar.hidden=true;
+    bar.innerHTML='<i></i><span>On call · 00:00</span><button type="button" data-c="mute">Mute</button><button type="button" data-c="open">Expand</button><button type="button" class="end" data-c="end">End</button>';
+    panel.insertBefore(bar,log);
+    cEl={ov:ov,bar:bar,orb:ov.querySelector('.tpa-orb'),st:ov.querySelector('.tpa-call-state'),cap:ov.querySelector('.tpa-call-cap'),time:ov.querySelector('time'),btxt:bar.querySelector('span')};
+    function act(e){ var b=e.target.closest('[data-c]'); if(!b) return; var c=b.getAttribute('data-c');
+      if(c==='mute') callMute(); else if(c==='spk'){ voiceToggle.click(); callSync(); }
+      else if(c==='kb'){ call.mini=true; callSync(); try{ input.focus(); }catch(x){} }
+      else if(c==='open'){ call.mini=false; callSync(); } else if(c==='end') callEnd(); }
+    ov.addEventListener('click',act); bar.addEventListener('click',act);
+    try{ new MutationObserver(function(ms){ if(!call.on) return; ms.forEach(function(m){ Array.prototype.forEach.call(m.addedNodes,function(n){
+      if(n.className&&/tpa-m a/.test(n.className)&&!/typing/.test(n.className)){ var t=(n.innerText||'').trim(); if(t) cEl.cap.textContent=t.slice(0,170); } }); }); }).observe(log,{childList:true}); }catch(e){}
+  }
+  function callSync(){
+    var on=call.on; cEl.ov.hidden=!(on&&!call.mini); cEl.bar.hidden=!(on&&call.mini);
+    fab.classList.toggle('tpa-oncall',on); var cb=$('tpa-call-btn'); if(cb) cb.classList.toggle('active',on);
+    Array.prototype.forEach.call(document.querySelectorAll('[data-c=mute]'),function(b){ b.classList.toggle('on',call.muted); if(b.querySelector('b')){ b.querySelector('b').textContent=call.muted?'🔇':'🎙️'; } else b.textContent=call.muted?'Unmute':'Mute'; });
+    var sp=cEl.ov.querySelector('[data-c=spk]'); if(sp){ sp.classList.toggle('on',!voiceOn); sp.querySelector('b').textContent=voiceOn?'🔊':'🔈'; }
+  }
+  function callMute(){ call.muted=!call.muted; call.speech=false; call.buf=[]; call.frames=0; callSync(); }
+  function callState(){
+    if(!call.on) return;
+    var st=call.muted?'muted':(call.busy||busy)?'thinking':isSpeaking()?'speaking':call.speech?'hearing':'listening';
+    cEl.time.textContent=callClock(); cEl.btxt.textContent='On call · '+callClock();
+    if(st===call.state) return; call.state=st;
+    cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0');
+    cEl.st.textContent={muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
+  }
+  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); }catch(e){} }
+  function callAudio(e){
+    if(!call.on) return;
+    var d=e.inputBuffer.getChannelData(0), n=d.length, sum=0, i; for(i=0;i<n;i++) sum+=d[i]*d[i];
+    var rms=Math.sqrt(sum/n), spk=isSpeaking();
+    if(call.state==='listening'||call.state==='hearing') cEl.orb.style.setProperty('--lvl',Math.min(1,rms*9).toFixed(2));
+    if(call.muted) return;
+    var thr=Math.max(0.018,call.noise*3.2)*(spk?2.2:1);
+    if(rms>thr&&spk){ if(++call.frames>=4){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
+    else { call.frames=0; if(!spk) call.noise=call.noise*0.96+rms*0.04; }
+  }
+  /* Speech is recognised by the browser (free). The mic stream above is only used for the orb level and to detect you interrupting Zara. */
+  /* Free listening: the browser's built-in speech recognition (no server, no Cloudflare neurons).
+     It is paused while Zara talks so she never hears herself; loud sustained speech then interrupts her. */
+  function callHeard(text){
+    call.q=call.q.then(async function(){
+      if(!call.on) return;
+      for(var w=0;w<120&&busy;w++) await sleep(200);
+      if(!call.on) return;
+      cEl.cap.textContent='You: '+text.slice(0,150);
+      await sendText(text);
+    }).catch(function(e){ console.warn('[tpa] call send',e); });
+  }
+  function callRecInit(){
+    var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
+    var r=new SR(); r.continuous=true; r.interimResults=true; r.lang=navigator.language||'en-US';
+    r.onstart=function(){ call.srOn=true; };
+    r.onend=function(){ call.srOn=false; call.speech=false; };
+    r.onerror=function(e){
+      var c=e&&e.error;
+      if(c==='not-allowed'||c==='service-not-allowed'||c==='language-not-supported'){
+        call.srDead=true; try{ r.abort(); }catch(x){}
+        cEl.cap.textContent=c==='language-not-supported'?"Your browser can't listen in this language. You can type to me instead.":'Speech recognition was blocked. Allow it in your browser, or type to me instead.';
+      } else if(c==='network'&&++call.srErr>=4){
+        call.srDead=true; try{ r.abort(); }catch(x){}
+        cEl.cap.textContent="Your browser's speech service isn't reachable right now. You can type to me instead.";
+      }
+    };
+    r.onresult=function(e){
+      if(call.muted||isSpeaking()) return;
+      var fin='', interim='';
+      for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t; else interim+=t; }
+      call.srErr=0; if(interim){ call.speech=true; cEl.cap.textContent='You: '+interim.slice(-150); }
+      if(fin.trim()){ call.speech=false; callHeard(fin.trim()); }
+    };
+    call.sr=r; return true;
+  }
+  function srTick(){
+    if(!call.sr||!call.on||call.srDead) return;
+    if(call.muted){ if(call.srOn){ try{ call.sr.abort(); }catch(e){} } return; }
+    if(isSpeaking()){ call.lastSpk=Date.now(); if(call.srOn){ try{ call.sr.abort(); }catch(e){} } return; }
+    if(!call.srOn&&Date.now()-(call.lastSpk||0)>450){ try{ call.sr.start(); }catch(e){} }
+  }
+  async function callStart(){
+    if(call.on){ call.mini=false; callSync(); return; }
+    if(!currentUser()){ addMsg('assistant',"Sign in first and then we can chat by voice."); return; }
+    if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){ addMsg('assistant',"Voice calls use your browser's built-in speech recognition, which this browser doesn't have. Chrome, Edge or Safari will work, or you can keep typing."); return; }
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ addMsg('assistant',"This browser can't open the microphone for calls. You can still type, or use the mic button."); return; }
+    try{ call.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
+    catch(e){ addMsg('assistant',"I couldn't reach your microphone. Allow microphone access in your browser settings, then tap Call again."); return; }
+    try{ stopVoice(); }catch(e){}
+    var AC=window.AudioContext||window.webkitAudioContext; call.ctx=new AC(); try{ if(call.ctx.state==='suspended') await call.ctx.resume(); }catch(e){}
+    call.src=call.ctx.createMediaStreamSource(call.stream); call.proc=call.ctx.createScriptProcessor(4096,1,1); call.proc.onaudioprocess=callAudio;
+    var mute=call.ctx.createGain(); mute.gain.value=0; call.src.connect(call.proc); call.proc.connect(mute); mute.connect(call.ctx.destination);
+    Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),noise:0.008,frames:0,speech:false,buf:[],pre:[],busy:0,q:Promise.resolve(),state:'',sr:null,srOn:false,useSR:false,srErr:0,srDead:false,lastSpk:0});
+    call.useSR=callRecInit();
+    voiceOn=true; lsSet(VKEY_ON,'1'); setVoiceUI(); callBuild(); cEl.cap.textContent=''; callSync(); callState();
+    clearInterval(call.timer); call.timer=setInterval(function(){ if(call.on&&ended) callEnd(); else{ callState(); if(call.useSR) srTick(); } },200);
+    var hi="Hi, I'm Zara. I'm listening. Just talk to me, or type whenever you like."; addMsg('assistant',hi); msgs.push({role:'assistant',text:hi}); speakQ(hi);
+  }
+  function callEnd(){
+    if(!call.on) return; var t=callClock(); call.on=false; clearInterval(call.timer);
+    try{ call.proc.disconnect(); call.src.disconnect(); }catch(e){} try{ call.stream.getTracks().forEach(function(x){ x.stop(); }); }catch(e){} try{ call.ctx.close(); }catch(e){}
+    try{ if(call.sr){ call.sr.onend=null; call.sr.abort(); } }catch(e){} call.sr=null; call.srOn=false; call.useSR=false;
+    bargeIn(); call.speech=false; call.buf=[]; callSync();
+    if(!ended) addMsg('assistant','Call ended ('+t+'). Everything we said is right here, and you can keep typing or call me again anytime. If there is anything you wish the app could do, tap **Make a request** and I will pass it to the admin.');
+  }
+  (function(){
+    var hb=panel.querySelector('.tpa-hbar'); if(!hb) return;
+    var b=document.createElement('button'); b.id='tpa-call-btn'; b.type='button'; b.className='tpa-callbtn'; b.setAttribute('aria-label','Start a voice call with Zara'); b.innerHTML=PHONE+'<span>Call</span>';
+    hb.insertBefore(b,voiceToggle); b.addEventListener('click',function(){ if(call.on&&!call.mini) callEnd(); else callStart(); });
+  })();
+
   async function sendText(text){
     text=(text||'').trim(); if(!text||busy) return;
     var chips=$('tpa-chips'); if(chips) chips.remove();
@@ -26123,20 +26763,27 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(isEndIntent(text)){ endChat(); return; }
     if(ended){ ended=false; addMsg('assistant',pickOf(["Oh, you're back! I missed you for, like, a whole minute. Let's pick things up.","Welcome back! Okay, where were we? Let's get going."])); }
 
+    if(session.mode==='request'){ busy=true; sendBtn.disabled=true; try{ await handleRequestChat(text); }finally{ busy=false; sendBtn.disabled=false; } return; }
+    var rq=(!session.task&&session.mode==='idle')?reqIntent(text):null;
+    if(rq){ startRequestChat(rq.text); return; }
+    if(!session.task && session.mode!=='pay'){
+      var uiSteps=uiIntent(text);
+      if(uiSteps){ busy=true; sendBtn.disabled=true; try{ await runUi(uiSteps); }finally{ busy=false; sendBtn.disabled=false; } return; }
+    }
     /* Shipment / flight / receipt run through the built-in guided flow so they can be created in the background right here. The remote agent handles general chat and credits. */
     var useAgent = AGENT_URL && session.mode!=='pay' && session.task!=='id' && detectTask(text)!=='id' && !BG_TASKS[session.task] && !BG_TASKS[detectTask(text)];
     if(useAgent){
       busy=true; sendBtn.disabled=true; var typing=typingEl();
       try{
         var token=await u.getIdToken();
-        var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },20000);
-        var r=await fetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:msgs.slice(-24),account:account(),session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{name:'NBATOOLS AI',style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'If asked your name, say: I\'m NBATOOLS AI, I\'m here to serve you. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat.',smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
+        var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },45000);
+        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:msgs.slice(-24),account:account(),ui:uiSpec(),session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:UI_HELP,name:'NBATOOLS AI',style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'If asked your name, say: I\'m NBATOOLS AI, I\'m here to serve you. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat.',smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
         clearTimeout(tm);
         var j={}; try{ j=await r.json(); }catch(e){}
         var reply=j.reply;
         if(!reply){
           if(r.status===401) reply='Looks like your session expired. Please sign in again and we can pick up right where we left off.';
-          else throw new Error('agent');
+          else throw new Error('server '+r.status+(j.error?': '+String(j.error).slice(0,80):''));
         }
         var human=/\[\[HUMAN\]\]/.test(reply); reply=reply.replace(/\s*\[\[HUMAN\]\]\s*/g,'').trim();
         typing.classList.remove('tpa-typing'); typing.innerHTML=''; rich(typing,reply); msgs.push({role:'assistant',text:reply});
@@ -26147,9 +26794,19 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
           await sleep(600); startCreditsChat(String((act.data&&act.data.plan)||'')); await outQ;
         } else if(act && /^(shipment|flight|receipt)$/.test(act.type)){
           startTask(act.type, text);
+        } else if(act && act.type==='request' && act.data && act.data.text){
+          var rr=await reqSend({text:act.data.text,category:act.data.category});
+          addMsg('assistant',rr.ok?"Done, it's on the admin's list now. Thanks for the idea!":(rr.error||"I couldn't send that, sorry. Please try the Make a request button."),null,'done');
+        } else if(act && act.type==='contact' && act.data){
+          var cc=await contactSend({name:act.data.name,email:act.data.email,phone:act.data.phone,message:act.data.message});
+          addMsg('assistant',cc.ok?"Done! I've passed your contact details to the Nbaworld team, and they'll reach out to you.":(cc.error||"I couldn't send that, sorry. Please try again in a moment."),null,'done');
+        } else if(act && act.type==='ui' && act.data && Array.isArray(act.data.steps)){
+          await runUi(act.data.steps);
         }
       }catch(err){
-        typing.classList.remove('tpa-typing'); typing.innerHTML=''; rich(typing,"Hmm, I couldn't reach the server, so I'll take care of this right here.");
+        console.warn('[tpa] AI server failed',err);
+        var why=(err&&err.name==='AbortError')?'it took too long to answer':(err&&/^server /.test(err.message||''))?String(err.message).replace(/^server /,'server error '):'connection blocked or offline';
+        typing.classList.remove('tpa-typing'); typing.innerHTML=''; rich(typing,"Hmm, I couldn't reach the server ("+why+"), so I'll take care of this right here.");
         await localAgent(text); await outQ;
       }
       busy=false; sendBtn.disabled=false; scrollDown();
