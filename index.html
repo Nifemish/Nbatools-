@@ -10762,14 +10762,14 @@ function adminDashboard(){
     ${typeof tpAdminContactsHtml==='function'?tpAdminContactsHtml():''}
     <div class="card pad" style="margin-top:18px" id="tp-admin-voice-card">
       <div class="section-row" style="margin-top:0"><h3>NBATOOLS AI voice</h3></div>
-      <p class="muted" style="margin:0 0 12px;font-size:13px;line-height:1.5">Choose the voice every user hears. Users can mute replies, but they cannot change this voice.</p>
+      <p class="muted" style="margin:0 0 12px;font-size:13px;line-height:1.5">Choose the Cloudflare voice every user hears on real-time calls. Users cannot change it; their call screen has no voice selector.</p>
       <div class="field" style="margin-bottom:10px">
         <label for="tp_admin_voice_sel">Voice</label>
         <select id="tp_admin_voice_sel" style="width:100%"></select>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
         <button type="button" class="btn btn-accent" id="tp_admin_voice_save" onclick="tpAdminSaveVoice()">Save voice</button>
-        <button type="button" class="btn btn-soft" id="tp_admin_voice_preview" onclick="tpAdminPreviewVoice()">Preview</button>
+        
         <span class="muted" id="tp_admin_voice_status" style="font-size:12.5px"></span>
       </div>
     </div>
@@ -12355,75 +12355,39 @@ async function boot(){
 boot();
 </script>
 <script id="tp-admin-voice-picker">
-    (function(){
-      function fill(){
-        var sel=document.getElementById('tp_admin_voice_sel');
-        if(!sel) return;
-        var list=(window.tpAiVoices&&window.tpAiVoices.length)?window.tpAiVoices:[];
-        var cur='';
-        try{ cur=localStorage.getItem('tpAdminVoiceName')||window.tpAiCurrentVoiceName||''; }catch(e){}
-        if(!list.length && window.speechSynthesis){
-          try{
-            list=(window.speechSynthesis.getVoices()||[]).filter(function(v){return /^en/i.test(v.lang||'');}).map(function(v){return {name:v.name,lang:v.lang};});
-          }catch(e){}
-        }
-        sel.innerHTML='';
-        if(!list.length){
-          var o=document.createElement('option'); o.value=''; o.textContent='No voices available yet — open chat once or use Edge/Chrome'; sel.appendChild(o);
-          return;
-        }
-        list.forEach(function(v,i){
-          var o=document.createElement('option');
-          o.value=v.name;
-          o.textContent=v.label?v.label:((v.name||'').replace(/^Microsoft\s+/,'').replace(/\s*-\s*English.*$/,'')+' · '+(v.lang||''));
-          if((cur && v.name===cur) || (!cur && i===0)) o.selected=true;
-          sel.appendChild(o);
-        });
-      }
-      window.tpAdminSaveVoice=function(){
-        var sel=document.getElementById('tp_admin_voice_sel');
-        var st=document.getElementById('tp_admin_voice_status');
-        if(!sel||!sel.value){ if(st) st.textContent='Pick a voice first'; return; }
-        var name=sel.value, label=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].textContent:name;
-        if(typeof window.tpAiSaveVoiceRemote!=='function'){ if(st) st.textContent='Voice system not ready yet — open the chat once and try again'; return; }
-        if(st) st.textContent='Saving…';
-        window.tpAiSaveVoiceRemote(name).then(function(){
-          try{ localStorage.setItem('tpAdminVoiceName', name); }catch(e){}
-          if(st) st.textContent='Saved — all users will now hear: '+label;
-        }).catch(function(e){
-          if(st) st.textContent='Not saved — '+((e&&e.code==='permission-denied')?'Firestore rules block this write (see firestore-rules-note.txt).':((e&&e.message)||'unknown error'));
-        });
-      };
-      window.tpAdminPreviewVoice=function(){
-        var sel=document.getElementById('tp_admin_voice_sel');
-        if(!sel||!sel.value) return;
-        if(typeof window.tpAiPreviewVoice==='function') window.tpAiPreviewVoice(sel.value);
-        else if(window.speechSynthesis){
-          try{
-            var u=new SpeechSynthesisUtterance("Hi, I'm your NBATOOLS AI assistant. How does this voice sound? Perfect — noted.");
-            var voices=window.speechSynthesis.getVoices()||[];
-            for(var i=0;i<voices.length;i++){ if(voices[i].name===sel.value){ u.voice=voices[i]; break; } }
-            window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
-          }catch(e){}
-        }
-      };
-      window.__tpAdminVoiceFill=fill;
-      fill();
-      setTimeout(fill, 400);
-      setTimeout(fill, 1200);
-      if(window.speechSynthesis){
-        if(speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', fill);
-        else speechSynthesis.onvoiceschanged = fill;
-      }
-    })();
-// Admin voice picker lives here (not inside the admin template) so the page HTML is never cut by a stray closing script tag.
 (function(){
-  var app=document.getElementById("app");
-  if(!app||!window.MutationObserver) return;
-  new MutationObserver(function(){
-    var sel=document.getElementById("tp_admin_voice_sel");
-    if(sel && !sel.options.length){ try{ window.__tpAdminVoiceFill && window.__tpAdminVoiceFill(); }catch(e){} }
-  }).observe(app,{childList:true,subtree:true});
+  var VOICES=[
+    {id:'melo',label:'MeloTTS · Default · lowest cost'},
+    {id:'aura1:asteria',label:'Aura-1 · Asteria'}, {id:'aura1:luna',label:'Aura-1 · Luna'},
+    {id:'aura1:athena',label:'Aura-1 · Athena'}, {id:'aura1:orion',label:'Aura-1 · Orion'}, {id:'aura1:hera',label:'Aura-1 · Hera'},
+    {id:'aura2:amalthea',label:'Aura-2 · Amalthea'}, {id:'aura2:andromeda',label:'Aura-2 · Andromeda'},
+    {id:'aura2:athena',label:'Aura-2 · Athena'}, {id:'aura2:aurora',label:'Aura-2 · Aurora'},
+    {id:'aura2:callista',label:'Aura-2 · Callista'}, {id:'aura2:helena',label:'Aura-2 · Helena'},
+    {id:'aura2:luna',label:'Aura-2 · Luna'}, {id:'aura2:phoebe',label:'Aura-2 · Phoebe'}, {id:'aura2:thalia',label:'Aura-2 · Thalia'}
+  ];
+  function voiceRef(){try{return (typeof firebaseDb!=='undefined'&&firebaseDb)?firebaseDb.collection('trackportSettings').doc('aiVoice'):null;}catch(e){return null;}}
+  function isUnlockedAdmin(){try{return typeof window.isHardcoreAdmin==='function'&&window.isHardcoreAdmin()&&sessionStorage.getItem('tp_admin_unlocked_v1')==='1';}catch(e){return false;}}
+  function fill(){
+    var sel=document.getElementById('tp_admin_voice_sel'); if(!sel)return;
+    var cur=window.tpCloudflareVoice||'melo'; sel.innerHTML='';
+    VOICES.forEach(function(v){var o=document.createElement('option');o.value=v.id;o.textContent=v.label;o.selected=v.id===cur;sel.appendChild(o);});
+  }
+  window.tpAdminSaveVoice=function(){
+    var sel=document.getElementById('tp_admin_voice_sel'), st=document.getElementById('tp_admin_voice_status');
+    if(!isUnlockedAdmin()){if(st)st.textContent='Admin access required.';return;}
+    if(!sel||!sel.value){if(st)st.textContent='Choose a voice first.';return;}
+    var ref=voiceRef(); if(!ref){if(st)st.textContent='Database is not ready. Please try again.';return;}
+    var name=sel.value, label=sel.options[sel.selectedIndex].textContent;
+    if(st)st.textContent='Saving voice for all users…';
+    ref.set({cloudflareVoice:name,cloudflareVoiceUpdatedAt:Date.now(),cloudflareVoiceBy:((typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser&&firebaseAuth.currentUser.email)||'')},{merge:true}).then(function(){
+      window.tpCloudflareVoice=name;try{localStorage.setItem('tp-cloudflare-voice-admin-cache',name);}catch(e){}
+      if(st)st.textContent='Saved. All users will hear '+label+' on their next voice call.';
+    }).catch(function(e){if(st)st.textContent='Could not save: '+((e&&e.message)||'database error');});
+  };
+  window.tpAdminPreviewVoice=function(){var st=document.getElementById('tp_admin_voice_status');if(st)st.textContent='Voice preview is not available here; the selected Cloudflare voice applies on the next call.';};
+  function watch(){var ref=voiceRef();if(!ref){setTimeout(watch,1200);return;}try{ref.onSnapshot(function(doc){var d=doc&&doc.exists?doc.data()||{}:{};window.tpCloudflareVoice=String(d.cloudflareVoice||'melo');try{localStorage.setItem('tp-cloudflare-voice-admin-cache',window.tpCloudflareVoice);}catch(e){}fill();},function(){fill();});}catch(e){fill();}}
+  window.__tpAdminVoiceFill=fill; fill(); setTimeout(fill,500); watch();
+  var app=document.getElementById('app');if(app&&window.MutationObserver)new MutationObserver(function(){if(document.getElementById('tp_admin_voice_sel'))fill();}).observe(app,{childList:true,subtree:true});
 })();
 </script>
 
@@ -24399,7 +24363,15 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     {id:'Fenrir',label:'Fenrir · Gemini · Excitable'},
     {id:'Gacrux',label:'Gacrux · Gemini · Mature'}
   ];
-  var geminiDeadUntil=0, gp={};
+  var geminiDeadUntil=0, gp={}, ttsCache={};
+  /* Call mode: start fetching a sentence's audio the moment it is queued, so the next sentence is ready before the current one ends. */
+  function ttsPrefetch(text){
+    var gn=geminiName(); if(!gn) return;
+    var ch=chunkText(prepSpeech(text)); if(!ch.length) return;
+    var k=geminiSegments(ch)[0].text+'|'+gn;
+    if(ttsCache[k]) return;
+    var pr=fetchGemini(geminiSegments(ch)[0].text,gn); ttsCache[k]=pr; pr.catch(function(){ delete ttsCache[k]; });
+  }
   function geminiName(){
     if(Date.now()<geminiDeadUntil) return '';
     var n=previewName||voiceName;
@@ -24455,7 +24427,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function playGemini(ch,segs,k,gen,gn){
     if(gen!==speakGen) return;
     if(k>=segs.length){ setSpeaking(false); speechDone(gen); return; }
-    var seg=segs[k], key=k+'|'+gen, p=gp[key]||fetchGemini(seg.text,gn); delete gp[key];
+    var seg=segs[k], key=k+'|'+gen, ck=seg.text+'|'+gn, p=gp[key]||(k===0&&ttsCache[ck])||fetchGemini(seg.text,gn); delete gp[key]; if(k===0) delete ttsCache[ck];
     if(k+1<segs.length){ gp[(k+1)+'|'+gen]=fetchGemini(segs[k+1].text,gn); gp[(k+1)+'|'+gen].catch(function(){}); }
     var failed=false;
     function fail(){
@@ -24469,7 +24441,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var a=new Audio(url); curAudio=a;
       function done(){ try{ URL.revokeObjectURL(url); }catch(e){} }
       a.onplaying=function(){ clearTimeout(watchT); if(gen===speakGen) setSpeaking(true); };
-      a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },60); };
+      a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },call.on?0:60); };
       a.onerror=function(){ done(); fail(); };
       var pr=a.play(); if(pr&&pr.catch) pr.catch(function(){ done(); fail(); });
     }).catch(fail);
@@ -24632,6 +24604,9 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     try{ var pr=a.play(); if(pr&&pr.catch) pr.catch(function(){ fail(); }); }catch(e){ fail(); }
   }
   function playChunk(ch,i,gen){
+    /* During a live call, use one native speech output engine. Mixing remote TTS
+       clips with browser synthesis can create level jumps, crackle and clipped chunks. */
+    if(call && call.on){ playBrowserChunk(ch,i,gen); return; }
     var gn=geminiName();
     if(gn && i===0){ playGemini(ch,geminiSegments(ch),0,gen,gn); return; }
     var cn=cloudName();
@@ -24645,12 +24620,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var ch=chunkText(prepSpeech(text));
       if(!ch.length) return;
       cancelSpeech(); var gen=speakGen;
-      setTimeout(function(){ playChunk(ch,0,gen); },90);
+      setTimeout(function(){ playChunk(ch,0,gen); },call.on?0:90);
     }catch(e){}
   }
   /* Speech queue: a new bubble waits for the previous one to finish instead of cutting it off mid-sentence */
   var speechQ=[], speechBusy=false, speechInternal=false, speechWD=null, ackSpeech='';
-  function speakQ(text){ if(!voiceOn) return; try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(!speechBusy) nextSpeech(); }
+  function speakQ(text){ if(!voiceOn) return; try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(call.on){ try{ ttsPrefetch(text); }catch(e){} } if(!speechBusy) nextSpeech(); }
   function nextSpeech(){
     clearTimeout(speechWD);
     if(!speechQ.length){
@@ -24662,7 +24637,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     speechInternal=true; try{ speak(t); }catch(e){} speechInternal=false;
     speechWD=setTimeout(nextSpeech, 12000+String(t).length*130);   /* safety net if a clip never reports it finished */
   }
-  function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,150); }
+  function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,call.on?10:150); }
   function setAgentUI(){
     if(!agentToggle) return;
     agentToggle.classList.toggle('active',voiceAgentOn);
@@ -26681,21 +26656,24 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callMute(){ call.muted=!call.muted; call.speech=false; call.buf=[]; call.frames=0; callSync(); }
   function callState(){
     if(!call.on) return;
+    if(isSpeaking()) call.spokeEnd=Date.now();
     var st=call.muted?'muted':(call.busy||busy)?'thinking':isSpeaking()?'speaking':call.speech?'hearing':'listening';
     cEl.time.textContent=callClock(); cEl.btxt.textContent='On call · '+callClock();
     if(st===call.state) return; call.state=st;
     cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0');
     cEl.st.textContent={muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk or tap to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
   }
-  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); }catch(e){} }
+  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); ttsCache={}; }catch(e){} }
+  /* You started talking while Zara was still working out her answer: drop that answer so she can listen to you instead. */
+  function callAbortReply(){ try{ call.aborted=true; if(call.ctrl) call.ctrl.abort(); }catch(e){} bargeIn(); }
   function callAudio(e){
     if(!call.on) return;
     var d=e.inputBuffer.getChannelData(0), n=d.length, sum=0, i; for(i=0;i<n;i++) sum+=d[i]*d[i];
     var rms=Math.sqrt(sum/n), spk=isSpeaking();
     if(call.state==='listening'||call.state==='hearing') cEl.orb.style.setProperty('--lvl',Math.min(1,rms*9).toFixed(2));
     if(call.muted) return;
-    var thr=Math.max(0.018,call.noise*3.2)*(spk?2.2:1);
-    if(rms>thr&&spk){ if(++call.frames>=4){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
+    var thr=Math.max(0.03,call.noise*5)*(spk?2.6:1);
+    if(rms>thr&&spk){ if(++call.frames>=12){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
     else { call.frames=0; if(!spk) call.noise=call.noise*0.96+rms*0.04; }
   }
   /* Speech is recognised by the browser (free). The mic stream above is only used for the orb level and to detect you interrupting Zara. */
@@ -26710,10 +26688,19 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     return !/\b(create|make|book|buy|credit|credits|plan|upgrade|ship|shipment|flight|receipt|id card|license|track|go to|open|click|tap|press|scroll|type|fill|change|switch|log ?out|theme|dark|light|page|screen|button|menu|settings|profile|request)\b/i.test(text);
   }
   async function callStream(text,u){
-    var typing=typingEl(), acc='', spokeFirst=false, rest='', t0=Date.now();
+    var typing=typingEl(), acc='', spokeFirst=false, spoken=0, t0=Date.now();
+    function pump(){
+      for(;;){
+        if(spokeFirst) break;
+        var m=/^\s*([\s\S]{20,}?[.!?])(?=\s)/.exec(acc.slice(spoken)); if(!m) break;
+        spoken+=m[0].length; var t=m[1].trim();
+        if(t&&!call.aborted){ if(!spokeFirst){ spokeFirst=true; console.log('[tpa] first sentence in',Date.now()-t0,'ms'); } speakQ(t); }
+      }
+    }
+    call.aborted=false;
     function fail(){ try{ typing.remove(); }catch(e){} }
     try{
-      var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },12000);
+      var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },12000); call.ctrl=ctrl;
       var res=await fetch(VOICE_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({userName:zaraUser(),messages:msgs.slice(-8).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',content:String(m.text||'').slice(0,600)}; }),app:{name:APP.name,costs:APP.costs,plans:APP.plans}})});
       if(!res.ok||!res.body){ clearTimeout(tm); if(res.status===404||res.status===405||res.status>=500) voiceRouteDeadUntil=Date.now()+60000; fail(); return false; }
@@ -26727,18 +26714,16 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
           var ln=lines[i].trim(); if(ln.indexOf('data:')!==0) continue; ln=ln.slice(5).trim(); if(!ln||ln==='[DONE]') continue;
           var tok=''; try{ var j=JSON.parse(ln); tok=j.response||(j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content)||''; }catch(e){ continue; }
           if(!tok) continue; acc+=tok; typing.textContent=acc;
-          if(!spokeFirst){
-            var m=/^([\s\S]{12,}?[.!?])(\s|$)/.exec(acc);
-            if(m){ spokeFirst=true; rest=acc.slice(m[1].length); speakQ(m[1].trim()); console.log('[tpa] first sentence in',Date.now()-t0,'ms'); }
-          } else rest+=tok;
+          pump();
         }
       }
       clearTimeout(tm);
       acc=acc.trim(); if(!acc){ fail(); return false; }
       typing.innerHTML=''; rich(typing,acc); msgs.push({role:'assistant',text:acc});
-      if(!spokeFirst) speakQ(acc); else if(rest.trim()) speakQ(rest.trim());
+      if(!call.aborted){ var tail=acc.slice(spoken).trim(); if(tail) speakQ(tail); }
       return true;
     }catch(e){
+      if(call.aborted){ if(acc.trim()){ typing.innerHTML=''; rich(typing,acc.trim()); msgs.push({role:'assistant',text:acc.trim()}); } else fail(); return true; }
       console.warn('[tpa] voice stream failed',e); voiceRouteDeadUntil=Date.now()+30000;
       if(acc.trim()){ typing.innerHTML=''; rich(typing,acc.trim()); msgs.push({role:'assistant',text:acc.trim()}); if(!spokeFirst) speakQ(acc.trim()); return true; }
       fail(); return false;
@@ -26747,6 +26732,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callHeard(text){
     call.q=call.q.then(async function(){
       if(!call.on) return;
+      if(busy){ callAbortReply(); for(var a=0;a<30&&busy;a++) await sleep(40); }
       for(var w=0;w<120&&busy;w++) await sleep(200);
       if(!call.on) return;
       cEl.cap.textContent='You: '+text.slice(0,150);
@@ -26759,7 +26745,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     call.pend=(call.pend?call.pend+' ':'')+fin; clearTimeout(call.pendT);
     var t=call.pend.trim(), w=t.split(/\s+/).length;
     var trail=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$|,$/i.test(t);
-    var wait=trail?1900:(/\?$/.test(t)||w>=7)?450:(w<3?1000:700);
+    var wait=trail?1500:(/[?.!]$/.test(t)||w>=5)?250:(w<3?700:400);
     call.pendT=setTimeout(callFlush,wait);
   }
   function callRecInit(){
@@ -26779,23 +26765,43 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         cEl.cap.textContent="Your browser's speech service isn't reachable right now. You can type to me instead.";
       }
     };
+    function norm(x){ return String(x||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').replace(/\s+/g,' ').trim(); }
     r.onresult=function(e){
       if(call.muted) return;
       var fin='', interim='';
       for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t; else interim+=t; }
-      /* While Zara talks, only react to words that are NOT her own voice coming back through the mic. */
-      if(isSpeaking()){
+      /* While Zara talks (and for a moment after), only react to words that are NOT her own voice coming back through the mic. */
+      var sp=isSpeaking();
+      if(sp||Date.now()-(call.spokeEnd||0)<1800){
         var heard=(fin+' '+interim).toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).filter(Boolean);
         if(heard.length<2) return;
         var said={}; String(call.said||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).forEach(function(w){ if(w) said[w]=1; });
         var hit=0; heard.forEach(function(w){ if(said[w]) hit++; });
-        if(hit/heard.length>=0.6) return;
-        bargeIn(); call.lastSpk=0; call.said='';
+        if(hit/heard.length>=0.5) return;
+        if(sp){ bargeIn(); call.lastSpk=0; call.said=''; }
       }
-      call.srErr=0;
+      call.srErr=0; clearTimeout(call.specT);
       if(interim&&call.pend){ clearTimeout(call.pendT); call.pendT=setTimeout(callFlush,2600); }
-      if(interim){ call.speech=true; if(call.mobile) cEl.orb.style.setProperty('--lvl',(0.35+Math.random()*0.5).toFixed(2)); cEl.cap.textContent='You: '+interim.slice(-150); }
-      if(fin.trim()){ call.speech=false; callQueue(fin.trim()); }
+      if(interim){
+        call.speech=true; if(call.mobile) cEl.orb.style.setProperty('--lvl',(0.35+Math.random()*0.5).toFixed(2)); cEl.cap.textContent='You: '+interim.slice(-150);
+        var iv=interim.trim(), iw=iv.split(/\s+/).length;
+        if((call.busy||busy)&&iw>=3) callAbortReply();
+        /* Don't wait for the browser to "finalise": once the words stop changing for a moment, answer. */
+        var trl=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$/i.test(iv);
+        var dly=trl?2200:(iw>=4?1100:1600);
+        call.specT=setTimeout(function(){
+          if(!call.on||call.muted) return;
+          var tt=((call.pend?call.pend+' ':'')+iv).trim(); call.pend=''; clearTimeout(call.pendT);
+          call.specSent=tt; call.speech=false; callHeard(tt);
+        },dly);
+      }
+      if(fin.trim()){
+        call.speech=false; var f=fin.trim(), a=norm(f), b=norm(call.specSent); clearTimeout(call.specT);
+        if(b&&a.indexOf(b)===0){
+          var rem=f.split(/\s+/).slice(b.split(' ').length).join(' ').trim(); call.specSent='';
+          if(rem.split(/\s+/).filter(Boolean).length>=2) callQueue(rem);
+        } else { call.specSent=''; callQueue(f); }
+      }
     };
     call.sr=r; return true;
   }
@@ -26838,17 +26844,13 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     try{ call.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
     catch(e){ addMsg('assistant',"I couldn't reach your microphone. Allow microphone access in your browser settings, then tap Call again."); return; }
     try{ stopVoice(); }catch(e){}
-    /* Phones allow only ONE mic client at a time. Holding a getUserMedia stream makes Google's speech recognition fail with
-       "cannot record now". So on mobile we use the stream only to obtain permission, release it, and let recognition own the mic. */
+    /* Stable call audio: let the browser's speech recognizer own the microphone.
+       Keeping a second getUserMedia/WebAudio processing chain open can cause echo,
+       crackle, mic contention and feedback on phones and desktop browsers. */
     var mobileMic=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
-    if(mobileMic){
-      try{ call.stream.getTracks().forEach(function(x){ x.stop(); }); }catch(e){} call.stream=null; call.ctx=null; call.src=null; call.proc=null;
-      await sleep(700);
-    } else {
-      var AC=window.AudioContext||window.webkitAudioContext; call.ctx=new AC(); try{ if(call.ctx.state==='suspended') await call.ctx.resume(); }catch(e){}
-      call.src=call.ctx.createMediaStreamSource(call.stream); call.proc=call.ctx.createScriptProcessor(4096,1,1); call.proc.onaudioprocess=callAudio;
-      var mute=call.ctx.createGain(); mute.gain.value=0; call.src.connect(call.proc); call.proc.connect(mute); mute.connect(call.ctx.destination);
-    }
+    try{ if(call.stream) call.stream.getTracks().forEach(function(x){ x.stop(); }); }catch(e){}
+    call.stream=null; call.ctx=null; call.src=null; call.proc=null;
+    await sleep(mobileMic?350:150);
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),noise:0.008,frames:0,speech:false,buf:[],pre:[],busy:0,q:Promise.resolve(),state:'',sr:null,srOn:false,useSR:false,srErr:0,srDead:false,lastSpk:0,mobile:mobileMic,quick:!!(opts&&opts.quick)});
     call.useSR=callRecInit();
     voiceOn=true; lsSet(VKEY_ON,'1'); setVoiceUI(); callBuild(); cEl.cap.textContent=''; callSync(); callState();
@@ -27014,6 +27016,127 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   })();
   window.addEventListener('hashchange',refresh);
   setInterval(refresh,400);
+
+  /* ===== Cloudflare Agents real-time voice call (no Gemini) =====
+     Continuous microphone audio, server-side turn detection, streamed GLM replies,
+     Cloudflare-hosted speech recognition and Cloudflare-hosted text-to-speech. */
+  var TP_VOICE_HOST=(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
+  var TP_VOICE_AGENT='TrackPortVoiceAgent';
+  var tpVoiceClientModule=null;
+  function rtEventValue(ev){ return ev && ev.detail!==undefined ? ev.detail : ev; }
+  function rtStopPlayback(){
+    var rt=call.rt; if(!rt) return;
+    try{ if(rt.client) rt.client.endCall(); }catch(e){}
+  }
+  function rtTranscriptChange(data){
+    var rt=call.rt; if(!rt||!Array.isArray(data)) return;
+    for(var i=rt.seen||0;i<data.length;i++){
+      var m=data[i]||{}, role=m.role==='assistant'?'assistant':'user', txt=String(m.text||m.content||'').trim();
+      if(!txt) continue;
+      if(role==='user') cEl.cap.textContent='You: '+txt.slice(-180);
+      else cEl.cap.textContent='Zara: '+txt.slice(-180);
+      addMsg(role,txt);
+      msgs.push({role:role,text:txt});
+    }
+    rt.seen=data.length;
+  }
+  async function rtLoadClient(){
+    if(tpVoiceClientModule) return tpVoiceClientModule;
+    /* The app remains a single HTML file; the official framework-agnostic Cloudflare client is loaded on demand. */
+    tpVoiceClientModule=await import('https://esm.sh/agents@0.23.0/voice/client?bundle&target=es2022');
+    if(!tpVoiceClientModule||!tpVoiceClientModule.VoiceClient) throw new Error('Cloudflare VoiceClient could not be loaded');
+    return tpVoiceClientModule;
+  }
+  async function tpGetAdminCloudflareVoice(){
+    try{
+      if(typeof firebaseDb!=='undefined'&&firebaseDb){
+        var snap=await firebaseDb.collection('trackportSettings').doc('aiVoice').get();
+        var data=snap&&snap.exists?snap.data()||{}:{};
+        var v=String(data.cloudflareVoice||'melo');
+        window.tpCloudflareVoice=v;return v;
+      }
+    }catch(e){console.warn('[TrackPort admin voice setting]',e);}
+    try{return String(window.tpCloudflareVoice||localStorage.getItem('tp-cloudflare-voice-admin-cache')||'melo');}catch(e){return String(window.tpCloudflareVoice||'melo');}
+  }
+  async function callStart(opts){
+    if(call.on){call.mini=false;callSync();return;}
+    var u=currentUser(); if(!u){addMsg('assistant','Sign in first and then we can chat by voice.');return;}
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!(window.AudioContext||window.webkitAudioContext)||!window.WebSocket){addMsg('assistant','This browser does not support real-time voice calls. Please use an up-to-date Chrome, Edge or Safari browser.');return;}
+    try{wakeStop();}catch(e){}
+    try{stopVoice();}catch(e){}
+    Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),speech:false,busy:0,state:'connecting'});
+    call.rt={client:null,seen:0,authed:false,status:'connecting',timer:null};
+    voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='Connecting securely to Cloudflare voice…';callSync();callState();
+    clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
+    try{
+      var token=await u.getIdToken(); if(!call.on)return;
+      var mod=await rtLoadClient(); if(!call.on)return;
+      var room='tp-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,24):Math.random().toString(36).slice(2)+Date.now().toString(36));
+      var selectedVoice=await tpGetAdminCloudflareVoice();
+      var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:TP_VOICE_HOST,name:room});
+      var rt=call.rt; rt.client=client;
+      var authSent=false, authTimer=setTimeout(function(){if(call.on&&!rt.authed){cEl.cap.textContent='Cloudflare voice authentication timed out. Check that the voice Worker is deployed.';}},12000);
+      client.addEventListener('connectionchange',function(ev){
+        var connected=!!rtEventValue(ev);
+        if(!call.on||call.rt!==rt||!connected||authSent)return;
+        authSent=true;
+        try{client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,app:{name:APP.name,costs:APP.costs,plans:APP.plans}});}
+        catch(e){console.warn('[TrackPort voice auth send]',e);cEl.cap.textContent='Could not authenticate the voice connection.';}
+      });
+      client.addEventListener('custommessage',function(ev){
+        var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
+        if(!d||!call.on||call.rt!==rt)return;
+        if(d.type==='trackport_auth_ok'){
+          rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='Starting the call…';
+          Promise.resolve(client.startCall()).catch(function(e){console.error('[TrackPort voice start]',e);cEl.cap.textContent='Could not start the voice call. Please try again.';});
+        } else if(d.type==='trackport_auth_error'){
+          clearTimeout(authTimer);cEl.cap.textContent='Voice authentication failed. Please sign in again.';
+        }
+      });
+      client.addEventListener('statuschange',function(ev){
+        var st=rtEventValue(ev); if(st&&typeof st==='object')st=st.status||st.state||st.value;
+        if(!call.on||call.rt!==rt)return;
+        rt.status=String(st||'listening').toLowerCase();
+        call.state=rt.status;
+        if(rt.status==='listening')cEl.cap.textContent='Listening — speak naturally. You can interrupt Zara.';
+        else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
+        else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking · talk to interrupt';
+        callState();
+      });
+      client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
+      client.addEventListener('interimtranscript',function(ev){
+        var t=rtEventValue(ev); if(t&&typeof t==='object')t=t.text||t.transcript||'';
+        if(call.on&&call.rt===rt&&t)cEl.cap.textContent='You: '+String(t).slice(-180);
+      });
+      client.addEventListener('audiolevelchange',function(ev){
+        var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n))cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2));
+      });
+      client.addEventListener('error',function(ev){
+        var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
+        if(call.on&&call.rt===rt){console.error('[TrackPort Cloudflare voice]',er);cEl.cap.textContent='Voice error: '+String(er||'The real-time voice service reported an error.').slice(0,150);}
+      });
+      client.connect();
+    }catch(e){
+      console.error('[TrackPort Cloudflare voice connect]',e);
+      cEl.cap.textContent='Could not connect to the Cloudflare voice Worker. Check its deployment and try again.';
+      setTimeout(function(){if(call.on)callEnd();},2200);
+    }
+  }
+  function callMute(){
+    call.muted=!call.muted;
+    var rt=call.rt;
+    try{if(rt&&rt.client)rt.client.toggleMute();}catch(e){console.warn('[TrackPort voice mute]',e);}
+    cEl.cap.textContent=call.muted?'Microphone muted':'Listening — speak naturally.';
+    callSync();callState();
+  }
+  function isSpeaking(){return !!((call&&call.rt&&call.rt.status==='speaking')||(speechBusy||(curAudio&&!curAudio.paused&&!curAudio.ended)||(synth&&synth.speaking)));}
+  function callEnd(){
+    if(!call.on)return;var t=callClock();call.on=false;clearInterval(call.timer);clearTimeout(call.pendT);clearTimeout(call.specT);
+    var rt=call.rt;
+    if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
+    call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
+    if(!ended)addMsg('assistant','Call ended ('+t+'). You can keep typing or call again anytime.');
+  }
 
   window.tpAi = { open: openChat, send: sendText, applyPrefill: applyPrefill, session: function(){ return session; }, knowledge: APP };
 })();
