@@ -12393,13 +12393,15 @@ boot();
     try{ if(window.__tpPrevAudio){ window.__tpPrevAudio.pause(); window.__tpPrevAudio=null; } }catch(e){}
     var u=(typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||null;
     if(!u){ if(st)st.textContent='Sign in as admin to preview.'; return; }
-    var label=sel.options[sel.selectedIndex].textContent, host=String(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
+    var label=sel.options[sel.selectedIndex].textContent;
+    var hostList=[String(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev'),String(window.TRACKPORT_VOICE_HOST_BACKUP||'trackport-cloudflare-voice.trackport.workers.dev')].map(function(h){return h.replace(/^https?:\/\//,'').replace(/\/$/,'');});
     if(st)st.textContent='Loading preview of '+label+'…'; if(btn)btn.disabled=true;
     u.getIdToken().then(function(tok){
-      return fetch('https://'+host+'/tts',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({text:"Hi, I'm Zara. This is how I will sound when we talk. How does this voice feel to you?",voice:sel.value})});
-    }).then(function(res){
-      return res.json().catch(function(){return {};}).then(function(j){
-        if(!res.ok||!j||!j.audio) throw new Error((j&&j.error)||('Preview failed ('+res.status+')'));
+      var body=JSON.stringify({text:"Hi, I'm Zara. This is how I will sound when we talk. How does this voice feel to you?",voice:sel.value}), p=Promise.reject(new Error('no server'));
+      hostList.forEach(function(host){ p=p.catch(function(){ return fetch('https://'+host+'/tts',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:body}).then(function(res){ return res.json().catch(function(){return {};}).then(function(j){ if(!res.ok||!j||!j.audio) throw new Error((j&&j.error)||('Preview failed ('+res.status+')')); return j; }); }); }); });
+      return p;
+    }).then(function(j){
+      return Promise.resolve(j).then(function(j){
         var bin=atob(j.audio), bytes=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
         var url=URL.createObjectURL(new Blob([bytes],{type:j.mime||'audio/mpeg'})), a=new Audio(url); window.__tpPrevAudio=a;
         a.onended=function(){ if(st)st.textContent='Preview finished. Tap Save voice to use '+label+'.'; try{URL.revokeObjectURL(url);}catch(e){} };
@@ -24452,11 +24454,18 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     });
   }
   function fetchCfVoice(text){
+    var hosts=tpVoiceHosts(), st=tpVoiceStartIndex(hosts), order=hosts.slice(st).concat(hosts.slice(0,st));
     return Promise.all([tpaAuthHeaders(),cfVoiceGet()]).then(function(r){
       var h=r[0]; if(!h.Authorization) throw new Error('not signed in');
       var hd={'Content-Type':'application/json'}; for(var k in h) hd[k]=h[k];
-      return fetch(CF_TTS_URL,{method:'POST',headers:hd,body:JSON.stringify({text:text,voice:r[1]})});
-    }).then(ttsResToUrl);
+      var body=JSON.stringify({text:text,voice:r[1]}), p=Promise.reject(new Error('no voice server'));
+      order.forEach(function(host){
+        p=p.catch(function(){
+          return fetch('https://'+host+'/tts',{method:'POST',headers:hd,body:body}).then(ttsResToUrl).catch(function(e){ if(!/unauthorized/i.test(String(e&&e.message))) tpVoiceMarkBad(host); throw e; });
+        });
+      });
+      return p;
+    });
   }
   function fetchGemini(text,voice){
     if(previewName) return fetchGeminiOld(text,voice);
@@ -27087,6 +27096,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
      Continuous microphone audio, server-side turn detection, streamed GLM replies,
      Cloudflare-hosted speech recognition and Cloudflare-hosted text-to-speech. */
   var TP_VOICE_HOST=(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
+  var TP_VOICE_HOST_BACKUP=(window.TRACKPORT_VOICE_HOST_BACKUP||'trackport-cloudflare-voice.trackport.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
+  /* Main Worker first, backup Worker (second Cloudflare account) when the main one fails or is out of daily quota. */
+  function tpVoiceHosts(){ var a=[TP_VOICE_HOST]; if(TP_VOICE_HOST_BACKUP&&TP_VOICE_HOST_BACKUP!==TP_VOICE_HOST) a.push(TP_VOICE_HOST_BACKUP); return a; }
+  function tpVoiceMarkBad(h){ try{ sessionStorage.setItem('tp-voice-bad:'+h,String(Date.now()+8*60*1000)); }catch(e){} }
+  function tpVoiceIsBad(h){ try{ return Number(sessionStorage.getItem('tp-voice-bad:'+h)||0)>Date.now(); }catch(e){ return false; } }
+  function tpVoiceStartIndex(hosts){ for(var i=0;i<hosts.length;i++){ if(!tpVoiceIsBad(hosts[i])) return i; } return 0; }
   var TP_VOICE_AGENT='TrackPortVoiceAgent';
   var tpVoiceClientModule=null;
   function rtEventValue(ev){ return ev && ev.detail!==undefined ? ev.detail : ev; }
@@ -27096,11 +27111,10 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function rtTranscriptChange(data){
     var rt=call.rt; if(!rt||!Array.isArray(data)) return;
-    rt.gotText=true;
     for(var i=rt.seen||0;i<data.length;i++){
       var m=data[i]||{}, role=m.role==='assistant'?'assistant':'user', txt=String(m.text||m.content||'').trim();
       if(!txt) continue;
-      if(role==='user') cEl.cap.textContent='You: '+txt.slice(-180);
+      if(role==='user'){ rt.gotText=true; cEl.cap.textContent='You: '+txt.slice(-180); }
       else cEl.cap.textContent='Zara: '+txt.slice(-180);
       addMsg(role,txt);
       msgs.push({role:role,text:txt});
@@ -27140,58 +27154,80 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var mod=await rtLoadClient(); if(!call.on)return;
       var room='tp-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,24):Math.random().toString(36).slice(2)+Date.now().toString(36));
       var selectedVoice=await tpGetAdminCloudflareVoice();
-      var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:TP_VOICE_HOST,name:room});
-      var rt=call.rt; rt.client=client;
-      var authSent=false, authTimer=setTimeout(function(){if(call.on&&!rt.authed){cEl.cap.textContent='Cloudflare voice authentication timed out. Check that the voice Worker is deployed.';}},12000);
-      client.addEventListener('connectionchange',function(ev){
-        var connected=!!rtEventValue(ev);
-        if(!call.on||call.rt!==rt||!connected||authSent)return;
-        authSent=true;
-        try{client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,app:{name:APP.name,costs:APP.costs,plans:APP.plans}});}
-        catch(e){console.warn('[TrackPort voice auth send]',e);cEl.cap.textContent='Could not authenticate the voice connection.';}
-      });
-      client.addEventListener('custommessage',function(ev){
-        var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
-        if(!d||!call.on||call.rt!==rt)return;
-        if(d.type==='trackport_auth_ok'){
-          rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='Starting the call…';
-          Promise.resolve(client.startCall()).catch(function(e){console.error('[TrackPort voice start]',e);cEl.cap.textContent='Could not start the voice call. Please try again.';});
-        } else if(d.type==='trackport_auth_error'){
-          clearTimeout(authTimer);cEl.cap.textContent='Voice authentication failed. Please sign in again.';
+      var hosts=tpVoiceHosts();
+      var connectOn=function(idx){
+        var old=call.rt;
+        if(old&&old.client){ clearInterval(old.diag); try{old.client.endCall();}catch(e){} try{old.client.disconnect();}catch(e){} }
+        var host=hosts[idx];
+        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')});
+        var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false};
+        call.rt=rt;
+        function failover(why){
+          if(!call.on||call.rt!==rt||rt.gotText||idx+1>=hosts.length) return false;
+          console.warn('[TrackPort voice] switching to backup server:',why);
+          tpVoiceMarkBad(host); cEl.cap.textContent='Switching to the backup voice server…';
+          connectOn(idx+1); return true;
         }
-      });
-      client.addEventListener('statuschange',function(ev){
-        var st=rtEventValue(ev); if(st&&typeof st==='object')st=st.status||st.state||st.value;
-        if(!call.on||call.rt!==rt)return;
-        rt.status=String(st||'listening').toLowerCase();
-        call.state=rt.status;
-        if(rt.status==='listening')cEl.cap.textContent='Listening — speak naturally. You can interrupt Zara.';
-        else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
-        else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking · talk to interrupt';
-        callState();
-      });
-      client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
-      client.addEventListener('interimtranscript',function(ev){
-        var t=rtEventValue(ev); if(t&&typeof t==='object')t=t.text||t.transcript||'';
-        if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
-      });
-      client.addEventListener('audiolevelchange',function(ev){
-        var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06){ rt.heardAt=rt.heardAt||Date.now(); } }
-      });
-      client.addEventListener('error',function(ev){
-        var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
-        if(call.on&&call.rt===rt){console.error('[TrackPort Cloudflare voice]',er);cEl.cap.textContent='Voice error: '+String(er||'The real-time voice service reported an error.').slice(0,150);}
-      });
-      client.connect();
-      rt.t0=Date.now();
-      rt.diag=setInterval(function(){
-        if(!call.on||call.rt!==rt){ clearInterval(rt.diag); return; }
-        if(rt.status!=='listening'||rt.gotText||call.muted) return;
-        var now=Date.now();
-        if(!rt.heardAt && !rt.listenAt){ rt.listenAt=now; }
-        if(!rt.heardAt && now-rt.listenAt>12000){ cEl.cap.textContent='No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
-        else if(rt.heardAt && now-rt.heardAt>7000){ cEl.cap.textContent='I can hear your mic, but Cloudflare speech recognition is not responding. The voice Worker needs checking.'; }
-      },1000);
+        var authSent=false, authTimer=setTimeout(function(){
+          if(!call.on||call.rt!==rt||rt.authed) return;
+          if(!failover('auth timeout')) cEl.cap.textContent='Cloudflare voice authentication timed out. Check that the voice Worker is deployed.';
+        },9000);
+        client.addEventListener('connectionchange',function(ev){
+          var connected=!!rtEventValue(ev);
+          if(!call.on||call.rt!==rt||!connected||authSent)return;
+          authSent=true;
+          try{client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,app:{name:APP.name,costs:APP.costs,plans:APP.plans}});}
+          catch(e){console.warn('[TrackPort voice auth send]',e);cEl.cap.textContent='Could not authenticate the voice connection.';}
+        });
+        client.addEventListener('custommessage',function(ev){
+          var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
+          if(!d||!call.on||call.rt!==rt)return;
+          if(d.type==='trackport_auth_ok'){
+            rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='Starting the call…';
+            Promise.resolve(client.startCall()).catch(function(e){console.error('[TrackPort voice start]',e);if(!failover('start failed'))cEl.cap.textContent='Could not start the voice call. Please try again.';});
+          } else if(d.type==='trackport_auth_error'){
+            clearTimeout(authTimer);cEl.cap.textContent='Voice authentication failed. Please sign in again.';
+          }
+        });
+        client.addEventListener('statuschange',function(ev){
+          var st=rtEventValue(ev); if(st&&typeof st==='object')st=st.status||st.state||st.value;
+          if(!call.on||call.rt!==rt)return;
+          rt.status=String(st||'listening').toLowerCase();
+          call.state=rt.status;
+          if(rt.status==='listening')cEl.cap.textContent='Listening — speak naturally. You can interrupt Zara.';
+          else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
+          else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking · talk to interrupt';
+          callState();
+        });
+        client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
+        client.addEventListener('interimtranscript',function(ev){
+          var t=rtEventValue(ev); if(t&&typeof t==='object')t=t.text||t.transcript||'';
+          if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
+        });
+        client.addEventListener('audiolevelchange',function(ev){
+          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06){ rt.heardAt=rt.heardAt||Date.now(); } }
+        });
+        client.addEventListener('error',function(ev){
+          var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
+          if(call.on&&call.rt===rt){
+            console.error('[TrackPort Cloudflare voice]',er);
+            if(failover('error: '+er)) return;
+            cEl.cap.textContent='Voice error: '+String(er||'The real-time voice service reported an error.').slice(0,150);
+          }
+        });
+        client.connect();
+        rt.diag=setInterval(function(){
+          if(!call.on||call.rt!==rt){ clearInterval(rt.diag); return; }
+          if(rt.status!=='listening'||rt.gotText||call.muted) return;
+          var now=Date.now();
+          if(!rt.heardAt && !rt.listenAt){ rt.listenAt=now; }
+          if(!rt.heardAt && now-rt.listenAt>12000){ cEl.cap.textContent='No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
+          else if(rt.heardAt && now-rt.heardAt>7000){
+            if(!failover('speech recognition not responding')) cEl.cap.textContent='I can hear your mic, but Cloudflare speech recognition is not responding. The voice Worker needs checking.';
+          }
+        },1000);
+      };
+      connectOn(tpVoiceStartIndex(hosts));
     }catch(e){
       console.error('[TrackPort Cloudflare voice connect]',e);
       cEl.cap.textContent='Could not connect to the Cloudflare voice Worker. Check its deployment and try again.';
