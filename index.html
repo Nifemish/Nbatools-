@@ -24399,15 +24399,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     {id:'Fenrir',label:'Fenrir · Gemini · Excitable'},
     {id:'Gacrux',label:'Gacrux · Gemini · Mature'}
   ];
-  var geminiDeadUntil=0, gp={}, ttsCache={};
-  /* Call mode: start fetching a sentence's audio the moment it is queued, so the next sentence is ready before the current one ends. */
-  function ttsPrefetch(text){
-    var gn=geminiName(); if(!gn) return;
-    var ch=chunkText(prepSpeech(text)); if(!ch.length) return;
-    var k=geminiSegments(ch)[0].text+'|'+gn;
-    if(ttsCache[k]) return;
-    var pr=fetchGemini(geminiSegments(ch)[0].text,gn); ttsCache[k]=pr; pr.catch(function(){ delete ttsCache[k]; });
-  }
+  var geminiDeadUntil=0, gp={};
   function geminiName(){
     if(Date.now()<geminiDeadUntil) return '';
     var n=previewName||voiceName;
@@ -24463,7 +24455,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function playGemini(ch,segs,k,gen,gn){
     if(gen!==speakGen) return;
     if(k>=segs.length){ setSpeaking(false); speechDone(gen); return; }
-    var seg=segs[k], key=k+'|'+gen, ck=seg.text+'|'+gn, p=gp[key]||(k===0&&ttsCache[ck])||fetchGemini(seg.text,gn); delete gp[key]; if(k===0) delete ttsCache[ck];
+    var seg=segs[k], key=k+'|'+gen, p=gp[key]||fetchGemini(seg.text,gn); delete gp[key];
     if(k+1<segs.length){ gp[(k+1)+'|'+gen]=fetchGemini(segs[k+1].text,gn); gp[(k+1)+'|'+gen].catch(function(){}); }
     var failed=false;
     function fail(){
@@ -24477,7 +24469,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var a=new Audio(url); curAudio=a;
       function done(){ try{ URL.revokeObjectURL(url); }catch(e){} }
       a.onplaying=function(){ clearTimeout(watchT); if(gen===speakGen) setSpeaking(true); };
-      a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },call.on?0:60); };
+      a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },60); };
       a.onerror=function(){ done(); fail(); };
       var pr=a.play(); if(pr&&pr.catch) pr.catch(function(){ done(); fail(); });
     }).catch(fail);
@@ -24653,12 +24645,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var ch=chunkText(prepSpeech(text));
       if(!ch.length) return;
       cancelSpeech(); var gen=speakGen;
-      setTimeout(function(){ playChunk(ch,0,gen); },call.on?0:90);
+      setTimeout(function(){ playChunk(ch,0,gen); },90);
     }catch(e){}
   }
   /* Speech queue: a new bubble waits for the previous one to finish instead of cutting it off mid-sentence */
   var speechQ=[], speechBusy=false, speechInternal=false, speechWD=null, ackSpeech='';
-  function speakQ(text){ if(!voiceOn) return; try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(call.on){ try{ ttsPrefetch(text); }catch(e){} } if(!speechBusy) nextSpeech(); }
+  function speakQ(text){ if(!voiceOn) return; try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(!speechBusy) nextSpeech(); }
   function nextSpeech(){
     clearTimeout(speechWD);
     if(!speechQ.length){
@@ -24670,7 +24662,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     speechInternal=true; try{ speak(t); }catch(e){} speechInternal=false;
     speechWD=setTimeout(nextSpeech, 12000+String(t).length*130);   /* safety net if a clip never reports it finished */
   }
-  function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,call.on?10:150); }
+  function speechDone(gen){ if(gen!==speakGen) return; clearTimeout(speechWD); speechWD=setTimeout(nextSpeech,150); }
   function setAgentUI(){
     if(!agentToggle) return;
     agentToggle.classList.toggle('active',voiceAgentOn);
@@ -26689,24 +26681,21 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callMute(){ call.muted=!call.muted; call.speech=false; call.buf=[]; call.frames=0; callSync(); }
   function callState(){
     if(!call.on) return;
-    if(isSpeaking()) call.spokeEnd=Date.now();
     var st=call.muted?'muted':(call.busy||busy)?'thinking':isSpeaking()?'speaking':call.speech?'hearing':'listening';
     cEl.time.textContent=callClock(); cEl.btxt.textContent='On call · '+callClock();
     if(st===call.state) return; call.state=st;
     cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0');
     cEl.st.textContent={muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk or tap to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
   }
-  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); ttsCache={}; }catch(e){} }
-  /* You started talking while Zara was still working out her answer: drop that answer so she can listen to you instead. */
-  function callAbortReply(){ try{ call.aborted=true; if(call.ctrl) call.ctrl.abort(); }catch(e){} bargeIn(); }
+  function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); }catch(e){} }
   function callAudio(e){
     if(!call.on) return;
     var d=e.inputBuffer.getChannelData(0), n=d.length, sum=0, i; for(i=0;i<n;i++) sum+=d[i]*d[i];
     var rms=Math.sqrt(sum/n), spk=isSpeaking();
     if(call.state==='listening'||call.state==='hearing') cEl.orb.style.setProperty('--lvl',Math.min(1,rms*9).toFixed(2));
     if(call.muted) return;
-    var thr=Math.max(0.02,call.noise*4)*(spk?1.6:1);
-    if(rms>thr&&spk){ if(++call.frames>=3){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
+    var thr=Math.max(0.018,call.noise*3.2)*(spk?2.2:1);
+    if(rms>thr&&spk){ if(++call.frames>=4){ call.frames=0; bargeIn(); call.lastSpk=0; srTick(); } }
     else { call.frames=0; if(!spk) call.noise=call.noise*0.96+rms*0.04; }
   }
   /* Speech is recognised by the browser (free). The mic stream above is only used for the orb level and to detect you interrupting Zara. */
@@ -26721,18 +26710,10 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     return !/\b(create|make|book|buy|credit|credits|plan|upgrade|ship|shipment|flight|receipt|id card|license|track|go to|open|click|tap|press|scroll|type|fill|change|switch|log ?out|theme|dark|light|page|screen|button|menu|settings|profile|request)\b/i.test(text);
   }
   async function callStream(text,u){
-    var typing=typingEl(), acc='', spokeFirst=false, spoken=0, t0=Date.now();
-    function pump(){
-      for(;;){
-        var m=/^\s*([\s\S]{8,}?[.!?])(?=\s)/.exec(acc.slice(spoken)); if(!m) break;
-        spoken+=m[0].length; var t=m[1].trim();
-        if(t&&!call.aborted){ if(!spokeFirst){ spokeFirst=true; console.log('[tpa] first sentence in',Date.now()-t0,'ms'); } speakQ(t); }
-      }
-    }
-    call.aborted=false;
+    var typing=typingEl(), acc='', spokeFirst=false, rest='', t0=Date.now();
     function fail(){ try{ typing.remove(); }catch(e){} }
     try{
-      var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },12000); call.ctrl=ctrl;
+      var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },12000);
       var res=await fetch(VOICE_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({userName:zaraUser(),messages:msgs.slice(-8).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',content:String(m.text||'').slice(0,600)}; }),app:{name:APP.name,costs:APP.costs,plans:APP.plans}})});
       if(!res.ok||!res.body){ clearTimeout(tm); if(res.status===404||res.status===405||res.status>=500) voiceRouteDeadUntil=Date.now()+60000; fail(); return false; }
@@ -26746,16 +26727,18 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
           var ln=lines[i].trim(); if(ln.indexOf('data:')!==0) continue; ln=ln.slice(5).trim(); if(!ln||ln==='[DONE]') continue;
           var tok=''; try{ var j=JSON.parse(ln); tok=j.response||(j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content)||''; }catch(e){ continue; }
           if(!tok) continue; acc+=tok; typing.textContent=acc;
-          pump();
+          if(!spokeFirst){
+            var m=/^([\s\S]{12,}?[.!?])(\s|$)/.exec(acc);
+            if(m){ spokeFirst=true; rest=acc.slice(m[1].length); speakQ(m[1].trim()); console.log('[tpa] first sentence in',Date.now()-t0,'ms'); }
+          } else rest+=tok;
         }
       }
       clearTimeout(tm);
       acc=acc.trim(); if(!acc){ fail(); return false; }
       typing.innerHTML=''; rich(typing,acc); msgs.push({role:'assistant',text:acc});
-      if(!call.aborted){ var tail=acc.slice(spoken).trim(); if(tail) speakQ(tail); }
+      if(!spokeFirst) speakQ(acc); else if(rest.trim()) speakQ(rest.trim());
       return true;
     }catch(e){
-      if(call.aborted){ if(acc.trim()){ typing.innerHTML=''; rich(typing,acc.trim()); msgs.push({role:'assistant',text:acc.trim()}); } else fail(); return true; }
       console.warn('[tpa] voice stream failed',e); voiceRouteDeadUntil=Date.now()+30000;
       if(acc.trim()){ typing.innerHTML=''; rich(typing,acc.trim()); msgs.push({role:'assistant',text:acc.trim()}); if(!spokeFirst) speakQ(acc.trim()); return true; }
       fail(); return false;
@@ -26764,7 +26747,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callHeard(text){
     call.q=call.q.then(async function(){
       if(!call.on) return;
-      if(busy){ callAbortReply(); for(var a=0;a<30&&busy;a++) await sleep(40); }
       for(var w=0;w<120&&busy;w++) await sleep(200);
       if(!call.on) return;
       cEl.cap.textContent='You: '+text.slice(0,150);
@@ -26777,7 +26759,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     call.pend=(call.pend?call.pend+' ':'')+fin; clearTimeout(call.pendT);
     var t=call.pend.trim(), w=t.split(/\s+/).length;
     var trail=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$|,$/i.test(t);
-    var wait=trail?1100:(/[?.!]$/.test(t)||w>=5)?120:(w<3?420:220);
+    var wait=trail?1900:(/\?$/.test(t)||w>=7)?450:(w<3?1000:700);
     call.pendT=setTimeout(callFlush,wait);
   }
   function callRecInit(){
@@ -26797,43 +26779,23 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         cEl.cap.textContent="Your browser's speech service isn't reachable right now. You can type to me instead.";
       }
     };
-    function norm(x){ return String(x||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').replace(/\s+/g,' ').trim(); }
     r.onresult=function(e){
       if(call.muted) return;
       var fin='', interim='';
       for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t; else interim+=t; }
-      /* While Zara talks (and for a moment after), only react to words that are NOT her own voice coming back through the mic. */
-      var sp=isSpeaking();
-      if(sp||Date.now()-(call.spokeEnd||0)<900){
+      /* While Zara talks, only react to words that are NOT her own voice coming back through the mic. */
+      if(isSpeaking()){
         var heard=(fin+' '+interim).toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).filter(Boolean);
-        if(heard.length<1||heard.join('').length<3) return;
+        if(heard.length<2) return;
         var said={}; String(call.said||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).forEach(function(w){ if(w) said[w]=1; });
         var hit=0; heard.forEach(function(w){ if(said[w]) hit++; });
         if(hit/heard.length>=0.6) return;
-        if(sp){ bargeIn(); call.lastSpk=0; call.said=''; }
+        bargeIn(); call.lastSpk=0; call.said='';
       }
-      call.srErr=0; clearTimeout(call.specT);
+      call.srErr=0;
       if(interim&&call.pend){ clearTimeout(call.pendT); call.pendT=setTimeout(callFlush,2600); }
-      if(interim){
-        call.speech=true; if(call.mobile) cEl.orb.style.setProperty('--lvl',(0.35+Math.random()*0.5).toFixed(2)); cEl.cap.textContent='You: '+interim.slice(-150);
-        var iv=interim.trim(), iw=iv.split(/\s+/).length;
-        if((call.busy||busy)&&iw>=2) callAbortReply();
-        /* Don't wait for the browser to "finalise": once the words stop changing for a moment, answer. */
-        var trl=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$/i.test(iv);
-        var dly=trl?1300:(iw>=4?380:800);
-        call.specT=setTimeout(function(){
-          if(!call.on||call.muted) return;
-          var tt=((call.pend?call.pend+' ':'')+iv).trim(); call.pend=''; clearTimeout(call.pendT);
-          call.specSent=tt; call.speech=false; callHeard(tt);
-        },dly);
-      }
-      if(fin.trim()){
-        call.speech=false; var f=fin.trim(), a=norm(f), b=norm(call.specSent); clearTimeout(call.specT);
-        if(b&&a.indexOf(b)===0){
-          var rem=f.split(/\s+/).slice(b.split(' ').length).join(' ').trim(); call.specSent='';
-          if(rem.split(/\s+/).filter(Boolean).length>=2) callQueue(rem);
-        } else { call.specSent=''; callQueue(f); }
-      }
+      if(interim){ call.speech=true; if(call.mobile) cEl.orb.style.setProperty('--lvl',(0.35+Math.random()*0.5).toFixed(2)); cEl.cap.textContent='You: '+interim.slice(-150); }
+      if(fin.trim()){ call.speech=false; callQueue(fin.trim()); }
     };
     call.sr=r; return true;
   }
@@ -26884,7 +26846,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       await sleep(700);
     } else {
       var AC=window.AudioContext||window.webkitAudioContext; call.ctx=new AC(); try{ if(call.ctx.state==='suspended') await call.ctx.resume(); }catch(e){}
-      call.src=call.ctx.createMediaStreamSource(call.stream); call.proc=call.ctx.createScriptProcessor(1024,1,1); call.proc.onaudioprocess=callAudio;
+      call.src=call.ctx.createMediaStreamSource(call.stream); call.proc=call.ctx.createScriptProcessor(4096,1,1); call.proc.onaudioprocess=callAudio;
       var mute=call.ctx.createGain(); mute.gain.value=0; call.src.connect(call.proc); call.proc.connect(mute); mute.connect(call.ctx.destination);
     }
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),noise:0.008,frames:0,speech:false,buf:[],pre:[],busy:0,q:Promise.resolve(),state:'',sr:null,srOn:false,useSR:false,srErr:0,srDead:false,lastSpk:0,mobile:mobileMic,quick:!!(opts&&opts.quick)});
