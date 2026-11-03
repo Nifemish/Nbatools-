@@ -6838,7 +6838,7 @@ async function tpIEGenerate(){
     const token=await u.getIdToken();
     const res=await fetch(tpIEUrl(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({prompt:S.prompt.trim(),images:S.imgs.map(i=>i.src),width:d[0],height:d[1]})});
     let j={}; try{ j=await res.json(); }catch(e){}
-    if(!res.ok||!j.ok||!j.image){ const err=new Error(j.error||('http_'+res.status)); err.status=res.status; throw err; }
+    if(!res.ok||!j.ok||!j.image){ const err=new Error(j.error||('http_'+res.status)); err.status=res.status; err.detail=j.detail||''; throw err; }
     if(mySeq===S.seq) S.result={src:'data:'+(j.mime||'image/png')+';base64,'+j.image,mime:j.mime||'image/png',model:j.model||'',w:j.width,h:j.height};
   }catch(e){
     console.warn('[image-edit]',e);
@@ -6847,7 +6847,7 @@ async function tpIEGenerate(){
       :e&&e.status===429?'Too many requests. Wait a minute and try again. Your credits were returned.'
       :e&&e.status===401?'Your session expired. Please sign in again. Your credits were returned.'
       :e&&e.status===400?'Something is wrong with the images or prompt. Try different photos. Your credits were returned.'
-      :'The image servers are busy right now. Your credits were returned, please try again shortly.';
+      :'The image servers are busy right now. Your credits were returned, please try again shortly. (Debug: '+(e&&e.status?e.status+' ':'')+(e&&e.message||'unknown')+(e&&e.detail?' - '+e.detail:'')+')';
   }finally{ clearTimeout(to); clearInterval(S.tick); S.busy=false; tpIEPaint(); }
 }
 function tpImageEditPage(){
@@ -27658,7 +27658,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var r=await fetch(ieEndpoint(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({prompt:ie.prompt,images:ie.imgs.map(function(i){ return i.src; }),width:d[0],height:d[1]})});
       var j={}; try{ j=await r.json(); }catch(e){}
-      if(!r.ok||!j.ok||!j.image){ var e2=new Error(j.error||('http_'+r.status)); e2.status=r.status; throw e2; }
+      if(!r.ok||!j.ok||!j.image){ var e2=new Error(j.error||('http_'+r.status)); e2.status=r.status; e2.detail=j.detail||''; throw e2; }
       res={src:'data:'+(j.mime||'image/png')+';base64,'+j.image,mime:j.mime||'image/png',model:j.model||''};
     }catch(e){ err=e; }
     clearTimeout(to); clearInterval(timer);
@@ -27678,7 +27678,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       :err&&err.status===429?"Too many requests right now, so wait a minute."
       :err&&err.status===401?"Your session expired, so please sign in again."
       :err&&err.status===400?"Something was wrong with the photos or the instruction."
-      :"The image servers are busy right now.";
+      :"The image servers are busy right now. (Debug: "+(err&&err.status?err.status+' ':'')+(err&&err.message||'unknown')+(err&&err.detail?' - '+err.detail:'')+")";
     ieSet('review');
     addMsg('assistant',why+" Your credits were returned. Want to try again?",[
       {label:'Try again',fn:function(){ ieGenerate(); }},
@@ -27775,7 +27775,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     try{
       var r=await agentFetch(visUrl(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
       var j={}; try{ j=await r.json(); }catch(e){}
-      if(!r.ok||!j.ok){ var er=new Error(j.error||('server '+r.status)); er.status=r.status; throw er; }
+      if(!r.ok||!j.ok){ var er=new Error(j.error||('server '+r.status)); er.status=r.status; er.detail=j.detail||''; throw er; }
       return j;
     } finally { clearTimeout(tm); }
   }
@@ -27851,7 +27851,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     }catch(err){
       console.warn('[tpa] vision failed',err);
       typing.remove(); session.step=(prev&&prev!=='busy')?prev:'followup';
-      var msg=(err&&err.status===429)?"You're sending images a bit fast. Give me a minute and try again.":(err&&err.status===401)?"Your session expired. Please sign in again and send the image once more.":(err&&err.status===400)?"I couldn't read that image. Please try a clear JPG, PNG or WebP.":"Sorry, I couldn't look at that image just now. Please try again in a moment.";
+      var msg=(err&&err.status===429)?"You're sending images a bit fast. Give me a minute and try again.":(err&&err.status===401)?"Your session expired. Please sign in again and send the image once more.":(err&&err.status===400)?"I couldn't read that image. Please try a clear JPG, PNG or WebP.":"Sorry, I couldn't look at that image just now. Please try again in a moment.\n\n(Debug: "+(err&&err.status?err.status+' ':'')+(err&&err.message||'unknown')+(err&&err.detail?' - '+err.detail:'')+")";
       addMsg('assistant',msg,[{label:'Try again',fn:function(){ if(session.task==='vision'&&!busy) visRun(mode,question); }},{label:'Cancel',secondary:true,fn:function(){ if(session.task==='vision'&&!busy) visEnd('No problem, cancelled.'); }}],'ask');
     }
     busy=false; sendBtn.disabled=false; scrollDown();
