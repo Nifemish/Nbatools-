@@ -12481,9 +12481,19 @@ boot();
     var hostList=[String(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev'),String(window.TRACKPORT_VOICE_HOST_BACKUP||'trackport-cloudflare-voice.trackport.workers.dev'),String(window.TRACKPORT_VOICE_HOST_BACKUP2||'trackport-cloudflare-voiceai.opsonsh.workers.dev')].map(function(h){return h.replace(/^https?:\/\//,'').replace(/\/$/,'');});
     if(st)st.textContent='Loading preview of '+label+'…'; if(btn)btn.disabled=true;
     u.getIdToken().then(function(tok){
-      var body=JSON.stringify({text:"Hi, I'm Zara. This is how I will sound when we talk. How does this voice feel to you?",voice:sel.value}), p=Promise.reject(new Error('no server'));
-      hostList.forEach(function(host){ p=p.catch(function(){ return fetch('https://'+host+'/tts',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:body}).then(function(res){ return res.json().catch(function(){return {};}).then(function(j){ if(!res.ok||!j||!j.audio) throw new Error((j&&j.error)||('Preview failed ('+res.status+')')); return j; }); }); }); });
-      return p;
+      var body=JSON.stringify({text:"Hi, I'm Zara. This is how I will sound when we talk. How does this voice feel to you?",voice:sel.value}), authFails=0;
+      /* Loop forever: after the last Worker, wrap back to the first and keep cycling (stops if every Worker rejects the sign-in). */
+      function attempt(i){
+        var host=hostList[i%hostList.length];
+        return fetch('https://'+host+'/tts',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:body}).then(function(res){ return res.json().catch(function(){return {};}).then(function(j){ if(!res.ok||!j||!j.audio) throw new Error((j&&j.error)||('Preview failed ('+res.status+')')); return j; }); }).catch(function(e){
+          if(/unauthorized/i.test(String(e&&e.message))) authFails++;
+          var nx=i+1, wrapped=nx%hostList.length===0;
+          if(wrapped){ if(authFails>=hostList.length) throw e; authFails=0; }
+          if(st) st.textContent=wrapped?'Voice servers busy, trying again…':'Trying the next voice server…';
+          return new Promise(function(res){ setTimeout(res,wrapped?1500:0); }).then(function(){ return attempt(nx); });
+        });
+      }
+      return attempt(0);
     }).then(function(j){
       return Promise.resolve(j).then(function(j){
         var bin=atob(j.audio), bytes=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
@@ -24560,13 +24570,20 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     return Promise.all([tpaAuthHeaders(),cfVoiceGet()]).then(function(r){
       var h=r[0]; if(!h.Authorization) throw new Error('not signed in');
       var hd={'Content-Type':'application/json'}; for(var k in h) hd[k]=h[k];
-      var body=JSON.stringify({text:text,voice:r[1]}), p=Promise.reject(new Error('no voice server'));
-      order.forEach(function(host){
-        p=p.catch(function(){
-          return fetch('https://'+host+'/tts',{method:'POST',headers:hd,body:body}).then(ttsResToUrl).catch(function(e){ if(!/unauthorized/i.test(String(e&&e.message))) tpVoiceMarkBad(host); throw e; });
+      var body=JSON.stringify({text:text,voice:r[1]}), authFails=0;
+      /* Loop forever: after the last Worker, wrap back to the first and keep cycling.
+         Stops only if every Worker in a full lap rejected our sign-in (retrying can't fix that). */
+      function attempt(i){
+        var host=order[i%order.length];
+        return fetch('https://'+host+'/tts',{method:'POST',headers:hd,body:body}).then(ttsResToUrl).catch(function(e){
+          var unauth=/unauthorized/i.test(String(e&&e.message));
+          if(unauth) authFails++; else tpVoiceMarkBad(host);
+          var nx=i+1, wrapped=nx%order.length===0;
+          if(wrapped){ if(authFails>=order.length) throw e; authFails=0; }
+          return new Promise(function(res){ setTimeout(res,wrapped?1500:0); }).then(function(){ return attempt(nx); });
         });
-      });
-      return p;
+      }
+      return attempt(0);
     });
   }
   function fetchGemini(text,voice){
@@ -27324,18 +27341,28 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var room='tp-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,24):Math.random().toString(36).slice(2)+Date.now().toString(36));
       var selectedVoice=await tpGetAdminCloudflareVoice();
       var hosts=tpVoiceHosts();
+      var lap=0; /* how many times we have wrapped around the Worker list */
       var connectOn=function(idx){
         var old=call.rt;
         if(old&&old.client){ clearInterval(old.diag); try{old.client.endCall();}catch(e){} try{old.client.disconnect();}catch(e){} }
         var host=hosts[idx];
-        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')});
+        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):'')});
         var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false};
         call.rt=rt;
         function failover(why){
-          if(!call.on||call.rt!==rt||rt.gotText||idx+1>=hosts.length) return false;
-          console.warn('[TrackPort voice] switching to backup server:',why);
-          tpVoiceMarkBad(host); cEl.cap.textContent='Switching to the backup voice server…';
-          connectOn(idx+1); return true;
+          if(!call.on||call.rt!==rt||rt.gotText||hosts.length<2) return false;
+          if(rt.failing) return true; /* already switching - ignore duplicate triggers */
+          rt.failing=true;
+          /* Loop forever: after the last Worker, go back to the first one and keep cycling. */
+          var next=(idx+1)%hosts.length, wrapped=next<=idx;
+          console.warn('[TrackPort voice] switching to next voice server:',why,wrapped?'(looping back to the first)':'');
+          tpVoiceMarkBad(host); cEl.cap.textContent=wrapped?'Trying the voice servers again…':'Switching to the backup voice server…';
+          if(wrapped){
+            lap++;
+            /* short pause after a full lap so we don't hammer the Workers */
+            setTimeout(function(){ if(call.on&&call.rt===rt) connectOn(next); },1500);
+          } else connectOn(next);
+          return true;
         }
         var authSent=false, authTimer=setTimeout(function(){
           if(!call.on||call.rt!==rt||rt.authed) return;
