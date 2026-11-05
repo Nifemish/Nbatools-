@@ -1,6 +1,6 @@
 {
-  "name": "TrackPort",
-  "short_name": "TrackPort",
+  "name": "Nbatools",
+  "short_name": "Nbatools",
   "id": "/",
   "start_url": "/",
   "scope": "/",
@@ -8,7 +8,7 @@
   "display_override": ["window-controls-overlay", "standalone"],
   "theme_color": "#0b0e0d",
   "background_color": "#080b0a",
-  "description": "TrackPort — ship, track and deliver.",
+  "description": "Nbatools — ship, flight, track, id cards and documents.",
   "prefer_related_applications": false,
   "icons": [
     {"src":"/trackport-icon-192.png","sizes":"192x192","type":"image/png","purpose":"any maskable"},
