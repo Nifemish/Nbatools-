@@ -1,6 +1,159 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+/* Tracks the audio engines the app opens so hanging up can shut them all at once (stops any voice still playing). */
+(function(){
+  var Orig=window.AudioContext||window.webkitAudioContext; if(!Orig||window.__tpCtxs) return;
+  window.__tpCtxs=[];
+  function W(o){ var c=(o===undefined)?new Orig():new Orig(o); try{ c.__tpAt=Date.now(); window.__tpCtxs.push(c); if(window.__tpCtxs.length>20) window.__tpCtxs.shift(); }catch(e){} return c; }
+  W.prototype=Orig.prototype;
+  try{ window.AudioContext=W; }catch(e){} try{ window.webkitAudioContext=W; }catch(e){}
+})();
+</script>
+<script>
+/* ===== Nbatools universal microphone =====
+   Records the microphone itself (works in Chrome, Firefox, Opera, Samsung, native-app wrappers...) and sends short
+   WAV clips to your speech-to-text Worker (stt-worker.js). It replaces the browser's own SpeechRecognition, so the
+   mic no longer depends on Chrome/Edge/Safari. Leave TP_STT_URL empty to keep the old browser-only behaviour.
+   Add ?stt=native to the app link to bypass this and use the browser's own speech recognition. */
+(function(){
+  var TP_STT_URL = ''; /* <-- paste your deployed Worker URL here, e.g. 'https://nbatools-stt.yourname.workers.dev' */
+  var NATIVE=window.SpeechRecognition||window.webkitSpeechRecognition||null;
+  window.__tpNativeSR=NATIVE;
+  var URL_=String(window.TRACKPORT_STT_URL||TP_STT_URL||'').trim();
+  if(!/^https:\/\//i.test(URL_)||/[?&]stt=native/.test(location.search)) return;
+  var AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return;
+  var sharedCtx=null, seq=0;
+  function ctx(){
+    if(!sharedCtx||sharedCtx.state==='closed'){ try{ sharedCtx=new AC(); }catch(e){ return null; } }
+    sharedCtx.__tpKeep=true;
+    if(sharedCtx.state==='suspended'){ try{ sharedCtx.resume(); }catch(e){} }
+    return sharedCtx;
+  }
+  /* iOS/Android only start audio after a tap, so warm the audio engine on the first touch. */
+  ['pointerdown','touchstart','click','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){ ctx(); },true); });
+
+  function toWav(chunks,inRate){
+    var len=0,i,j; chunks.forEach(function(c){ len+=c.length; });
+    var all=new Float32Array(len), o=0; chunks.forEach(function(c){ all.set(c,o); o+=c.length; });
+    var outRate=16000, ratio=inRate/outRate, n=Math.floor(len/ratio), pcm=new Int16Array(n);
+    for(i=0;i<n;i++){
+      var a=Math.floor(i*ratio), b=Math.min(len,Math.max(a+1,Math.floor((i+1)*ratio))), sum=0;
+      for(j=a;j<b;j++) sum+=all[j];
+      var v=sum/(b-a); v=Math.max(-1,Math.min(1,v)); pcm[i]=v<0?v*0x8000:v*0x7fff;
+    }
+    var buf=new ArrayBuffer(44+pcm.length*2), dv=new DataView(buf);
+    function w(off,str){ for(var k=0;k<str.length;k++) dv.setUint8(off+k,str.charCodeAt(k)); }
+    w(0,'RIFF'); dv.setUint32(4,36+pcm.length*2,true); w(8,'WAVE'); w(12,'fmt '); dv.setUint32(16,16,true);
+    dv.setUint16(20,1,true); dv.setUint16(22,1,true); dv.setUint32(24,outRate,true); dv.setUint32(28,outRate*2,true);
+    dv.setUint16(32,2,true); dv.setUint16(34,16,true); w(36,'data'); dv.setUint32(40,pcm.length*2,true);
+    for(i=0;i<pcm.length;i++) dv.setInt16(44+i*2,pcm[i],true);
+    return new Blob([buf],{type:'audio/wav'});
+  }
+  function upload(blob,lang){
+    var ctrl=window.AbortController?new AbortController():null, tm=setTimeout(function(){ try{ ctrl&&ctrl.abort(); }catch(e){} },25000);
+    var u=URL_+(URL_.indexOf('?')<0?'?':'&')+'lang='+encodeURIComponent(String(lang||'en').slice(0,2).toLowerCase());
+    return fetch(u,{method:'POST',headers:{'Content-Type':'audio/wav'},body:blob,signal:ctrl?ctrl.signal:undefined})
+      .then(function(r){ if(!r.ok) throw new Error('stt '+r.status); return r.json(); })
+      .then(function(j){ clearTimeout(tm); return String((j&&j.text)||'').trim(); },function(e){ clearTimeout(tm); throw e; });
+  }
+
+  function TPSR(){
+    this.lang='en-US'; this.continuous=false; this.interimResults=false; this.maxAlternatives=1;
+    this.onstart=this.onend=this.onerror=this.onresult=this.onspeechstart=this.onspeechend=this.onaudiostart=null;
+    this._a=false; this._id=0; this._s=null; this._res=[]; this._q=Promise.resolve(); this._pending=0;
+  }
+  TPSR.gate=null;
+  TPSR.prototype._emit=function(name,ev){ var f=this[name]; if(typeof f==='function'){ try{ f.call(this,ev||{type:name.slice(2)}); }catch(e){ console.error(e); } } };
+  TPSR.prototype.start=function(){
+    if(this._a){ var er=new Error('recognition has already started'); er.name='InvalidStateError'; throw er; }
+    var self=this, id=++seq; this._a=true; this._id=id; this._res=[]; this._q=Promise.resolve(); this._pending=0; this._s=null;
+    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}).then(function(stream){
+      if(!self._a||self._id!==id){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+      self._open(stream);
+    }).catch(function(err){
+      if(self._id!==id||!self._a) return;
+      var n=err&&err.name;
+      self._fail(n==='NotAllowedError'||n==='SecurityError'||n==='PermissionDeniedError'?'not-allowed':'audio-capture');
+    });
+  };
+  TPSR.prototype._open=function(stream){
+    var self=this, c=ctx();
+    if(!c){ stream.getTracks().forEach(function(t){ t.stop(); }); this._fail('audio-capture'); return; }
+    var src=c.createMediaStreamSource(stream), proc=c.createScriptProcessor(4096,1,1), mute=c.createGain();
+    mute.gain.value=0; src.connect(proc); proc.connect(mute); mute.connect(c.destination);
+    var s={stream:stream,src:src,proc:proc,mute:mute,rate:c.sampleRate,noise:0.008,rec:false,chunks:[],pre:[],voiced:0,lastV:0,t0:0,startAt:Date.now(),sent:false};
+    this._s=s;
+    proc.onaudioprocess=function(ev){ if(self._s===s) self._tick(s,ev.inputBuffer.getChannelData(0)); };
+    this._emit('onaudiostart'); this._emit('onstart');
+  };
+  TPSR.prototype._tick=function(s,data){
+    var i, sum=0; for(i=0;i<data.length;i++) sum+=data[i]*data[i];
+    var rms=Math.sqrt(sum/data.length), now=Date.now(), gate=false;
+    try{ gate=!!(TPSR.gate&&TPSR.gate()); }catch(e){}
+    if(gate){ s.rec=false; s.chunks=[]; s.pre=[]; s.startAt=now; return; }   /* ignore Zara's own voice */
+    var copy=new Float32Array(data), thr=Math.max(0.012,s.noise*3.2), voice=rms>thr;
+    if(!voice&&!s.rec) s.noise=s.noise*0.95+rms*0.05;
+    if(voice){
+      s.lastV=now;
+      if(!s.rec){ s.rec=true; s.chunks=s.pre.slice(); s.pre=[]; s.t0=now; s.voiced=0; this._emit('onspeechstart'); }
+      s.voiced+=data.length/s.rate*1000;
+    }
+    if(s.rec){
+      s.chunks.push(copy);
+      if(now-s.lastV>(this.continuous?1000:900)||now-s.t0>25000) this._cut();
+    } else {
+      s.pre.push(copy); if(s.pre.length>4) s.pre.shift();
+      if(!this.continuous&&!s.sent&&now-s.startAt>9000) this._fail('no-speech');
+    }
+  };
+  TPSR.prototype._cut=function(){
+    var s=this._s; if(!s||!s.rec) return;
+    var chunks=s.chunks, voiced=s.voiced; s.rec=false; s.chunks=[]; this._emit('onspeechend');
+    if(voiced<220) return;   /* just a click or bump, not speech */
+    s.sent=true;
+    var wav=toWav(chunks,s.rate), self=this, id=this._id, lang=this.lang;
+    this._pending++;
+    if(!this.continuous) this._closeAudio();
+    this._q=this._q.then(function(){ return upload(wav,lang); }).then(function(text){
+      self._pending--; if(self._id!==id||!self._a) return;
+      if(text) self._result(text); else if(!self.continuous&&!self._pending) self._fail('no-speech');
+    },function(err){
+      self._pending--; if(self._id!==id||!self._a) return;
+      console.warn('[Nbatools stt]',err); self._fail('network');
+    });
+  };
+  TPSR.prototype._result=function(text){
+    var alt={transcript:text,confidence:0.9}, r=[alt]; r.isFinal=true; r.item=function(i){ return this[i]; };
+    var idx=this._res.length; this._res.push(r); this._res.item=function(i){ return this[i]; };
+    this._emit('onresult',{type:'result',resultIndex:idx,results:this._res});
+    if(!this.continuous) this._finish();
+  };
+  TPSR.prototype._closeAudio=function(){
+    var s=this._s; this._s=null; if(!s) return;
+    try{ s.proc.onaudioprocess=null; s.src.disconnect(); s.proc.disconnect(); s.mute.disconnect(); }catch(e){}
+    try{ s.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+  };
+  TPSR.prototype._finish=function(){ if(!this._a) return; this._a=false; this._closeAudio(); this._id=++seq; this._emit('onend'); };
+  TPSR.prototype._fail=function(code){ if(!this._a) return; this._emit('onerror',{type:'error',error:code}); this._finish(); };
+  TPSR.prototype.stop=function(){
+    if(!this._a) return; var self=this, id=this._id;
+    if(this._s&&this._s.rec) this._cut();
+    this._closeAudio();
+    this._q.then(function(){ if(self._a&&self._id===id) self._finish(); });
+  };
+  TPSR.prototype.abort=function(){ if(this._a) this._finish(); };
+  TPSR.prototype.addEventListener=function(n,f){ this['on'+n]=f; };
+
+  try{ window.SpeechRecognition=TPSR; }catch(e){ try{ Object.defineProperty(window,'SpeechRecognition',{value:TPSR,configurable:true,writable:true}); }catch(e2){} }
+  try{ window.webkitSpeechRecognition=TPSR; }catch(e){ try{ Object.defineProperty(window,'webkitSpeechRecognition',{value:TPSR,configurable:true,writable:true}); }catch(e2){} }
+  window.__tpUniversalMic=true;
+  TPSR.gate=function(){ return !!(window.tpSttGate&&window.tpSttGate()); };
+})();
+</script>
+
 <script id="tp-h2c-oklch-fix">
 /* Nbatools fix: html2canvas 1.4.1 cannot read modern CSS colors (oklch, oklab, lab, lch, color(), color-mix).
    Every time html2canvas is called, the colors inside the element being captured (and on html/body) are
@@ -151,7 +304,7 @@
 }catch(e){console.warn('[deeplink]',e);}})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#242424">
+<meta name="theme-color" content="#060606">
 <title>Nbatools — Transport &amp; Logistics</title>
 <meta name="description" content="Nbatools connects shipment tracking, logistics records and travel tools in one organized workspace.">
 <meta property="og:title" content="Nbatools — Transport &amp; Logistics">
@@ -973,27 +1126,66 @@ h1,h2,h3,p{margin-top:0}.title{font-size:clamp(38px,7vw,72px);line-height:.96;le
 @keyframes nbxIn{from{opacity:0;transform:scale(.82);filter:blur(6px) drop-shadow(0 0 16px rgba(250,215,33,.3))}to{opacity:1;transform:none}}
 
 
-/* ===== Nbatools splash v3: logo reveal -> circle expands -> yellow to black ===== */
-.nbs-splash{--nbs-bg:#fad721;position:fixed;inset:0;z-index:999;overflow:hidden;background:var(--nbs-bg);
-  transition:background .01s linear,opacity .5s ease,visibility .5s ease}
+/* ===== Nbatools splash v5: luxe black & gold (slow cinematic easing, hairline orbit, metallic logo, tracked wordmark) ===== */
+.nbs-splash{--ease:cubic-bezier(.16,1,.3,1);--soft:cubic-bezier(.45,.05,.15,1);position:fixed;inset:0;z-index:999;overflow:hidden;
+  background:radial-gradient(75% 60% at 50% 46%,#1a1507 0%,#0c0a05 52%,#050505 100%);
+  transition:opacity .9s ease,visibility .9s ease}
 .nbs-splash.out{opacity:0;visibility:hidden;pointer-events:none}
-.nbs-circle{position:absolute;left:50%;top:50%;width:100px;height:100px;margin:-50px 0 0 -50px;border-radius:50%;background:#fff6c7;transform:scale(0);
-  transition:transform .65s cubic-bezier(.25,.9,.3,1),background-color .45s ease;will-change:transform}
-.nbs-group{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:0;color:#0a0a0a;transition:color .45s ease}
-.nbs-group.ink-y{color:#fad721}.nbs-group.ink-y .nbs-word{color:#fff}
-.nbs-logo{width:104px;height:104px;flex:none;transition:width .7s cubic-bezier(.65,0,.35,1),height .7s cubic-bezier(.65,0,.35,1),margin .7s cubic-bezier(.65,0,.35,1)}
-.nbs-logo.small{width:58px;height:58px}
+.nbs-splash.out .nbs-group,.nbs-splash.out .nbs-sub{transform:scale(1.07);opacity:0;transition:transform .9s var(--soft),opacity .7s ease}
+.nbs-aura{position:absolute;left:50%;top:46%;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,rgba(250,215,33,.20) 0%,rgba(250,215,33,.07) 38%,rgba(250,215,33,0) 68%);opacity:0;transform:scale(.7);
+  transition:opacity 2.2s ease,transform 3s var(--ease)}
+.nbs-splash.lit .nbs-aura{opacity:1;transform:scale(1);animation:nbsBreath 4.6s 2.4s ease-in-out infinite}
+@keyframes nbsBreath{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.72;transform:scale(1.07)}}
+.nbs-grain{position:absolute;inset:0;z-index:6;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.nbs-dust{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.nbs-dust i{position:absolute;bottom:-6px;border-radius:50%;background:#ffe27a;box-shadow:0 0 8px 1px rgba(250,215,33,.55);opacity:0;animation:nbsDust linear infinite}
+@keyframes nbsDust{0%{opacity:0;transform:translate3d(0,0,0)}18%{opacity:var(--o,.6)}80%{opacity:calc(var(--o,.6)*.5)}100%{opacity:0;transform:translate3d(var(--dx,12px),-72vh,0)}}
+.nbs-orbit{position:absolute;left:50%;top:50%;width:240px;height:240px;margin:-120px 0 0 -120px;z-index:2;overflow:visible;pointer-events:none;
+  transition:transform 1.6s var(--ease),opacity 1.1s ease}
+.nbs-orbit circle{fill:none;stroke:#fad721;vector-effect:non-scaling-stroke}
+.nbs-orbit .o1{stroke-width:1;opacity:.55;stroke-dasharray:704;stroke-dashoffset:704;transform-origin:120px 120px;transform:rotate(-90deg);transition:stroke-dashoffset 2.4s var(--soft)}
+.nbs-orbit .o2{stroke-width:.6;opacity:.28;stroke-dasharray:2 5;transform-origin:120px 120px;opacity:0;transition:opacity 2s ease .6s}
+.nbs-splash.lit .nbs-orbit .o1{stroke-dashoffset:0}
+.nbs-splash.lit .nbs-orbit .o2{opacity:.3}
+.nbs-orbit .spark{transform-origin:120px 120px;opacity:0;transition:opacity 1s ease 1s}
+.nbs-orbit .spark circle{fill:#fff3b0;stroke:none;filter:drop-shadow(0 0 5px #fad721) drop-shadow(0 0 10px rgba(250,215,33,.8))}
+.nbs-splash.lit .nbs-orbit .spark{opacity:1;animation:nbsSpin 5.5s linear infinite}
+@keyframes nbsSpin{to{transform:rotate(360deg)}}
+.nbs-orbit.rel{transform:scale(1.9);opacity:0}
+.nbs-group{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:0;transform-origin:50% 50%}
+.nbs-logo{width:104px;height:104px;flex:none;opacity:0;transform:scale(.94);filter:blur(14px) drop-shadow(0 0 0 rgba(250,215,33,0));
+  transition:width 1.4s var(--ease),height 1.4s var(--ease),opacity 1.8s ease,transform 2.2s var(--ease),filter 2s ease}
+.nbs-logo.in{opacity:1;transform:none;filter:blur(0) drop-shadow(0 0 22px rgba(250,215,33,.30))}
+.nbs-logo.small{width:54px;height:54px}
 .nbs-logo svg{width:100%;height:100%;display:block;overflow:visible}
-.nbs-logo path{fill:currentColor;stroke:currentColor;stroke-width:5;stroke-linejoin:round}
-.nbs-ring-g,.nbs-gear-g{transform-box:view-box;transform-origin:384px 386px;opacity:0;transform:scale(.3) rotate(-120deg);
-  transition:opacity .45s ease,transform .8s cubic-bezier(.2,.9,.3,1.15)}
-.nbs-gear-g{transition-delay:.25s;transform:scale(.2) rotate(140deg)}
-.nbs-logo.in .nbs-ring-g,.nbs-logo.in .nbs-gear-g{opacity:1;transform:none}
-.nbs-word{font-family:var(--font-main,'Poppins','Montserrat','Segoe UI',system-ui,sans-serif);font-weight:700;font-size:clamp(26px,7.6vw,34px);letter-spacing:.01em;color:#0a0a0a;
-  max-width:0;overflow:hidden;white-space:nowrap;opacity:0;transform:translateX(-10px);
-  transition:max-width .7s cubic-bezier(.65,0,.35,1),opacity .5s ease .1s,color .45s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
-.nbs-word.show{max-width:260px;opacity:1;transform:none;margin-left:12px}
-@media (prefers-reduced-motion:reduce){.nbs-ring-g,.nbs-gear-g,.nbs-circle,.nbs-word{transition-duration:.01s!important}}
+.nbs-logo path{fill:url(#nbsGold);stroke:url(#nbsGold);stroke-width:5;stroke-linejoin:round}
+.nbs-ring-g,.nbs-gear-g{transform-box:view-box;transform-origin:384px 386px;transform:scale(.9) rotate(-26deg);transition:transform 2.6s var(--ease)}
+.nbs-gear-g{transform:scale(.8) rotate(58deg);transition-delay:.15s}
+.nbs-logo.in .nbs-ring-g,.nbs-logo.in .nbs-gear-g{transform:none}
+.nbs-word{font-family:var(--font-main,'Poppins','Montserrat','Segoe UI',system-ui,sans-serif);font-weight:500;font-size:clamp(22px,6.6vw,30px);letter-spacing:.24em;text-transform:uppercase;
+  max-width:0;overflow:hidden;white-space:nowrap;padding:10px 0;margin-left:0;transition:max-width 1.5s var(--ease),margin-left 1.5s var(--ease)}
+.nbs-word.show{max-width:320px;margin-left:16px}
+.nbs-word span{display:inline-block;opacity:0;transform:translateY(55%);filter:blur(8px);
+  color:#fff;
+  transition:opacity 1.1s ease,transform 1.3s var(--ease),filter 1.1s ease;transition-delay:calc(var(--i,0)*80ms + .15s)}
+.nbs-word.show span{opacity:1;transform:none;filter:blur(0)}
+.nbs-word.glint{animation:nbsGlint 1.9s ease-in-out 1}
+@keyframes nbsGlint{0%{filter:drop-shadow(0 0 0 rgba(250,215,33,0))}45%{filter:drop-shadow(0 0 14px rgba(255,255,255,.5))}100%{filter:drop-shadow(0 0 0 rgba(250,215,33,0))}}
+.nbs-sub{position:absolute;left:0;right:0;top:calc(50% + 64px);z-index:3;display:flex;align-items:center;justify-content:center;gap:16px;
+  font-family:var(--font-main,'Poppins','Segoe UI',system-ui,sans-serif);font-size:10px;font-weight:400;letter-spacing:.46em;text-transform:uppercase;color:rgba(247,226,150,.72);white-space:nowrap;
+  opacity:0;transform:translateY(8px);filter:blur(4px);transition:opacity 1.4s ease,transform 1.6s var(--ease),filter 1.4s ease}
+.nbs-sub span{margin-right:-.46em}
+.nbs-sub i{display:block;height:1px;width:0;background:linear-gradient(90deg,rgba(250,215,33,0),rgba(250,215,33,.8));transition:width 1.8s var(--ease) .3s}
+.nbs-sub i:last-child{background:linear-gradient(270deg,rgba(250,215,33,0),rgba(250,215,33,.8))}
+.nbs-sub.show{opacity:1;transform:none;filter:blur(0)}
+.nbs-sub.show i{width:clamp(18px,8vw,40px)}
+.nbs-bar{position:absolute;left:50%;bottom:calc(54px + env(safe-area-inset-bottom,0px));width:132px;height:1px;margin-left:-66px;z-index:3;background:rgba(255,255,255,.09);overflow:hidden;transition:opacity .9s ease}
+.nbs-bar::after{content:"";position:absolute;inset:0;transform-origin:left center;transform:scaleX(0);background:linear-gradient(90deg,#9c6f0c,#fad721 60%,#fff4bd);animation:nbsBar 3.9s .3s cubic-bezier(.5,0,.2,1) forwards}
+@keyframes nbsBar{to{transform:scaleX(1)}}
+.nbs-bar.off{opacity:0}
+@media (prefers-reduced-motion:reduce){.nbs-dust{display:none}.nbs-aura,.nbs-splash.lit .nbs-aura{animation:none!important}.nbs-orbit .spark{animation:none!important}.nbs-bar::after,.nbs-word.glint{animation:none!important}.nbs-logo,.nbs-ring-g,.nbs-gear-g,.nbs-word,.nbs-word span,.nbs-sub,.nbs-sub i,.nbs-aura,.nbs-orbit,.nbs-orbit *{transition-duration:.01s!important;transition-delay:0s!important}}
 /* In-app progression loader — same visual language */
 .tp-page-loader{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(4,6,5,.74);-webkit-backdrop-filter:blur(16px) saturate(130%);backdrop-filter:blur(16px) saturate(130%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .28s ease,visibility .28s ease}
 .tp-page-loader.on{opacity:1;visibility:visible;pointer-events:auto}
@@ -5959,24 +6151,30 @@ h2,.hero h2,.lp-hero h1,.auth-form h2,.onboard-copy h1,.visual-copy h1{font-size
 .tp-notice small{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--n);margin-bottom:3px}.tp-notice strong{display:block;font-size:16px}
 .tp-notice p{margin:6px 0 0;font-size:14px;line-height:1.5}.tp-notice em{display:block;margin-top:6px;font-size:12px;color:var(--muted)}
 </style>
-<div id="loader" class="nbs-splash" role="status" aria-live="polite" aria-label="Loading Nbatools"><div class="nbs-circle" id="nbsCircle"></div><div class="nbs-group" id="nbsGroup"><div class="nbs-logo" id="nbsLogo"><svg viewBox="0 0 768 768" aria-hidden="true"><g class="nbs-ring-g"><path d="M684.4,346.5 L686.1,362.2 L713.7,371.3 L713.7,400.7 L686.1,409.8 L684.4,425.5 L684.4,425.5 L681.9,441.2 L706.2,457.1 L698.6,485.5 L669.6,487.1 L663.9,502.0 L663.9,502.0 L657.5,516.4 L676.8,538.1 L662.2,563.6 L633.7,557.6 L624.4,570.5 L624.4,570.5 L614.4,582.8 L627.5,608.7 L606.7,629.5 L580.8,616.4 L568.5,626.4 L568.5,626.4 L555.6,635.7 L561.6,664.2 L536.1,678.8 L514.4,659.5 L500.0,665.9 L500.0,665.9 L485.1,671.6 L483.5,700.6 L455.1,708.2 L439.2,683.9 L423.5,686.4 L423.5,686.4 L407.8,688.1 L398.7,715.7 L369.3,715.7 L360.2,688.1 L344.5,686.4 L344.5,686.4 L328.8,683.9 L312.9,708.2 L284.5,700.6 L282.9,671.6 L268.0,665.9 L268.0,665.9 L253.6,659.5 L231.9,678.8 L206.4,664.2 L212.4,635.7 L199.5,626.4 L199.5,626.4 L187.2,616.4 L161.3,629.5 L140.5,608.7 L153.6,582.8 L143.6,570.5 L143.6,570.5 L134.3,557.6 L105.8,563.6 L91.2,538.1 L110.5,516.4 L104.1,502.0 L104.1,502.0 L98.4,487.1 L69.4,485.5 L61.8,457.1 L86.1,441.2 L83.6,425.5 L83.6,425.5 L81.9,409.8 L54.3,400.7 L54.3,371.3 L81.9,362.2 L83.6,346.5 L83.6,346.5 L86.1,330.8 L61.8,314.9 L69.4,286.5 L98.4,284.9 L104.1,270.0 L104.1,270.0 L110.5,255.6 L91.2,233.9 L105.8,208.4 L134.3,214.4 L143.6,201.5 L143.6,201.5 L153.6,189.2 L140.5,163.3 L161.3,142.5 L187.2,155.6 L199.5,145.6 L199.5,145.6 L212.4,136.3 L206.4,107.8 L231.9,93.2 L253.6,112.5 L268.0,106.1 L268.0,106.1 L282.9,100.4 L284.5,71.4 L312.9,63.8 L328.8,88.1 L344.5,85.6 L344.5,85.6 L360.2,83.9 L369.3,56.3 L398.7,56.3 L407.8,83.9 L423.5,85.6 L423.5,85.6 L439.2,88.1 L455.1,63.8 L483.5,71.4 L485.1,100.4 L500.0,106.1 L500.0,106.1 L514.4,112.5 L536.1,93.2 L561.6,107.8 L555.6,136.3 L568.5,145.6 L568.5,145.6 L580.8,155.6 L606.7,142.5 L627.5,163.3 L614.4,189.2 L624.4,201.5 L624.4,201.5 L633.7,214.4 L662.2,208.4 L676.8,233.9 L657.5,255.6 L663.9,270.0 L663.9,270.0 L669.6,284.9 L698.6,286.5 L706.2,314.9 L681.9,330.8 L684.4,346.5 Z M646,386 A262,262 0 1,0 122,386 A262,262 0 1,0 646,386 Z" fill-rule="evenodd" stroke-width="5" stroke-linejoin="round"/></g><g class="nbs-gear-g"><path d="M323.5,240.0 L345.8,232.7 L349.8,192.0 L418.2,192.0 L422.2,232.7 L444.5,240.0 L444.5,240.0 L465.4,250.6 L497.0,224.6 L545.4,273.0 L519.4,304.6 L530.0,325.5 L530.0,325.5 L537.3,347.8 L578.0,351.8 L578.0,420.2 L537.3,424.2 L530.0,446.5 L530.0,446.5 L519.4,467.4 L545.4,499.0 L497.0,547.4 L465.4,521.4 L444.5,532.0 L444.5,532.0 L422.2,539.3 L418.2,580.0 L349.8,580.0 L345.8,539.3 L323.5,532.0 L323.5,532.0 L302.6,521.4 L271.0,547.4 L222.6,499.0 L248.6,467.4 L238.0,446.5 L238.0,446.5 L230.7,424.2 L190.0,420.2 L190.0,351.8 L230.7,347.8 L238.0,325.5 L238.0,325.5 L248.6,304.6 L222.6,273.0 L271.0,224.6 L302.6,250.6 L323.5,240.0Z M262,386 a122,122 0 1,0 244,0 a122,122 0 1,0 -244,0Z" fill-rule="evenodd" stroke-width="6" stroke-linejoin="round"/></g></svg></div><div class="nbs-word" id="nbsWord">Nbatools</div></div></div>
+<div id="loader" class="nbs-splash" role="status" aria-live="polite" aria-label="Loading Nbatools"><div class="nbs-aura"></div><div class="nbs-dust" id="nbsDust" aria-hidden="true"></div><svg class="nbs-orbit" id="nbsOrbit" viewBox="0 0 240 240" aria-hidden="true"><circle class="o1" cx="120" cy="120" r="112"/><circle class="o2" cx="120" cy="120" r="100"/><g class="spark"><circle cx="120" cy="8" r="2.6"/></g></svg><div class="nbs-group" id="nbsGroup"><div class="nbs-logo" id="nbsLogo"><svg viewBox="0 0 768 768" aria-hidden="true"><defs><linearGradient id="nbsGold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="768" y2="768" spreadMethod="reflect"><stop offset="0" stop-color="#9c6f0c"/><stop offset=".28" stop-color="#f3c61c"/><stop offset=".5" stop-color="#fff4bd"/><stop offset=".72" stop-color="#f6cd22"/><stop offset="1" stop-color="#9c6f0c"/><animateTransform attributeName="gradientTransform" type="translate" from="-768 -768" to="768 768" dur="4.2s" repeatCount="indefinite"/></linearGradient></defs><g class="nbs-ring-g"><path d="M684.4,346.5 L686.1,362.2 L713.7,371.3 L713.7,400.7 L686.1,409.8 L684.4,425.5 L684.4,425.5 L681.9,441.2 L706.2,457.1 L698.6,485.5 L669.6,487.1 L663.9,502.0 L663.9,502.0 L657.5,516.4 L676.8,538.1 L662.2,563.6 L633.7,557.6 L624.4,570.5 L624.4,570.5 L614.4,582.8 L627.5,608.7 L606.7,629.5 L580.8,616.4 L568.5,626.4 L568.5,626.4 L555.6,635.7 L561.6,664.2 L536.1,678.8 L514.4,659.5 L500.0,665.9 L500.0,665.9 L485.1,671.6 L483.5,700.6 L455.1,708.2 L439.2,683.9 L423.5,686.4 L423.5,686.4 L407.8,688.1 L398.7,715.7 L369.3,715.7 L360.2,688.1 L344.5,686.4 L344.5,686.4 L328.8,683.9 L312.9,708.2 L284.5,700.6 L282.9,671.6 L268.0,665.9 L268.0,665.9 L253.6,659.5 L231.9,678.8 L206.4,664.2 L212.4,635.7 L199.5,626.4 L199.5,626.4 L187.2,616.4 L161.3,629.5 L140.5,608.7 L153.6,582.8 L143.6,570.5 L143.6,570.5 L134.3,557.6 L105.8,563.6 L91.2,538.1 L110.5,516.4 L104.1,502.0 L104.1,502.0 L98.4,487.1 L69.4,485.5 L61.8,457.1 L86.1,441.2 L83.6,425.5 L83.6,425.5 L81.9,409.8 L54.3,400.7 L54.3,371.3 L81.9,362.2 L83.6,346.5 L83.6,346.5 L86.1,330.8 L61.8,314.9 L69.4,286.5 L98.4,284.9 L104.1,270.0 L104.1,270.0 L110.5,255.6 L91.2,233.9 L105.8,208.4 L134.3,214.4 L143.6,201.5 L143.6,201.5 L153.6,189.2 L140.5,163.3 L161.3,142.5 L187.2,155.6 L199.5,145.6 L199.5,145.6 L212.4,136.3 L206.4,107.8 L231.9,93.2 L253.6,112.5 L268.0,106.1 L268.0,106.1 L282.9,100.4 L284.5,71.4 L312.9,63.8 L328.8,88.1 L344.5,85.6 L344.5,85.6 L360.2,83.9 L369.3,56.3 L398.7,56.3 L407.8,83.9 L423.5,85.6 L423.5,85.6 L439.2,88.1 L455.1,63.8 L483.5,71.4 L485.1,100.4 L500.0,106.1 L500.0,106.1 L514.4,112.5 L536.1,93.2 L561.6,107.8 L555.6,136.3 L568.5,145.6 L568.5,145.6 L580.8,155.6 L606.7,142.5 L627.5,163.3 L614.4,189.2 L624.4,201.5 L624.4,201.5 L633.7,214.4 L662.2,208.4 L676.8,233.9 L657.5,255.6 L663.9,270.0 L663.9,270.0 L669.6,284.9 L698.6,286.5 L706.2,314.9 L681.9,330.8 L684.4,346.5 Z M646,386 A262,262 0 1,0 122,386 A262,262 0 1,0 646,386 Z" fill-rule="evenodd"/></g><g class="nbs-gear-g"><path d="M323.5,240.0 L345.8,232.7 L349.8,192.0 L418.2,192.0 L422.2,232.7 L444.5,240.0 L444.5,240.0 L465.4,250.6 L497.0,224.6 L545.4,273.0 L519.4,304.6 L530.0,325.5 L530.0,325.5 L537.3,347.8 L578.0,351.8 L578.0,420.2 L537.3,424.2 L530.0,446.5 L530.0,446.5 L519.4,467.4 L545.4,499.0 L497.0,547.4 L465.4,521.4 L444.5,532.0 L444.5,532.0 L422.2,539.3 L418.2,580.0 L349.8,580.0 L345.8,539.3 L323.5,532.0 L323.5,532.0 L302.6,521.4 L271.0,547.4 L222.6,499.0 L248.6,467.4 L238.0,446.5 L238.0,446.5 L230.7,424.2 L190.0,420.2 L190.0,351.8 L230.7,347.8 L238.0,325.5 L238.0,325.5 L248.6,304.6 L222.6,273.0 L271.0,224.6 L302.6,250.6 L323.5,240.0Z M262,386 a122,122 0 1,0 244,0 a122,122 0 1,0 -244,0Z" fill-rule="evenodd" stroke-width="6" stroke-linejoin="round"/></g></svg></div><div class="nbs-word" id="nbsWord">Nbatools</div></div><div class="nbs-grain" aria-hidden="true"></div></div>
 <script id="nbs-splash-js">
 (function(){
   var L=document.getElementById('loader'); if(!L) return;
-  var C=document.getElementById('nbsCircle'),G=document.getElementById('nbsGroup'),Lg=document.getElementById('nbsLogo'),W=document.getElementById('nbsWord');
+  var Lg=document.getElementById('nbsLogo'),W=document.getElementById('nbsWord'),O=document.getElementById('nbsOrbit'),D=document.getElementById('nbsDust');
   var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
   var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-  window.__nbsSplashMs=3900; /* total time before the app is revealed */
-  function cover(){ var d=Math.hypot(innerWidth,innerHeight); return d/100*1.1; }
+  window.__nbsSplashMs=4000; /* total time before the app is revealed */
+  function tc(c){ try{ var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',c); }catch(e){} }
+  tc('#060606');   /* status bar matches the dark splash */
+  /* wordmark: letter by letter */
+  var txt=W.textContent; W.setAttribute('aria-label',txt); W.textContent='';
+  for(var i=0;i<txt.length;i++){ var sp=document.createElement('span'); sp.style.setProperty('--i',i); sp.setAttribute('aria-hidden','true'); sp.textContent=txt[i]; W.appendChild(sp); }
+  /* drifting gold dust */
+  if(!reduce&&D){ for(var k=0;k<16;k++){ var p=document.createElement('i'), s=1+Math.random()*2;
+    p.style.cssText='left:'+(Math.random()*100).toFixed(1)+'%;width:'+s.toFixed(1)+'px;height:'+s.toFixed(1)+'px;--o:'+(.3+Math.random()*.5).toFixed(2)+';--dx:'+((Math.random()-.5)*60).toFixed(0)+'px;animation-duration:'+(7+Math.random()*7).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';
+    D.appendChild(p); } }
   async function run(){
-    await sleep(150);   Lg.classList.add('in');                       /* 1. logo builds in (ring, then gear) on yellow */
-    if(reduce){ L.style.background='#0a0a0a'; G.classList.add('ink-y'); W.classList.add('show'); return; }
-    await sleep(1150);  Lg.classList.add('small');                    /* 2. logo shrinks */
-    await sleep(350);   C.style.transform='scale(2.9)';               /* 3. light circle expands around it */
-    await sleep(450);   W.classList.add('show');                      /*    wordmark appears to the right */
-    await sleep(450);   C.style.backgroundColor='#0a0a0a'; G.classList.add('ink-y');   /* circle goes black, logo turns yellow */
-    await sleep(450);   C.style.transition='transform .7s cubic-bezier(.65,0,.35,1)'; C.style.transform='scale('+cover()+')';   /* 4. black circle fills the screen */
-    await sleep(720);   L.style.background='#0a0a0a';
+    await sleep(150);  L.classList.add('lit');                                   /* 1. warm light rises, hairline orbit draws itself */
+    await sleep(350);  Lg.classList.add('in');                                   /* 2. logo materialises from soft focus, gold light travelling over it */
+    if(reduce){ await sleep(300); Lg.classList.add('small'); O.classList.add('rel'); W.classList.add('show'); return; }
+    await sleep(1700); O.classList.add('rel'); Lg.classList.add('small');         /* 3. orbit releases, mark settles to make room */
+    await sleep(250);  W.classList.add('show');                                  /* 4. wordmark unveils, tracked and letter by letter */
+    await sleep(1600); W.classList.add('glint'); /* 5. final gold bloom, then hold */
   }
   run();
 })();
@@ -6172,6 +6370,7 @@ const uid=(p='')=>p+Math.random().toString(36).slice(2,8).toUpperCase();
 const tracking=(p)=>`${p}-${new Date().getFullYear()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
 function toast(t){const x=document.getElementById('toast');x.textContent=t;x.classList.remove('hidden');clearTimeout(window.tt);window.tt=setTimeout(()=>x.classList.add('hidden'),2400)}
 function syncThemeColor(){
+  if(document.getElementById('loader')) return;   /* splash is showing: it controls the status bar colour */
   const t = (state.theme === 'dark') ? 'dark' : 'light';
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', t==='dark' ? '#080b0a' : '#f3f5f1');
 }
@@ -13096,7 +13295,7 @@ async function boot(){
   state.first=false; save();
  }
  if(!location.hash) location.hash = state.user ? 'home' : 'landing';
- setTimeout(()=>{ const l=document.getElementById('loader'); if(l){ l.classList.add('out'); setTimeout(()=>l.remove(),650); } render(); }, (window.__nbsSplashMs||3900)+600);
+ setTimeout(()=>{ const l=document.getElementById('loader'); if(l){ l.classList.add('out'); setTimeout(()=>l.remove(),950); } try{ document.querySelector('meta[name=theme-color]')?.setAttribute('content', state.theme==='dark' ? '#080b0a' : '#f3f5f1'); }catch(_){} render(); }, (window.__nbsSplashMs||3900)+600);
 }
 boot();
 </script>
@@ -24745,6 +24944,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 .tpa-wakebtn{height:34px;padding:0 10px;border-radius:999px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.09);color:#fff;font:600 12px inherit;cursor:pointer}.tpa-wakebtn.on{background:rgba(52,199,89,.28);border-color:#34c759}.tpa-fab-wake::after{content:'';position:absolute;right:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#34c759;border:2px solid #fff;animation:tpaWk 1.8s ease-in-out infinite}@keyframes tpaWk{50%{opacity:.35}}
 .tpa-callbtn:active{transform:scale(.94)}.tpa-callbtn.active{background:#e5484d;border-color:#e5484d}
 @media(max-width:390px){.tpa-callbtn{width:34px;padding:0;justify-content:center}.tpa-callbtn span{display:none}}
+html body #tpa-call-btn{display:inline-flex!important;visibility:visible!important;opacity:1!important}
 .tpa-call{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px));background:radial-gradient(120% 80% at 50% 0%,#26332c,#0d1210);color:#fff;border-radius:inherit}
 .tpa-call[hidden],.tpa-callbar[hidden]{display:none}
 .tpa-call-top{display:flex;align-items:center;gap:8px;width:100%;font-weight:700}
@@ -27754,6 +27954,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     var wait=trail?1500:(/[?.!]$/.test(t)||w>=5)?250:(w<3?700:400);
     call.pendT=setTimeout(callFlush,wait);
   }
+  window.tpSttGate=function(){ try{ return !!(call.on&&isSpeaking()); }catch(e){ return false; } };
   function callRecInit(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
     var r=new SR(); r.continuous=true; r.interimResults=true; r.lang=navigator.language||'en-US';
@@ -27951,18 +28152,25 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     bargeIn(); call.speech=false; call.buf=[]; callSync();
     if(!ended) addMsg('assistant','Call ended ('+t+'). Everything we said is right here, and you can keep typing or call me again anytime. If there is anything you wish the app could do, tap **Make a request** and I will pass it to the admin.');
   }
-  (function(){
-    var hb=panel.querySelector('.tpa-hbar'); if(!hb) return;
-    var b=document.createElement('button'); b.id='tpa-call-btn'; b.type='button'; b.className='tpa-callbtn'; b.setAttribute('aria-label','Start a voice call with Zara'); b.innerHTML=PHONE+'<span>Call</span>';
-    hb.insertBefore(b,voiceToggle); b.addEventListener('click',function(){ if(call.on&&!call.mini) callEnd(); else callStart(); });
-  })();
+  /* The call icon is always kept in the header: if anything ever removes it, it is put back. */
+  function tpEnsureCallBtn(){
+    try{
+      var hb=panel.querySelector('.tpa-hbar'); if(!hb||document.getElementById('tpa-call-btn')) return;
+      var b=document.createElement('button'); b.id='tpa-call-btn'; b.type='button'; b.className='tpa-callbtn'; b.setAttribute('aria-label','Start a voice call with Zara'); b.innerHTML=PHONE+'<span>Call</span>';
+      var ref=(voiceToggle&&voiceToggle.parentNode===hb)?voiceToggle:hb.querySelector('.tpa-x');
+      if(ref&&ref.parentNode===hb) hb.insertBefore(b,ref); else hb.appendChild(b);
+      b.addEventListener('click',function(){ if(call.on&&!call.mini) callEnd(); else callStart(); });
+      try{ b.classList.toggle('active',!!call.on); }catch(e){}
+    }catch(e){ console.warn('[tpa] call button',e); }
+  }
+  tpEnsureCallBtn(); setInterval(tpEnsureCallBtn,1500);
 
   /* ===== "Hey Zara" wake word: always listening while the app is open and Zara is idle ===== */
   var WK='tpa_wake', WAKE_RE=/\b(?:(?:hey|hay|hi|hello|ok|okay)[\s,]+(?:zara|zarah|zahra|zaara|zaira|sara|sarah|zora|zarra|xara|sahra|zahara)|zara|zarah|zaara|zaira)\b[\s,.!?:-]*/i;
   var wake={on:true,rec:null,run:false,err:0,dead:false,needTap:false,tapAt:0,t:null,armed:false,fired:0};
   try{ if(localStorage.getItem(WK)==='0') wake.on=false; }catch(e){}
   function wakeReply(){ var n=zaraUser(), nm=n?', '+n:''; return pickOf(["Yes"+nm+", I'm here. How can I help?","Hi"+nm+"! I'm listening. Go ahead.","Hello"+nm+"! What can I do for you?"]); }
-  function wakeSupported(){ return !!(window.SpeechRecognition||window.webkitSpeechRecognition); }
+  function wakeSupported(){ return !!(window.__tpNativeSR); }
   function wakeShouldRun(){ return wake.on&&!wake.dead&&!wake.needTap&&wakeSupported()&&signedIn&&!call.on&&!panel.classList.contains('open')&&!document.hidden; }
   function wakeUI(){ var run=wake.on&&!wake.dead&&wakeSupported(); fab.classList.toggle('tpa-fab-wake',run&&wake.run); var b=$('tpa-wake-btn'); if(b){ b.classList.toggle('on',wake.on&&!wake.dead); b.textContent=wake.dead?'Wake: blocked':(wake.on?'Hey Zara: on':'Hey Zara: off'); } }
   function wakeStop(){
@@ -27979,7 +28187,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function wakeStart(){
     if(wake.rec||!wakeShouldRun()) return;
-    var SR=window.SpeechRecognition||window.webkitSpeechRecognition, r=new SR();
+    var SR=window.__tpNativeSR, r=new SR();
     r.continuous=true; r.interimResults=true; r.lang=navigator.language||'en-US';
     r.onstart=function(){ wake.run=true; wakeUI(); };
     r.onresult=function(e){
@@ -28884,17 +29092,40 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     }catch(e){console.warn('[Nbatools admin voice setting]',e);}
     try{return String(window.tpCloudflareCallVoice||localStorage.getItem('tp-cloudflare-call-voice-admin-cache')||window.tpCloudflareVoice||localStorage.getItem('tp-cloudflare-voice-admin-cache')||'melo');}catch(e){return String(window.tpCloudflareCallVoice||window.tpCloudflareVoice||'melo');}
   }
+  function tpMicErrMsg(e){
+    var ua=navigator.userAgent||'', n=(e&&e.name)||'';
+    if(window.isSecureContext===false) return "This page isn't opened over a secure (https) connection, so the browser blocks the microphone. Open the https link.";
+    if(/FBAN|FBAV|Instagram|Messenger|Line\/|MicroMessenger|TikTok|Snapchat/i.test(ua)) return "This looks like an in-app browser (Facebook, Instagram, etc.), which blocks the microphone. Tap the ⋮ or ⋯ menu and choose 'Open in Chrome' or 'Open in browser', then call again.";
+    if(n==='NotFoundError'||n==='OverconstrainedError') return "No microphone was found on this device.";
+    if(n==='NotReadableError'||n==='AbortError') return "The microphone is busy. Close other apps or tabs that are using it, then tap Call again.";
+    return "Microphone is blocked for this site in this browser. Tap the lock/site-settings icon next to the address bar, set Microphone to Allow, reload the page, then tap Call again. (Also check Android Settings > Apps > this browser > Permissions > Microphone.)";
+  }
+  /* Stable call mode: whole-sentence audio instead of the live audio stream, which breaks up ("Hel...lo") on slow or shaky mobile data.
+     Needs browser speech recognition (Chrome/Edge/Safari). Live streaming (with interruption) is the default. Add ?stable=1 to the link to use this mode, ?realtime=1 to go back. */
+  function tpStableCall(){
+    try{
+      var q=location.search||'';
+      if(/[?&]stable=1/.test(q)) localStorage.setItem('tp-call-stable','1');
+      if(/[?&]realtime=1/.test(q)) localStorage.removeItem('tp-call-stable');
+      if(localStorage.getItem('tp-call-stable')!=='1') return false;
+    }catch(e){ return false; }
+    return !!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  }
   async function callStart(opts){
     if(call.on){call.mini=false;callSync();return;}
     var u=currentUser(); if(!u){addMsg('assistant','Sign in first and then we can chat by voice.');return;}
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!(window.AudioContext||window.webkitAudioContext)||!window.WebSocket){addMsg('assistant','This browser does not support real-time voice calls. Please use an up-to-date Chrome, Edge or Safari browser.');return;}
+    try{ var _pm=await navigator.mediaDevices.getUserMedia({audio:true}); _pm.getTracks().forEach(function(x){ x.stop(); }); }
+    catch(e){ console.warn('[Nbatools mic]',e); addMsg('assistant',tpMicErrMsg(e)); return; }
     try{wakeStop();}catch(e){}
     try{stopVoice();}catch(e){}
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),liveT0:0,speech:false,busy:0,state:'connecting',msgStart:msgs.length,fb:false,useSR:false,sr:null,srOn:false,srDead:false,srErr:0,pend:''});
     call.rt={client:null,seen:0,authed:false,status:'connecting',timer:null};call.rung=false;try{tpRingPrepare();}catch(e){}
+    call.prevVoice=voiceOn;
     voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='calling…';try{kpReset();}catch(e){}cEl.orb.className='tpa-orb connecting';callSync();callState();
     clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
     try{
+      if(tpStableCall()){ await callFallback('stable call mode'); return; }
       var token=await u.getIdToken(); if(!call.on)return;
       var mod=await Promise.race([rtLoadClient(),new Promise(function(_,rej){setTimeout(function(){rej(new Error('voice client load timeout'));},12000);})]); if(!call.on)return;
       var room='tp-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,24):Math.random().toString(36).slice(2)+Date.now().toString(36));
@@ -29006,7 +29237,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     call.state=''; call.liveT0=0;
     if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){ cEl.cap.textContent="Voice isn't available in this browser right now. Tap End and use the typed chat instead."; callState(); return; }
     try{ var ms=await navigator.mediaDevices.getUserMedia({audio:true}); ms.getTracks().forEach(function(x){ x.stop(); }); }
-    catch(e){ cEl.cap.textContent='I need microphone access. Allow it in your browser settings, then tap Call again.'; callState(); return; }
+    catch(e){ cEl.cap.textContent=tpMicErrMsg(e); callState(); return; }
     var mobileMic=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
     await sleep(mobileMic?500:200);
     if(!call.on||call.t0!==t0) return;
@@ -29204,6 +29435,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(rt){ clearTimeout(rt.byeT); }
     if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
     call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
+    /* Hang up means silence: stop Zara's voice, the listener, any reply still being written, and every audio engine the call opened. */
+    try{ call.aborted=true; if(call.ctrl) call.ctrl.abort(); }catch(e){}
+    try{ if(call.sr){ var _sr=call.sr; _sr.onend=_sr.onerror=_sr.onresult=_sr.onstart=null; _sr.abort(); } }catch(e){} call.sr=null; call.srOn=false;
+    try{ cancelSpeech(); }catch(e){}
+    try{ (window.__tpCtxs||[]).forEach(function(c){ if(c&&c.__tpAt>=(call.t0||0)-100&&c!==tpRingCtx&&!c.__tpKeep&&c.state!=='closed'){ try{ c.close(); }catch(e){} } }); }catch(e){}
+    try{ if(typeof call.prevVoice==='boolean'){ voiceOn=call.prevVoice; lsSet(VKEY_ON,voiceOn?'1':'0'); setVoiceUI(); call.prevVoice=null; } }catch(e){}
     if(!ended)addMsg('assistant','Call ended ('+t+'). You can keep typing or call again anytime.');
     callHandoff(callTr);
   }
@@ -30105,6 +30342,35 @@ html[data-theme="light"] .tpd .tpd-c .tpd-ic{color:var(--axe-accent)!important}
 html[data-theme="light"] body :is(.modal-card,.tp-drawer-panel,.lp-drawer-panel){border-top-color:#0a0a0a!important}
 </style>
 
+<style id="tp-dock-neu">
+/* ===== Bottom bar v2: neumorphic (soft raised panel, outline icons, accent active tab, no raised Create) ===== */
+.tpd{--neu-bg:#eceef3;--neu-hi:rgba(255,255,255,.95);--neu-lo:rgba(163,172,190,.42);--neu-idle:#4a505c;--neu-act:#0a0a0a;--neu-dot:#fad721}
+[data-theme="dark"] .tpd{--neu-bg:#171c19;--neu-hi:rgba(255,255,255,.045);--neu-lo:rgba(0,0,0,.62);--neu-idle:#c3cac5;--neu-act:var(--axe-accent,#ffe600);--neu-dot:var(--axe-accent,#ffe600)}
+html body .tpd{padding:0 14px max(12px,env(safe-area-inset-bottom))!important}
+html body .tpd .tpd-bar{grid-template-columns:repeat(5,1fr)!important;width:min(420px,100%)!important;height:66px!important;padding:0 8px!important;border-radius:24px!important;
+  background:var(--neu-bg)!important;border:0!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  box-shadow:9px 9px 20px var(--neu-lo),-7px -7px 16px var(--neu-hi),inset 1px 1px 0 var(--neu-hi)!important}
+html body .tpd .tpd-bar::before{display:none!important}
+html body .tpd .tpd-i{gap:5px!important;color:var(--neu-idle)!important;transition:color .3s ease,transform .25s cubic-bezier(.34,1.56,.64,1)!important}
+html body .tpd .tpd-ic{width:24px!important;height:24px!important}
+html body .tpd .tpd-ic svg{width:24px!important;height:24px!important;stroke-width:1.9!important;filter:none!important;transform:none!important}
+html body .tpd .tpd-lb{font-size:10px!important;font-weight:600!important;letter-spacing:.01em!important;text-transform:none!important}
+html body .tpd .tpd-i.active:not(.tpd-c),html body .tpd .tpd-c.active{color:var(--neu-act)!important}
+html body .tpd .tpd-i.active:not(.tpd-c) .tpd-ic svg,html body .tpd .tpd-c.active .tpd-ic svg{stroke-width:2.3!important;transform:translateY(-1px)!important}
+html body .tpd .tpd-i.active:not(.tpd-c) .tpd-lb,html body .tpd .tpd-c.active .tpd-lb{font-weight:700!important}
+html body .tpd .tpd-i.active:not(.tpd-c)::before{content:""!important;top:auto!important;bottom:5px!important;left:50%!important;width:4px!important;height:4px!important;margin-left:-2px!important;border-radius:50%!important;background:var(--neu-dot)!important;box-shadow:0 0 8px var(--neu-dot)!important}
+/* Create becomes a regular tab */
+html body .tpd .tpd-c{transform:none!important;gap:5px!important;color:var(--neu-idle)!important}
+html body .tpd .tpd-c .tpd-ic{width:24px!important;height:24px!important;border-radius:0!important;background:none!important;color:inherit!important;box-shadow:none!important}
+html body .tpd .tpd-c .tpd-ic svg{width:24px!important;height:24px!important;stroke-width:1.9!important}
+html body .tpd .tpd-c.active .tpd-ic{box-shadow:none!important}
+html body .tpd .tpd-c.active::before{content:"";position:absolute;bottom:5px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--neu-dot);box-shadow:0 0 8px var(--neu-dot)}
+html body .tpd .tpd-c:active,html body .tpd .tpd-i:active{transform:scale(.92)!important}
+html[data-theme="light"] .tpd .tpd-c .tpd-ic{color:inherit!important}
+@media(hover:hover){html body .tpd .tpd-c:hover .tpd-ic{transform:none!important}html body .tpd .tpd-i:not(.active):hover{color:var(--neu-act)!important}}
+@media(min-width:700px){html body .tpd .tpd-bar{width:440px!important}}
+</style>
+
 <script id="tp-store">
 /* ===== Nbatools Store (marketplace) =====
    Firestore: storeProducts (public listing), storeLinks (secret links, admin only), storeOrders + storeReceipts.
@@ -30131,6 +30397,7 @@ html[data-theme="light"] body :is(.modal-card,.tp-drawer-panel,.lp-drawer-panel)
   function saveCart(){try{localStorage.setItem(ck(),JSON.stringify(S.cart))}catch(e){}paintAll()}
   /* what the user already bought / is waiting on */
   function status(id){var st='';S.orders.forEach(function(o){(o.items||[]).forEach(function(it){if(it.id!==id)return;if(o.status==='approved')st='approved';else if(o.status==='pending'&&st!=='approved')st='pending'})});return st}
+  function ownedCount(id){var n=0;S.orders.forEach(function(o){if(o.status==='approved')(o.items||[]).forEach(function(it){if(it.id===id)n++})});return n}
   function thumb(id){var p=prod(id);return p&&p.image?'<img src="'+E(p.image)+'" alt="">':ICON.bag}
 
   /* ---------- live data ---------- */
@@ -30155,12 +30422,11 @@ html[data-theme="light"] body :is(.modal-card,.tp-drawer-panel,.lp-drawer-panel)
 
   /* ---------- store grid ---------- */
   function card(p){
-    var st=status(p.id),inCart=S.cart.indexOf(p.id)>=0,btn;
-    if(st==='approved')btn='<button class="tp-st-btn go" onclick="event.stopPropagation();tpStoreOpen(\''+E(p.id)+'\')">Open</button>';
-    else if(st==='pending')btn='<button class="tp-st-btn alt" onclick="event.stopPropagation();tpStoreOpen(\''+E(p.id)+'\')">Pending approval</button>';
-    else if(inCart)btn='<button class="tp-st-btn alt" onclick="event.stopPropagation();nav(\'cart\')">In cart · View</button>';
-    else btn='<button class="tp-st-btn" onclick="event.stopPropagation();tpStoreAdd(\''+E(p.id)+'\')">Add to cart</button>';
-    return '<div class="tp-st-card" onclick="nav(\'store/'+E(p.id)+'\')"><div class="tp-st-img">'+(p.image?'<img loading="lazy" src="'+E(p.image)+'" alt="'+E(p.name)+'">':ICON.bag)+(st==='approved'?'<span class="tp-st-tag">Owned</span>':'')+'</div><div class="tp-st-body"><div class="tp-st-name">'+E(p.name)+'</div><div class="tp-st-price">'+naira(p.priceNgn)+'</div>'+btn+'</div></div>';
+    var st=status(p.id),n=ownedCount(p.id),inCart=S.cart.indexOf(p.id)>=0,btn;
+    if(inCart)btn='<button class="tp-st-btn alt" onclick="event.stopPropagation();nav(\'cart\')">In cart · View</button>';
+    else btn='<button class="tp-st-btn" onclick="event.stopPropagation();tpStoreAdd(\''+E(p.id)+'\')">'+(n?'Buy again':'Add to cart')+'</button>';
+    var tag=n?'<span class="tp-st-tag">Owned'+(n>1?' ×'+n:'')+'</span>':(st==='pending'?'<span class="tp-st-tag">Pending</span>':'');
+    return '<div class="tp-st-card" onclick="nav(\'store/'+E(p.id)+'\')"><div class="tp-st-img">'+(p.image?'<img loading="lazy" src="'+E(p.image)+'" alt="'+E(p.name)+'">':ICON.bag)+tag+'</div><div class="tp-st-body"><div class="tp-st-name">'+E(p.name)+'</div><div class="tp-st-price">'+naira(p.priceNgn)+'</div>'+btn+'</div></div>';
   }
   function gridHtml(){
     if(S.err)return '<div class="tp-st-empty">'+E(S.err)+'</div>';
@@ -30179,16 +30445,16 @@ html[data-theme="light"] body :is(.modal-card,.tp-drawer-panel,.lp-drawer-panel)
     var p=prod(id);
     if(!S.loaded)return '<div class="tp-st-empty">Loading…</div>';
     if(!p)return '<div class="tp-st-empty"><strong>Product not found.</strong><p><button class="btn btn-accent" onclick="nav(\'store\')">Back to store</button></p></div>';
-    var st=status(id),inCart=S.cart.indexOf(id)>=0,acts;
-    if(st==='approved')acts='<button class="tp-st-btn go" onclick="tpStoreOpen(\''+E(id)+'\')">Open product</button>';
-    else if(st==='pending')acts='<button class="tp-st-btn alt" onclick="tpStoreOpen(\''+E(id)+'\')">Payment pending — tap for status</button>';
-    else acts='<button class="tp-st-btn go" onclick="tpStoreBuyNow(\''+E(id)+'\')">Buy now</button>'+(inCart?'<button class="tp-st-btn alt" onclick="nav(\'cart\')">In cart · View cart</button>':'<button class="tp-st-btn" onclick="tpStoreAdd(\''+E(id)+'\')">Add to cart</button>');
+    var st=status(id),n=ownedCount(id),inCart=S.cart.indexOf(id)>=0,acts='';
+    if(n)acts+='<button class="tp-st-btn alt" onclick="tpStoreOpen(\''+E(id)+'\')">Open product'+(n>1?' (bought ×'+n+')':'')+'</button>';
+    if(st==='pending')acts+='<button class="tp-st-btn alt" onclick="tpStoreOpen(\''+E(id)+'\')">Payment pending — tap for status</button>';
+    acts+='<button class="tp-st-btn go" onclick="tpStoreBuyNow(\''+E(id)+'\')">'+(n?'Buy again':'Buy now')+'</button>'+(inCart?'<button class="tp-st-btn alt" onclick="nav(\'cart\')">In cart · View cart</button>':'<button class="tp-st-btn" onclick="tpStoreAdd(\''+E(id)+'\')">Add to cart</button>');
     return '<div class="tp-st-detail"><div class="tp-st-img">'+(p.image?'<img src="'+E(p.image)+'" alt="'+E(p.name)+'">':ICON.bag)+'</div><h2>'+E(p.name)+'</h2><div class="tp-st-price">'+naira(p.priceNgn)+'</div>'+(p.desc?'<p>'+E(p.desc)+'</p>':'')+'<div class="tp-st-actions">'+acts+'</div><p style="font-size:12px;margin-top:14px">Pay by bank transfer. The product link unlocks once your payment is approved.</p></div>';
   }
   function detailPage(id){return '<div class="screen"><div class="container">'+topbar('Product','store')+'<div id="tp-prod-detail" style="margin-top:14px">'+detailHtml(id)+'</div>'+navBar('store')+'</div></div>'}
 
   /* ---------- cart + purchases ---------- */
-  function cartItems(){return S.cart.map(prod).filter(function(p){return p&&!status(p.id)})}
+  function cartItems(){return S.cart.map(prod).filter(function(p){return !!p})}
   function sum(l){var t=0;l.forEach(function(p){t+=Number(p.priceNgn||p.price||0)});return t}
   function ordersHtml(){
     if(!S.orders.length)return '<p class="muted" style="margin:0;font-size:13px">No purchases yet. Your paid products will show here.</p>';
@@ -30232,7 +30498,7 @@ html[data-theme="light"] body :is(.modal-card,.tp-drawer-panel,.lp-drawer-panel)
   };
 
   /* ---------- payment page (same flow as the credits payment page) ---------- */
-  function payItems(){return S.buy?S.buy.map(prod).filter(function(p){return p&&!status(p.id)}):cartItems()}
+  function payItems(){return S.buy?S.buy.map(prod).filter(function(p){return !!p}):cartItems()}
   function brow(k,v,copy){if(!v)return '';return '<div class="tp-cr-brow"><span>'+k+'</span><b>'+E(v)+'</b>'+(copy?'<button type="button" class="tp-cr-copy" data-copy="'+E(copy===true?v:copy)+'" onclick="tpCreditsCopy(this)">Copy</button>':'')+'</div>'}
   function sentBody(){
     var wa=typeof tpCreditsWaUrl==='function'?tpCreditsWaUrl():'#';
@@ -30429,6 +30695,35 @@ html body a.id-card-cta .cta-arrow{color:var(--accent) !important}
 .tpw .tpw-sheet>*{animation:none!important;opacity:1!important}
 .tpw .tpw-seg.on i::after{animation:none!important;transform:scaleX(1)!important}
 .tpw .tpw-photo{animation:tpwKen 24s ease-in-out infinite alternate!important;opacity:1!important}
+</style>
+<style id="tp-zara-clean-buttons">
+/* Chat: "End chat" and "Make a request" have no yellow fill (outline only). */
+html:not([data-theme="light"]) body .tpa-endbtn,html[data-theme="light"] body .tpa-endbtn{background:transparent!important;background-color:transparent!important;color:#fff!important;border:1px solid rgba(255,255,255,.4)!important;box-shadow:none!important}
+html:not([data-theme="light"]) body .tpa-endbtn *,html[data-theme="light"] body .tpa-endbtn *{color:inherit!important;background:none!important}
+html:not([data-theme="light"]) body .tpa-reqbtn,html[data-theme="light"] body .tpa-reqbtn{background:transparent!important;background-color:transparent!important;color:var(--ink,#fff)!important;border:1px solid var(--line,rgba(255,255,255,.28))!important;box-shadow:none!important}
+html:not([data-theme="light"]) body .tpa-reqbtn *,html[data-theme="light"] body .tpa-reqbtn *{color:inherit!important;background:none!important}
+html body .tpa-reqbtn svg{color:var(--tpa-a,#ffcc00)!important}
+html body .tpa-endbtn:hover,html body .tpa-reqbtn:hover{background:rgba(255,255,255,.08)!important}
+/* Dashboard: the floating Zara button is a small chat icon (the photo stays inside the chat). */
+html body .tpa-fab{width:46px!important;height:46px!important}
+html body .tpa-ring,html body .tpa-halo{display:none!important}
+html body .tpa-core{background:none!important;background-color:transparent!important;background-image:none!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+html body #tpa-fab .tpa-core .tpa-i{display:block!important;width:30px!important;height:30px!important;color:#ffd400!important;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))!important}
+html body #tpa-fab .tpa-core .tpa-i .tpa-star,html body #tpa-fab .tpa-core .tpa-star{color:#fff3b0!important}
+/* Light mode: the floating chat icon turns black. */
+html[data-theme="light"] body #tpa-fab .tpa-core .tpa-i{color:#111!important;filter:none!important}
+html[data-theme="light"] body #tpa-fab .tpa-core .tpa-i .tpa-star,html[data-theme="light"] body #tpa-fab .tpa-core .tpa-star{color:#111!important}
+html body .tpa-fab .tpa-live{width:11px;height:11px;right:0;top:1px;border-width:2px}
+</style>
+<style id="tp-no-yellow-auth-buttons">
+/* Welcome page "Already have an account? Log in" and the "Google" sign-in button: no yellow fill. */
+html:not([data-theme="light"]) body .tpw-login,html[data-theme="light"] body .tpw-login{background:none!important;background-color:transparent!important;color:rgba(255,255,255,.72)!important;border:0!important;box-shadow:none!important}
+html:not([data-theme="light"]) body .tpw-login *,html[data-theme="light"] body .tpw-login *{background:none!important;color:inherit!important}
+html:not([data-theme="light"]) body .tpw-login strong,html[data-theme="light"] body .tpw-login strong{color:var(--tpw-a,#fad721)!important}
+html:not([data-theme="light"]) body .lx-btn.lx-btn-ghost,html[data-theme="light"] body .lx-btn.lx-btn-ghost{background:transparent!important;background-color:transparent!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;box-shadow:none!important}
+html[data-theme="light"] body .lx-btn.lx-btn-ghost{color:var(--ink,#111)!important;border-color:var(--line,rgba(0,0,0,.22))!important}
+html:not([data-theme="light"]) body .lx-btn.lx-btn-ghost *,html[data-theme="light"] body .lx-btn.lx-btn-ghost *{background:none!important;color:inherit!important}
+html body .lx-btn.lx-btn-ghost:hover{background:rgba(255,255,255,.06)!important}
 </style>
 </body>
 </html>
