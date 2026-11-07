@@ -6728,7 +6728,6 @@ const isF=x.type==='Flight';return `<div class="record" onclick="nav('${isF?'fli
 function create(){
 return `<div class="screen"><div class="container">${topbar('Create','home')}<div class="header"><div><div class="eyebrow">Workspace</div><h1 class="page-title">What are you creating?</h1><p class="sub">Choose a workflow. TrackPort will generate the tracking identity and keep the journey organized.</p></div></div>
  <div class="grid two">
- <div class="card creation-card" style="grid-column:1/-1" onclick="nav('image-edit')"><div class="creation-icon">✦</div><div class="creation-content"><div class="creation-kicker">AI image editor · New</div><h3>Edit photos with a prompt</h3><p>Upload up to 4 images, describe the change, then download the result.</p></div><div class="creation-arrow">→</div></div>
  <div class="card creation-card" onclick="nav('create-shipment')"><div class="creation-icon">▣</div><div class="creation-content"><div class="creation-kicker">Shipment creation</div><h3>Trackable shipping product</h3><p>Route, carrier, stopovers and live status history.</p></div><div class="creation-arrow">→</div></div>
  <div class="card creation-card" onclick="nav('create-flight')"><div class="creation-icon">✈</div><div class="creation-content"><div class="creation-kicker">Flight ticket creation</div><h3>Trackable flight ticket</h3><p>Passenger, route legs and shareable flight record.</p></div><div class="creation-arrow">→</div></div>
  <div class="card creation-card" onclick="nav('id-creations')"><div class="creation-icon">▤</div><div class="creation-content"><div class="creation-kicker">ID creations</div><h3>Driver license, military, SSN &amp; more</h3><p>State &amp; country ID mockups for design and demonstration.</p></div><div class="creation-arrow">→</div></div>
@@ -6738,138 +6737,6 @@ return `<div class="screen"><div class="container">${topbar('Create','home')}<di
  <div class="card creation-card" onclick="nav('create-receipt')"><div class="creation-icon">$</div><div class="creation-content"><div class="creation-kicker">Receipt creation</div><h3>Business receipts</h3><p>Itemized receipts with templates and print-ready output.</p></div><div class="creation-arrow">→</div></div>
  </div>
  <div class="section-row"><h3>Workspace utilities</h3></div><div class="grid two"><div class="card tool clickable" onclick="nav('tools')"><div class="tool-icon">◈</div><h3>More tools</h3><p>Open the full toolkit and explore every TrackPort creation utility.</p><span style="font-size:11px;font-weight:900">View tools →</span></div><div class="card tool clickable" onclick="nav('sharing')"><div class="tool-icon">↗</div><h3>Sharing</h3><p>Prepare clear tracking references and share them from one place.</p><span style="font-size:11px;font-weight:900">Open sharing →</span></div></div>${navBar('create')}</div></div>`;
-}
-
-/* ===== AI image editor: 1-4 photos + a prompt -> one edited image (Workers AI FLUX.2 with automatic fallbacks) ===== */
-window.tpIE = window.tpIE || {imgs:[],prompt:'',aspect:'auto',busy:false,result:null,error:'',tick:0,t0:0,seq:0};
-function tpIEUrl(){ return String(window.TRACKPORT_IMAGE_URL || 'https://trackport-ai.nbatoolz.workers.dev/image-edit'); }
-function tpIECost(){ try{ return (window.tpCredits&&window.tpCredits.costs&&window.tpCredits.costs.imageEdit)||5; }catch(e){ return 5; } }
-function tpIEAttr(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-const TP_IE_ASPECTS=[['auto','Auto'],['sq','Square'],['pt','Portrait'],['ls','Landscape'],['tall','Story'],['wide','Wide']];
-const TP_IE_IDEAS=['Let the girl hold the bag','Put the product on a marble table','Change the background to a beach','Make it a clean studio photo'];
-function tpIEDims(){
-  const S=tpIE, f=S.imgs[0], fixed={sq:[1024,1024],pt:[768,1024],ls:[1024,768],tall:[576,1024],wide:[1024,576]};
-  if(S.aspect!=='auto'&&fixed[S.aspect]) return fixed[S.aspect];
-  if(!f) return [1024,1024];
-  const r=f.w/f.h, q=v=>Math.max(256,Math.round(v/16)*16);
-  return r>=1?[1024,q(1024/r)]:[q(1024*r),1024];
-}
-function tpIESlotsHtml(){
-  const S=tpIE; let h='';
-  S.imgs.forEach((im,i)=>{ h+=`<div class="tpie-tile"><img src="${im.src}" alt="Image ${i+1}"><b class="tpie-num">${i+1}</b><button type="button" class="tpie-x" onclick="tpIERemove(${i})" aria-label="Remove image ${i+1}">×</button></div>`; });
-  if(S.imgs.length<4) h+=`<button type="button" class="tpie-tile tpie-add" onclick="document.getElementById('tpie-file').click()"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>${S.imgs.length?'Add':'Add photos'}</span></button>`;
-  for(let i=S.imgs.length+(S.imgs.length<4?1:0);i<4;i++) h+='<div class="tpie-tile tpie-ghost"></div>';
-  return h;
-}
-function tpIEResultHtml(){
-  const S=tpIE, d=tpIEDims(), ar=`aspect-ratio:${d[0]}/${d[1]}`;
-  if(S.busy) return `<div class="tpie-stage tpie-busy" style="${ar}"><div class="tpie-shimmer"></div><div class="tpie-status"><i class="tpie-spin"></i><span id="tpie-msg">${tpIEMsg()}</span></div></div>`;
-  if(S.result) return `<div class="tpie-stage tpie-done"><img src="${S.result.src}" alt="Edited image"></div>
-    <div class="tpie-actions"><button type="button" class="btn btn-accent" onclick="tpIEDownload()"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Download</button><button type="button" class="btn btn-soft" onclick="tpIEReuse()">Edit again</button><button type="button" class="btn btn-soft" onclick="tpIEGenerate()">Regenerate</button></div>
-    <p class="tpie-meta">Made with ${tpIEAttr(S.result.model||'AI')}</p>`;
-  if(S.error) return `<div class="tpie-stage tpie-empty tpie-err" style="${ar}"><div><strong>Couldn't finish that edit</strong><p>${tpIEAttr(S.error)}</p></div></div>`;
-  return `<div class="tpie-stage tpie-empty" style="${ar}"><div><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg><p>Your edited image will appear here</p></div></div>`;
-}
-function tpIEBtnHtml(){
-  const S=tpIE, ok=S.imgs.length&&S.prompt.trim().length>=3&&!S.busy;
-  return `<button type="button" class="btn btn-accent tpie-go" id="tpie-go" onclick="tpIEGenerate()" ${S.busy?'disabled':''} ${ok||S.busy?'':'data-idle="1"'}>${S.busy?'<i class="tpie-spin dark"></i>Generating…':'<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2l1.9 5.6L19.5 9l-5.6 1.9L12 16.5l-1.9-5.6L4.5 9l5.6-1.4zM19 15l.9 2.6 2.6.9-2.6.9L19 22l-.9-2.6-2.6-.9 2.6-.9z"/></svg>Generate'}<span class="tpie-cost">${tpIECost()} credits</span></button>`;
-}
-function tpIEMsg(){ const t=Math.floor((Date.now()-tpIE.t0)/1000), m=['Reading your images…','Planning the edit…','Painting the new image…','Adding the finishing touches…']; return m[Math.min(3,Math.floor(t/7))]+' '+t+'s'; }
-function tpIEPaint(){
-  const S=tpIE, q=id=>document.getElementById(id);
-  if(q('tpie-slots')) q('tpie-slots').innerHTML=tpIESlotsHtml();
-  if(q('tpie-count')) q('tpie-count').textContent=S.imgs.length+'/4';
-  if(q('tpie-result')) q('tpie-result').innerHTML=tpIEResultHtml();
-  if(q('tpie-gobox')) q('tpie-gobox').innerHTML=tpIEBtnHtml();
-  document.querySelectorAll('[data-ieaspect]').forEach(b=>b.classList.toggle('on',b.getAttribute('data-ieaspect')===S.aspect));
-}
-function tpIEFile(file){
-  return new Promise((resolve,reject)=>{
-    if(!/^image\//.test(file.type||'')) return reject(new Error('not-image'));
-    if(file.size>25*1024*1024) return reject(new Error('too-big'));
-    const url=URL.createObjectURL(file), im=new Image();
-    im.onload=()=>{ try{
-      const s=Math.min(1,500/Math.max(im.naturalWidth,im.naturalHeight)), w=Math.max(16,Math.round(im.naturalWidth*s)), h=Math.max(16,Math.round(im.naturalHeight*s));
-      const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(im,0,0,w,h);
-      resolve({src:c.toDataURL('image/jpeg',.9),w,h});
-    }catch(e){ reject(e); } URL.revokeObjectURL(url); };
-    im.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('unreadable')); };
-    im.src=url;
-  });
-}
-async function tpIEAdd(files){
-  const S=tpIE, list=Array.from(files||[]); if(!list.length) return;
-  let skipped=0;
-  for(const f of list){
-    if(S.imgs.length>=4){ skipped++; continue; }
-    try{ const r=await tpIEFile(f); S.imgs.push(r); S.result=null; S.error=''; tpIEPaint(); }
-    catch(e){ toast(e&&e.message==='too-big'?'That image is too large (max 25 MB).':'Could not read that image. Try a JPG, PNG or WebP.'); }
-  }
-  if(skipped) toast('You can use up to 4 images.');
-}
-function tpIERemove(i){ tpIE.imgs.splice(i,1); tpIE.result=null; tpIEPaint(); }
-function tpIEIdea(i){ const t=document.getElementById('tpie-prompt'); tpIE.prompt=TP_IE_IDEAS[i]; if(t){ t.value=tpIE.prompt; t.focus(); } tpIEPaint(); }
-function tpIEAspect(a){ tpIE.aspect=a; tpIEPaint(); }
-function tpIEDrop(ev){ ev.preventDefault(); ev.currentTarget.classList.remove('drag'); if(ev.dataTransfer&&ev.dataTransfer.files) tpIEAdd(ev.dataTransfer.files); }
-function tpIEDownload(){
-  const r=tpIE.result; if(!r) return;
-  const ext=/jpeg/.test(r.mime)?'jpg':/webp/.test(r.mime)?'webp':'png', a=document.createElement('a');
-  a.href=r.src; a.download='trackport-edit-'+Date.now()+'.'+ext; document.body.appendChild(a); a.click(); a.remove();
-}
-function tpIEReuse(){
-  const S=tpIE, r=S.result; if(!r) return;
-  fetch(r.src).then(x=>x.blob()).then(b=>tpIEFile(new File([b],'edit.'+(/jpeg/.test(r.mime)?'jpg':'png'),{type:r.mime}))).then(im=>{
-    if(S.imgs.length>=4) S.imgs.pop(); S.imgs.unshift(im); S.imgs=S.imgs.slice(0,4); S.result=null; S.error=''; tpIEPaint(); toast('Added as image 1. Describe the next change.');
-  }).catch(()=>toast('Could not reuse that image.'));
-}
-async function tpIEGenerate(){
-  const S=tpIE; if(S.busy) return;
-  if(!S.imgs.length){ toast('Add at least one photo first.'); return; }
-  if(S.prompt.trim().length<3){ toast('Describe what you want changed.'); return; }
-  const u=(typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||null;
-  if(!u){ toast('Please sign in to continue.'); return; }
-  const paid=typeof window.tpCreditsSpend==='function'?await window.tpCreditsSpend('imageEdit'):{ok:true};
-  if(!paid||!paid.ok) return;
-  const d=tpIEDims(), mySeq=++S.seq;
-  S.busy=true; S.error=''; S.result=null; S.t0=Date.now(); tpIEPaint();
-  clearInterval(S.tick); S.tick=setInterval(()=>{ const m=document.getElementById('tpie-msg'); if(m) m.textContent=tpIEMsg(); },1000);
-  const ctrl=new AbortController(), to=setTimeout(()=>ctrl.abort(),150000);
-  try{
-    const token=await u.getIdToken();
-    const res=await fetch(tpIEUrl(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({prompt:S.prompt.trim(),images:S.imgs.map(i=>i.src),width:d[0],height:d[1]})});
-    let j={}; try{ j=await res.json(); }catch(e){}
-    if(!res.ok||!j.ok||!j.image){ const err=new Error(j.error||('http_'+res.status)); err.status=res.status; err.detail=j.detail||''; throw err; }
-    if(mySeq===S.seq) S.result={src:'data:'+(j.mime||'image/png')+';base64,'+j.image,mime:j.mime||'image/png',model:j.model||'',w:j.width,h:j.height};
-  }catch(e){
-    console.warn('[image-edit]',e);
-    if(paid.spendId&&typeof window.tpCreditsRefund==='function') window.tpCreditsRefund(paid.spendId);
-    S.error=e&&e.message==='ai_quota'?'The AI has used up its free daily limit. It resets at midnight UTC. Your credits were returned.'
-      :e&&e.name==='AbortError'?'That took too long. Your credits were returned. Please try again.'
-      :e&&e.status===429?'Too many requests. Wait a minute and try again. Your credits were returned.'
-      :e&&e.status===401?'Your session expired. Please sign in again. Your credits were returned.'
-      :e&&e.status===400?'Something is wrong with the images or prompt. Try different photos. Your credits were returned.'
-      :'The image servers are busy right now. Your credits were returned, please try again shortly. (Debug: '+(e&&e.status?e.status+' ':'')+(e&&e.message||'unknown')+(e&&e.detail?' - '+e.detail:'')+')';
-  }finally{ clearTimeout(to); clearInterval(S.tick); S.busy=false; tpIEPaint(); }
-}
-function tpImageEditPage(){
-  const S=tpIE;
-  return `<div class="screen"><div class="container">${topbar('Image editor','create')}
-  <div class="header"><div><div class="eyebrow">AI studio</div><h1 class="page-title">Edit photos with a prompt.</h1><p class="sub">Upload up to 4 photos, say what should change, and download the result.</p></div></div>
-  <div class="tpie">
-   <section class="tpie-card">
-    <div class="tpie-head"><span><b>1</b>Photos</span><em id="tpie-count">${S.imgs.length}/4</em></div>
-    <div class="tpie-slots" id="tpie-slots" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="tpIEDrop(event)">${tpIESlotsHtml()}</div>
-    <input id="tpie-file" type="file" accept="image/*" multiple hidden onchange="tpIEAdd(this.files);this.value=''">
-    <div class="tpie-head"><span><b>2</b>What should change?</span></div>
-    <textarea id="tpie-prompt" rows="3" maxlength="800" placeholder="e.g. Let the girl in image 1 hold the bag from image 2" oninput="tpIE.prompt=this.value;tpIEPaint()">${tpIEAttr(S.prompt)}</textarea>
-    <div class="tpie-chips">${TP_IE_IDEAS.map((t,i)=>`<button type="button" onclick="tpIEIdea(${i})">${tpIEAttr(t)}</button>`).join('')}</div>
-    <div class="tpie-head"><span><b>3</b>Shape</span></div>
-    <div class="tpie-seg">${TP_IE_ASPECTS.map(a=>`<button type="button" data-ieaspect="${a[0]}" class="${S.aspect===a[0]?'on':''}" onclick="tpIEAspect('${a[0]}')">${a[1]}</button>`).join('')}</div>
-    <div id="tpie-gobox">${tpIEBtnHtml()}</div>
-    <p class="tpie-note">Refer to photos by number: “image 1”, “image 2”. Photos are shrunk before sending.</p>
-   </section>
-   <section class="tpie-card tpie-outcard"><div class="tpie-head"><span>Result</span></div><div id="tpie-result">${tpIEResultHtml()}</div></section>
-  </div>${navBar('create')}</div></div>`;
 }
 
 const SHIPMENT_STATUS_FLOW=['Order Created','Picked Up','In Transit','Arrived at Facility','Out for Delivery','Delivered'];
@@ -12326,7 +12193,7 @@ if(p==='subscription')return tpSubscriptionPage();if(p.startsWith('payment/'))re
 if(p.startsWith('pickup/')){window.trackQ=p.slice(7);return track()}
 if(p==='landing'||p===''||p==='home-marketing')return landingPage();
 if(p==='welcome')return welcome();if(p==='login')return auth('login');if(p==='register')return auth('register');
-  if(p==='home')return home();if(p==='create')return create();if(p==='image-edit'||p==='create-image-edit')return tpImageEditPage();if(p==='create-shipment')return shipmentForm();if(p==='create-flight')return flightForm();if(p==='create-receipt'||p.startsWith('create-receipt/')){try{return receiptForm();}catch(err){console.warn('[receipt]',err);return `<div class="screen"><div class="container">${topbar('Receipt','create')}<div class="card empty"><strong>Receipt workspace failed to load</strong><p>${esc(String(err&&err.message||err))}</p><button class="btn btn-accent" onclick="location.reload()">Reload</button></div>${navBar('create')}</div></div>`;}}if(p==='receipt-history')return receiptHistory();
+  if(p==='home')return home();if(p==='create')return create();if(p==='create-shipment')return shipmentForm();if(p==='create-flight')return flightForm();if(p==='create-receipt'||p.startsWith('create-receipt/')){try{return receiptForm();}catch(err){console.warn('[receipt]',err);return `<div class="screen"><div class="container">${topbar('Receipt','create')}<div class="card empty"><strong>Receipt workspace failed to load</strong><p>${esc(String(err&&err.message||err))}</p><button class="btn btn-accent" onclick="location.reload()">Reload</button></div>${navBar('create')}</div></div>`;}}if(p==='receipt-history')return receiptHistory();
 if(p==='id-creations'||p==='create-id-card')return idCreationsHubPort();
 if(p==='id-license'||p==='create-license')return idLicenseHubPort();
 if(p==='id-license-usa')return idLicenseCreatePort('usa');if(p.startsWith('create-license/')){const t=p.slice(15);return idLicenseCreatePort(t);}
@@ -23084,14 +22951,14 @@ body{-webkit-overflow-scrolling:touch}
   var WHATSAPP_DM_LINK = 'https://wa.link/q6bcsj';   // payment receipts go straight to this WhatsApp DM
   var WHATSAPP_NUMBER = '';                    // <-- your WhatsApp number with country code, digits only, e.g. '2348012345678'
   var BANK = { bankName:'PalmPay', accountName:'Osanyinlusi Olayemi', accountNumber:'8109893166', note:'Use the reference below as the transfer narration.' };
-  var COSTS = { shipment:10, flight:10, idCreation:6, receipt:5, idStudio:5, imageEdit:5 }; // credits used per creation
+  var COSTS = { shipment:10, flight:10, idCreation:6, receipt:5, idStudio:5 }; // credits used per creation
   var PLANS = [
     { id:'starter',  name:'Starter',  credits:50,  amountNgn:2500 },
     { id:'plus',     name:'Plus',     credits:120, amountNgn:5500 },
     { id:'pro',      name:'Pro',      credits:300, amountNgn:12000 },
     { id:'business', name:'Business', credits:800, amountNgn:30000 }
   ];
-  var LABELS = { shipment:'New shipment', flight:'Flight ticket', idCreation:'ID creation', receipt:'Receipt', idStudio:'ID Studio creation', imageEdit:'AI image edit' };
+  var LABELS = { shipment:'New shipment', flight:'Flight ticket', idCreation:'ID creation', receipt:'Receipt', idStudio:'ID Studio creation' };
 
   var C = window.tpCredits = { loaded:false, error:false, balance:0, costs:COSTS, plans:PLANS, bank:BANK, requests:[] };
   window.tpCreditsCanAfford = function(action){ return !ENABLED || isAdmin() || (C.loaded && C.balance >= (COSTS[action]||0)); };
@@ -24207,29 +24074,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
 .tpa-verify{display:flex;align-items:center;gap:12px}
 .tpa-verify b{display:block;font-size:14px}
 .tpa-verify small{display:block;margin-top:2px;color:var(--muted,#737a74);font-size:12px;line-height:1.35}
-.tpa-rcpt.tpa-imgs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;max-width:72%;width:min(260px,72%)}
-.tpa-rcpt.tpa-imgs.n1{display:block;width:auto;max-width:62%}
-.tpa-rcpt.tpa-imgs img{width:100%;height:112px;object-fit:cover;border-radius:12px;max-height:none}
-.tpa-rcpt.tpa-imgs.n1 img{height:auto;max-height:240px;object-fit:contain}
-.tpa-ie-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:2px 0 10px}
-.tpa-ie-grid.big{grid-template-columns:repeat(2,minmax(0,1fr))}
-.tpa-ie-grid.big.n1{grid-template-columns:1fr}
-.tpa-ie-tile{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--line,#dde2dc);background:var(--surface2,#eef1ec)}
-.tpa-ie-grid.big .tpa-ie-tile{aspect-ratio:4/3}
-.tpa-ie-tile img{width:100%;height:100%;object-fit:cover;display:block}
-.tpa-ie-grid.big .tpa-ie-tile img{object-fit:contain}
-.tpa-ie-tile b{position:absolute;left:5px;top:5px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--tpa-a);color:var(--tpa-on);font-size:11px;font-weight:800;line-height:20px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
-.tpa-ie-tile button{position:absolute;right:4px;top:4px;width:22px;height:22px;padding:0;border:0;border-radius:50%;background:rgba(16,19,17,.72);color:#fff;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.tpa-ie-empty{grid-column:1/-1;padding:18px 10px;border:1.5px dashed var(--tpa-a);border-radius:14px;text-align:center;font-size:12.5px;line-height:1.4;color:var(--muted,#737a74)}
-.tpa-ie-sub{margin:10px 0 6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#737a74)}
-.tpa-ie-prompt{padding:10px 12px;border-radius:12px;background:var(--surface2,#eef1ec);font-size:13.5px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
-.tpa-ie-shapes{display:flex;flex-wrap:wrap;gap:6px}
-.tpa-ie-shapes button{border:1px solid var(--line,#dde2dc);background:var(--surface,#fff);color:var(--ink,#101311);font-size:12px;font-weight:600;font-family:inherit;padding:8px 12px;border-radius:999px;cursor:pointer}
-.tpa-ie-shapes button.on{background:var(--tpa-a);color:var(--tpa-on);border-color:var(--tpa-a)}
-.tpa-ie-cost{margin-top:10px;font-size:12px;line-height:1.4;color:var(--muted,#737a74)}
-.tpa-ie-out{display:block;width:100%;height:auto;border-radius:14px;border:1px solid var(--line,#dde2dc);margin-bottom:4px}
-.tpa-ie-prog{display:flex;align-items:center;gap:10px;font-size:13.5px}
-.tpa-action-btns button:disabled,.tpa-ie-shapes button:disabled{opacity:.5;cursor:default}
 .tpa-spin{flex:none;width:22px;height:22px;border-radius:50%;border:3px solid color-mix(in srgb,var(--tpa-a) 25%,transparent);border-top-color:var(--tpa-a);animation:tpaSpin .8s linear infinite}
 .tpa-tick{flex:none;width:24px;height:24px;border-radius:50%;background:#2ee59d;color:#05261a;font:700 14px/24px sans-serif;text-align:center;font-style:normal}
 .tpa-bad{flex:none;width:24px;height:24px;border-radius:50%;background:#e5484d;color:#fff;font:700 14px/24px sans-serif;text-align:center;font-style:normal}
@@ -24275,8 +24119,8 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     <div class="tpa-reqbar"><button type="button" class="tpa-reqbtn" id="tpa-req-btn" aria-label="Make a request to the admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Make a request</button></div>
     <form class="tpa-form" id="tpa-form" autocomplete="off">
       <button class="tpa-agent-toggle" id="tpa-agent-toggle" type="button" aria-pressed="false" aria-label="Start hands-free voice agent" title="Talk to Zara hands-free"><svg class="tpa-i"><use href="#tpa-mic"/></svg><span>Talk</span></button>
-      <button class="tpa-attach" id="tpa-attach" type="button" aria-label="Upload photos" title="Attach photos (package picture, ID portrait, or photos to edit)">＋</button>
-      <input id="tpa-package-file" type="file" accept="image/*" multiple hidden>
+      <button class="tpa-attach" id="tpa-attach" type="button" aria-label="Upload package picture" title="Attach package picture">＋</button>
+      <input id="tpa-package-file" type="file" accept="image/*" hidden>
       <input class="tpa-in" id="tpa-in" type="text" maxlength="1000" placeholder="Message Zara…" aria-label="Message">
       <button class="tpa-send" id="tpa-send" type="submit" aria-label="Send"><svg class="tpa-i"><use href="#tpa-arrow"/></svg></button>
     </form>
@@ -24327,7 +24171,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   var APP = {
     name: 'Zara, the NBATOOLS AI assistant',
     what: 'Transport & logistics workspace: trackable shipments, flight tickets, business receipts, and design-only ID card mockups. Uses credits for paid creations.',
-    costs: { shipment:10, flight:10, idCreation:6, receipt:5, idStudio:5, imageEdit:5 },
+    costs: { shipment:10, flight:10, idCreation:6, receipt:5, idStudio:5 },
     plans: [
       { id:'starter',  name:'Starter',  credits:50,  amountNgn:2500 },
       { id:'plus',     name:'Plus',     credits:120, amountNgn:5500 },
@@ -24508,7 +24352,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       });
     });
   }
-  function resetChat(){ outGen++; outPending=0; outQ=Promise.resolve(); try{ setHeadTyping(false); }catch(e){} msgs=[]; try{ vis.lastPhoto=''; vis.img=''; vis.hist=[]; }catch(e){} log.innerHTML=''; greeted=false; busy=false; sendBtn.disabled=false; session={mode:'idle',task:null,step:0,data:{},idKind:null,sub:null}; }
+  function resetChat(){ outGen++; outPending=0; outQ=Promise.resolve(); try{ setHeadTyping(false); }catch(e){} msgs=[]; log.innerHTML=''; greeted=false; busy=false; sendBtn.disabled=false; session={mode:'idle',task:null,step:0,data:{},idKind:null,sub:null}; }
 
   /* ---------- welcome pop ---------- */
   function today(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
@@ -24642,7 +24486,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       ['Flight ticket','Create a flight ticket'],
       ['ID card','Create an ID card mockup'],
       ['Receipt','Create a business receipt'],
-      ['Edit photos','I want to edit my photos'],
       ['Buy credits','I want to buy credits'],
       ['Make a request',null],
       ['App help','What can you do in TrackPort?']
@@ -24655,7 +24498,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function zaraUser(){ try{ var n=dashboardUserName(); return (n&&n!=='there')?n:''; }catch(e){ return ''; } }
   function zaraRule(){
     var u=zaraUser();
-    return "YOU are Zara, the NBATOOLS AI assistant. Zara is YOUR name, never the user's. The person you are chatting with is the user"+(u?" and their name is "+u+". Address them as "+u+" naturally and occasionally, not in every message":" (their name is not known yet, so do not invent one; you may ask for it)")+". If the user says 'Zara', 'hey Zara' or 'hi Zara', they are talking TO you. Never call the user Zara, never greet them with 'Hi Zara', and never say 'I'm "+(u||'the user')+"'. Introduce yourself as Zara, the Nbatools AI voice assistant, when greeting or when asked who you are, and never call yourself a TrackPort assistant.";
+    return "YOU are Zara, the NBATOOLS AI assistant. Zara is YOUR name, never the user's. The person you are chatting with is the user"+(u?" and their name is "+u+". Address them as "+u+" naturally and occasionally, not in every message":" (their name is not known yet, so do not invent one; you may ask for it)")+". If the user says 'Zara', 'hey Zara' or 'hi Zara', they are talking TO you. Never call the user Zara, never greet them with 'Hi Zara', and never say 'I'm "+(u||'the user')+"'. Introduce yourself as Zara when asked who you are.";
   }
   function zaraTod(){ var h=new Date().getHours(); return h<12?'Good morning':(h<18?'Good afternoon':'Good evening'); }
   function zaraIntro(){
@@ -24778,12 +24621,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       return URL.createObjectURL(blob);
     });
   }
-  function fetchCfVoice(text,forceVoice){
+  function fetchCfVoice(text){
     var hosts=tpVoiceHosts(), st=tpVoiceStartIndex(hosts), order=hosts.slice(st).concat(hosts.slice(0,st));
     return Promise.all([tpaAuthHeaders(),cfVoiceGet()]).then(function(r){
       var h=r[0]; if(!h.Authorization) throw new Error('not signed in');
       var hd={'Content-Type':'application/json'}; for(var k in h) hd[k]=h[k];
-      var body=JSON.stringify({text:text,voice:forceVoice||r[1]}), authFails=0;
+      var body=JSON.stringify({text:text,voice:r[1]}), authFails=0;
       /* Loop forever: after the last Worker, wrap back to the first and keep cycling.
          Stops only if every Worker in a full lap rejected our sign-in (retrying can't fix that). */
       function attempt(i){
@@ -24792,7 +24635,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
           var unauth=/unauthorized/i.test(String(e&&e.message));
           if(unauth) authFails++; else tpVoiceMarkBad(host);
           var nx=i+1, wrapped=nx%order.length===0;
-          if(wrapped){ throw e; } /* one full lap over the Workers, then let the caller switch to the Melo voice */
+          if(wrapped){ if(authFails>=order.length) throw e; authFails=0; }
           return new Promise(function(res){ setTimeout(res,wrapped?1500:0); }).then(function(){ return attempt(nx); });
         });
       }
@@ -24801,11 +24644,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function fetchGemini(text,voice){
     if(previewName) return fetchGeminiOld(text,voice);
-    return fetchCfVoice(text).catch(function(){
-      /* The selected voice failed on every server: use the Melo voice model instead of any other voice. */
-      console.warn('[TrackPort voice] selected voice failed, using Melo');
-      return fetchCfVoice(text,'melo');
-    }).catch(function(){ return fetchGeminiOld(text,voice); });
+    return fetchCfVoice(text).catch(function(){ return fetchGeminiOld(text,voice); });
   }
   function fetchGeminiOld(text,voice){
     return tpaAuthHeaders().then(function(h){
@@ -25412,7 +25251,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(session.task==='id'){
       session.ack='';
       if(s.key==='photo' && idInChat()){
-        if(session.data.photo){ session.step++; askCurrent(); return; }
         addMsg('assistant','Almost done! Add a **portrait photo** for the card, or skip to use a placeholder.  ('+n+' of '+total+')',null,'ask');
         photoPick(); return;
       }
@@ -25631,7 +25469,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
   function isBg(){ return !!BG_TASKS[session.task] || idInChat(); }
   var bgBusy = false;
-  var CREDIT_ACTION = {shipment:'shipment', flight:'flight', receipt:'receipt', id:'idCreation', imageedit:'imageEdit'};
+  var CREDIT_ACTION = {shipment:'shipment', flight:'flight', receipt:'receipt', id:'idCreation'};
   function money(n,cur){
     try{ return new Intl.NumberFormat(undefined,{style:'currency',currency:cur||'USD'}).format(Number(n)||0); }
     catch(e){ return (cur||'USD')+' '+(Number(n)||0).toFixed(2); }
@@ -26174,7 +26012,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         var f=inp.files&&inp.files[0]; if(!f) return;
         try{ session.data.photo=await compressImage(f); }
         catch(e){ addMsg('assistant',"I couldn't read that image. Try another one, or say **skip**."); return; }
-        chatImgBubble([session.data.photo]); session.step++; session.ack=''; addMsg('assistant','Photo added.',null,'ack'); askCurrent();
+        session.step++; session.ack=''; addMsg('assistant','Photo added.',null,'ack'); askCurrent();
       };
       d.appendChild(inp);
       btnRow(d,[
@@ -26477,7 +26315,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       "• **Flights**: route, date, passenger and cabin, then I book it and show you the ticket here\n"+
       "• **Receipts**: business, customer, items and tax, then I generate the receipt right here\n"+
       "• **ID mockups**: license (USA states / UK / Canada / Australia), military, SSN, citizenship/PR, card holder\n"+
-      "• **Photo editing**: upload 1 to 4 photos, tell me what to change, review it, and I generate the new image here (about 5 credits)\n"+
       "• **Credits**: pick a plan and pay by bank transfer, all inside this chat\n"+
       "• **Tracking and app help**: just ask!\n\n"+
       "Roughly, a shipment or flight costs 10 credits, a receipt 5, and ID mockups 5 to 6.\n\n"+
@@ -26883,7 +26720,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     ['id-ssn','SSN card',['ssn','ssn card','social security']],
     ['id-citizenship','Citizenship cards',['citizenship','canada id','canada pr','pr card']],
     ['id-scene','Card holder studio',['card holder','card holder studio','card studio']],
-    ['image-edit','Image editor',['image editor','edit image','edit photo','photo editor','ai image','image edit']],
     ['id-history','ID history',['id history','license history']],
     ['track','Track',['track','tracking','track page']],
     ['history','History',['history','my history','records']],
@@ -27048,24 +26884,19 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   var call={on:false,mini:false,muted:false,stream:null,ctx:null,src:null,proc:null,t0:0,timer:null,noise:0.008,frames:0,speech:false,buf:[],pre:[],lastVoice:0,startedAt:0,busy:0,q:Promise.resolve(),state:''};
   var cEl={};
   function isSpeaking(){ return !!(speechBusy||(curAudio&&!curAudio.paused&&!curAudio.ended)||(synth&&synth.speaking)); }
-  function callClock(){ var t=Math.max(0,Math.floor((Date.now()-(call.liveT0||call.t0))/1000)); return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
+  function callClock(){ var t=Math.floor((Date.now()-call.t0)/1000); return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
   function callBuild(){
     if(cEl.ov) return;
     var ov=document.createElement('div'); ov.className='tpa-call'; ov.hidden=true;
-    ov.innerHTML='<div class="tpa-call-top"><div class="tpa-call-id"><span class="tpa-call-name">Zara - Nbatools ai</span><time>00:00</time></div></div>'
-      +'<div class="tpa-orb-wrap"><div class="tpa-orb connecting"></div></div><div class="tpa-call-state">Connecting…</div><div class="tpa-call-cap"></div>'
-      +'<div class="tpa-call-btns">'
-      +'<button type="button" class="tpa-cb" data-c="spk" aria-label="Speaker"><b></b>Speaker</button>'
-      +'<button type="button" class="tpa-cb" data-c="mute" aria-label="Mute"><b></b>Mute</button>'
-      +'<button type="button" class="tpa-cb" data-c="kb" aria-label="Type a message"><b></b>Type</button>'
-      +'<button type="button" class="tpa-cb end" data-c="end" aria-label="End call"><b></b>End</button></div>';
+    ov.innerHTML='<div class="tpa-call-top"><i></i>Zara<time>00:00</time></div><div class="tpa-orb-wrap"><div class="tpa-orb listening"></div></div><div class="tpa-call-state">Listening…</div><div class="tpa-call-cap"></div>'
+      +'<div class="tpa-call-btns"><button type="button" class="tpa-cb" data-c="mute"><b>🎙️</b>Mute</button><button type="button" class="tpa-cb" data-c="spk"><b>🔊</b>Speaker</button><button type="button" class="tpa-cb" data-c="kb"><b>⌨️</b>Type</button><button type="button" class="tpa-cb end" data-c="end"><b>🔴</b>End</button></div>';
     panel.appendChild(ov);
     var bar=document.createElement('div'); bar.className='tpa-callbar'; bar.hidden=true;
     bar.innerHTML='<i></i><span>On call · 00:00</span><button type="button" data-c="mute">Mute</button><button type="button" data-c="open">Expand</button><button type="button" class="end" data-c="end">End</button>';
     panel.insertBefore(bar,log);
     cEl={ov:ov,bar:bar,orb:ov.querySelector('.tpa-orb'),st:ov.querySelector('.tpa-call-state'),cap:ov.querySelector('.tpa-call-cap'),time:ov.querySelector('time'),btxt:bar.querySelector('span')};
     function act(e){ var b=e.target.closest('[data-c]'); if(!b) return; var c=b.getAttribute('data-c');
-      if(c==='mute') callMute(); else if(c==='min'){ call.mini=true; callSync(); } else if(c==='spk'){ voiceToggle.click(); callSync(); }
+      if(c==='mute') callMute(); else if(c==='spk'){ voiceToggle.click(); callSync(); }
       else if(c==='kb'){ call.mini=true; callSync(); try{ input.focus(); }catch(x){} }
       else if(c==='open'){ call.mini=false; callSync(); } else if(c==='end') callEnd(); }
     ov.addEventListener('click',act); bar.addEventListener('click',act);
@@ -27076,22 +26907,18 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callSync(){
     var on=call.on; cEl.ov.hidden=!(on&&!call.mini); cEl.bar.hidden=!(on&&call.mini);
     fab.classList.toggle('tpa-oncall',on); var cb=$('tpa-call-btn'); if(cb) cb.classList.toggle('active',on);
-    Array.prototype.forEach.call(document.querySelectorAll('[data-c=mute]'),function(b){ b.classList.toggle('on',call.muted); if(b.closest('.tpa-call')){ var lb=b.lastChild; if(lb&&lb.nodeType===3) lb.nodeValue=call.muted?'Unmute':'Mute'; } else b.textContent=call.muted?'Unmute':'Mute'; });
-    var sp=cEl.ov.querySelector('[data-c=spk]'); if(sp){ sp.classList.toggle('on',!voiceOn); }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-c=mute]'),function(b){ b.classList.toggle('on',call.muted); if(b.querySelector('b')){ b.querySelector('b').textContent=call.muted?'🔇':'🎙️'; } else b.textContent=call.muted?'Unmute':'Mute'; });
+    var sp=cEl.ov.querySelector('[data-c=spk]'); if(sp){ sp.classList.toggle('on',!voiceOn); sp.querySelector('b').textContent=voiceOn?'🔊':'🔈'; }
   }
   function callMute(){ call.muted=!call.muted; call.speech=false; call.buf=[]; call.frames=0; callSync(); }
   function callState(){
     if(!call.on) return;
     if(isSpeaking()) call.spokeEnd=Date.now();
-    var rt0=call.rt, st;
-    if(call.muted) st='muted';
-    else if(rt0&&!call.fb){ var rs=String(rt0.status||''); st=(rt0.authed&&(rs==='listening'||rs==='thinking'||rs==='speaking'))?rs:'connecting'; }
-    else st=(call.busy||busy)?'thinking':isSpeaking()?'speaking':call.speech?'hearing':'listening';
+    var st=call.muted?'muted':(call.busy||busy)?'thinking':isSpeaking()?'speaking':call.speech?'hearing':'listening';
     cEl.time.textContent=callClock(); cEl.btxt.textContent='On call · '+callClock();
-    if(st!=='connecting'&&!call.liveT0) call.liveT0=Date.now();
     if(st===call.state) return; call.state=st;
-    cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0'); cEl.ov.classList.toggle('is-connecting',st==='connecting');
-    cEl.st.textContent={connecting:'Connecting…',muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk or tap to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
+    cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0');
+    cEl.st.textContent={muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk or tap to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
   }
   function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); ttsCache={}; }catch(e){} }
   /* You started talking while Zara was still working out her answer: drop that answer so she can listen to you instead. */
@@ -27243,9 +27070,9 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function callIntroLocal(){
     var n=dashboardUserName(), nm=(n&&n!=='there')?', '+n:'';
     return pickOf([
-      "Hello"+nm+"! This is Zara, the Nbatools AI voice assistant. I'm listening, so tell me what you need. You can type any time too.",
-      zaraTod()+nm+"! I'm Zara, the Nbatools AI voice assistant. I'm here and listening. How can I help?",
-      "Hi"+nm+"! Zara here, the Nbatools AI voice assistant. Just talk to me whenever you're ready, or type if you prefer."
+      "Hello"+nm+"! This is Zara. I'm listening, so go ahead and tell me what you need. You can type any time too.",
+      zaraTod()+nm+"! It's Zara. I'm here and listening. What can I help you with?",
+      "Hi"+nm+"! Zara here. Just talk to me whenever you're ready, or type if you prefer."
     ]);
   }
   /* The AI writes the greeting; if it is slow or unreachable we use the local one so the call never waits long. */
@@ -27255,12 +27082,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
       var u=currentUser(); if(!u) return fb;
       var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },4500);
       var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body:JSON.stringify({messages:[{role:'user',text:"[A voice call has just connected. You are Zara, the assistant; I am the user calling you, and I am NOT Zara. Greet me in one or two short, warm, natural sentences, as you would answer a phone call. Open with \"Hi\" or \"Hello\" (or a time-of-day greeting), use my first name if you know it, say you're listening, and ask how you can help. Introduce yourself as Zara, the Nbatools AI voice assistant, and never say TrackPort. Never open with \"Hey\" or \"Heyyy\". No emojis, no lists, no actions.]"}],
-          account:account(),ui:uiSpec(),session:{mode:'idle',task:null,step:0,data:{}},app:{name:'Nbatools',costs:APP.costs,plans:APP.plans},persona:{name:'Zara',title:'Zara, the Nbatools AI voice assistant',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),identity:zaraRule(),style:'Warm, calm, natural spoken English. Short sentences suitable for a phone call.'}})});
+        body:JSON.stringify({messages:[{role:'user',text:"[A voice call has just connected. You are Zara, the assistant; I am the user calling you, and I am NOT Zara. Greet me in one or two short, warm, natural sentences, as you would answer a phone call. Open with \"Hi\" or \"Hello\" (or a time-of-day greeting), use my first name if you know it, say you're listening, and ask how you can help. Never open with \"Hey\" or \"Heyyy\". No emojis, no lists, no actions.]"}],
+          account:account(),ui:uiSpec(),session:{mode:'idle',task:null,step:0,data:{}},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{name:'Zara',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),identity:zaraRule(),style:'Warm, calm, natural spoken English. Short sentences suitable for a phone call.'}})});
       clearTimeout(tm);
       var j={}; try{ j=await r.json(); }catch(e){}
       var t=String(j.reply||'').replace(/\[\[HUMAN\]\]/g,'').replace(/\s+/g,' ').trim();
-      if(!t||t.length>320||/^hey/i.test(t)||/trackport/i.test(t)||!/nbatools/i.test(t)) return fb;
+      if(!t||t.length>260||/^hey/i.test(t)) return fb;
       return t;
     }catch(e){ return fb; }
   }
@@ -27384,552 +27211,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     return true;
   }
 
-  /* ===================== PHOTOS IN CHAT + AI IMAGE EDITING =====================
-     Any picture the user sends shows up as a preview bubble in the chat.
-     "Edit photos" runs as a guided flow, exactly like shipments, flights and receipts:
-       1) Zara asks for 1-4 reference photos and shows a numbered preview
-       2) the user types (or says) what should change
-       3) Zara shows a review card (photos + instruction + shape + cost)
-       4) on Generate the credits are spent, the image is made on the server
-          (/image-edit) and the result appears in the chat with a Download button.
-     Credits are refunded automatically if generation fails. */
-  var ie={imgs:[],prompt:'',aspect:'auto',busy:false,seq:0,views:[]};
-  var IE_IDEAS=['Change the background to a beach','Put the product on a marble table','Make it a clean studio photo','Let the person in image 1 hold the item from image 2'];
-  var IE_SHAPES=[['auto','Auto'],['sq','Square'],['pt','Portrait'],['ls','Landscape']];
-  var IE_PROGRESS=['Reading your images…','Planning the edit…','Painting the new image…','Adding the finishing touches…'];
-
-  function ieReset(){ ie.imgs=[]; ie.prompt=''; ie.aspect='auto'; ie.views=[]; }
-  function ieSet(step){ session={mode:'ie',task:'imageedit',step:step,data:{},idKind:null,sub:null}; ieRefresh(); }
-  function ieLive(step){ return session.task==='imageedit'&&session.step===step; }
-  function ieEndpoint(){ return String(window.TRACKPORT_IMAGE_URL||AGENT_URL.replace(/\/chat$/,'/image-edit')); }
-  function ieCost(){ try{ var c=window.tpCredits&&window.tpCredits.costs&&window.tpCredits.costs.imageEdit; return c||APP.costs.imageEdit||5; }catch(e){ return 5; } }
-  function ieRefresh(){
-    ie.views=ie.views.filter(function(v){ return v.el&&v.el.isConnected!==false; });
-    ie.views.forEach(function(v){ try{ v.fn(); }catch(e){} });
-  }
-  function ieMk(tag,cls,text){ var n=document.createElement(tag); if(cls) n.className=cls; if(text!=null) n.textContent=text; return n; }
-  function ieBtn(label,fn,secondary){ var b=ieMk('button',secondary?'secondary':'',label); b.type='button'; b.onclick=fn; return b; }
-
-  /* Shrink a decoded image to <=500px JPEG (what the AI models accept as references) */
-  function ieShrinkImg(im){
-    var s=Math.min(1,500/Math.max(im.naturalWidth||1,im.naturalHeight||1));
-    var w=Math.max(16,Math.round((im.naturalWidth||1)*s)), h=Math.max(16,Math.round((im.naturalHeight||1)*s));
-    var c=document.createElement('canvas'); c.width=w; c.height=h;
-    var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(im,0,0,w,h);
-    return {src:c.toDataURL('image/jpeg',.9),w:w,h:h};
-  }
-  function ieFromFile(file){
-    return new Promise(function(res,rej){
-      if(!/^image\//i.test(file.type||'')) return rej(new Error('not-image'));
-      if(file.size>25*1024*1024) return rej(new Error('too-big'));
-      var url=URL.createObjectURL(file), im=new Image();
-      im.onload=function(){ try{ var r=ieShrinkImg(im); URL.revokeObjectURL(url); res(r); }catch(e){ URL.revokeObjectURL(url); rej(e); } };
-      im.onerror=function(){ URL.revokeObjectURL(url); rej(new Error('unreadable')); };
-      im.src=url;
-    });
-  }
-  function ieFromSrc(src){
-    return new Promise(function(res,rej){
-      var im=new Image();
-      im.onload=function(){ try{ res(ieShrinkImg(im)); }catch(e){ rej(e); } };
-      im.onerror=function(){ rej(new Error('unreadable')); };
-      im.src=src;
-    });
-  }
-  function ieDims(){
-    var f=ie.imgs[0], fixed={sq:[1024,1024],pt:[768,1024],ls:[1024,768]};
-    if(ie.aspect!=='auto'&&fixed[ie.aspect]) return fixed[ie.aspect];
-    if(!f) return [1024,1024];
-    var r=f.w/f.h, q=function(v){ return Math.max(256,Math.round(v/16)*16); };
-    return r>=1?[1024,q(1024/r)]:[q(1024*r),1024];
-  }
-
-  /* A user-side picture bubble: this is how every uploaded photo is previewed in the chat */
-  function chatImgBubble(srcs){
-    var list=(srcs||[]).filter(Boolean).slice(0,4); if(!list.length) return null;
-    var d=ieMk('div','tpa-rcpt tpa-imgs n'+list.length);
-    list.forEach(function(s,i){ var im=document.createElement('img'); im.alt='Uploaded photo '+(i+1); im.src=s; im.onload=scrollDown; d.appendChild(im); });
-    log.appendChild(d); scrollDown(); cancelSpeech();
-    return d;
-  }
-  /* Read + shrink a single chat photo (package picture, ID portrait ...) */
-  function chatPhotoData(file){
-    return new Promise(function(res,rej){
-      var reader=new FileReader();
-      reader.onerror=function(){ rej(new Error('read')); };
-      reader.onload=function(){
-        var im=new Image();
-        im.onload=function(){
-          var max=1100, sc=Math.min(1,max/Math.max(im.width,im.height)), c=document.createElement('canvas');
-          c.width=Math.round(im.width*sc); c.height=Math.round(im.height*sc);
-          c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-          res(c.toDataURL('image/jpeg',.82));
-        };
-        im.onerror=function(){ rej(new Error('image')); };
-        im.src=String(reader.result||'');
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-  function setPackagePic(dataUrl){
-    var picker=$('tpa-package-file');
-    queuedPackageImage=dataUrl; if(session.task==='shipment') session.data.productImage=dataUrl;
-    var old=$('tpa-upload-note'); if(old) old.remove();
-    var note=ieMk('div','tpa-upload-note'); note.id='tpa-upload-note';
-    var thumb=document.createElement('img'); thumb.src=dataUrl; thumb.alt='Package picture preview';
-    var label=ieMk('span','','Package picture attached');
-    var rm=ieMk('button','','×'); rm.type='button'; rm.setAttribute('aria-label','Remove package picture');
-    rm.onclick=function(){ queuedPackageImage=''; if(session.data) delete session.data.productImage; note.remove(); if(picker) picker.value=''; };
-    note.appendChild(thumb); note.appendChild(label); note.appendChild(rm);
-    form.parentNode.insertBefore(note,form);
-  }
-
-  /* Does this message mean "I want to edit / combine photos with AI"? */
-  function imageEditIntent(raw){
-    var t=norm(raw);
-    if(!t||/\b(page|screen|tab)\b/.test(t)) return false;          /* "open the image editor page" is handled by app control */
-    if(/\b(shipment|flight|receipt|licen[sc]e|id card|ssn|military|citizenship)\b/.test(t) && !/\beditor\b/.test(t)) return false;
-    if(/\b(ai|photo|image|picture|pic)s? (editor|editing)\b|\b(edit|editing) (my |some |a |the |these |this )?(ai )?(image|photo|picture|pic)s?\b/.test(t)) return true;
-    if(/\b(edit|retouch|touch up|enhance|modify|transform|remix|restyle|combine|merge|blend|redo)\b.*\b(image|photo|picture|pic|selfie|portrait)s?\b/.test(t)) return true;
-    if(/\b(change|remove|replace|swap|blur)\b.*\bbackground\b/.test(t) && /\b(photo|image|picture|pic)\b/.test(t)) return true;
-    if(/\b(generate|create|make)\b.*\b(image|photo|picture)\b.*\b(from|using|with)\b.*\b(my|these|this|reference)\b/.test(t)) return true;
-    return false;
-  }
-
-  /* ---------- step 1: ask for the reference photos ---------- */
-  function startImageEdit(seedPrompt, preload){
-    ieReset();
-    if(preload&&preload.length) ie.imgs=preload.slice(0,4);
-    var p=String(seedPrompt||'').replace(/\s+/g,' ').trim();
-    if(p.length>=3) ie.prompt=p.slice(0,800);
-    ieSet('photos');
-    addMsg('assistant', ie.imgs.length
-      ? "Ooh, let's edit it! I've got your photo. Add more (up to 4) if you like, or tap **Continue**.\n_This uses about "+ieCost()+" credits._"
-      : "Ooh, let's edit some photos! Upload **1 to 4 reference images** and I'll show you a preview. Then tell me what to change, I'll show you a quick review, and then I'll generate it.\n_This uses about "+ieCost()+" credits._",null,'ask');
-    ieUploadCard();
-  }
-  function ieUploadCard(){
-    return outCard(function(d){
-      var h=cardHeadEl(d), box=ieMk('div','tpa-ie-grid'); d.appendChild(box);
-      var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true; inp.hidden=true;
-      inp.onchange=function(){ var f=Array.prototype.slice.call(inp.files||[]); inp.value=''; if(f.length) ieAddFiles(f); };
-      d.appendChild(inp);
-      var row=ieMk('div','tpa-action-btns');
-      var up=ieBtn('Upload photos',function(){ if(ie.imgs.length<4) inp.click(); });
-      var go=ieBtn('Continue',function(){ ieContinue(); });
-      var cx=ieBtn('Cancel',function(){ if(ieLive('photos')) ieCancel(); },true);
-      row.appendChild(up); row.appendChild(go); row.appendChild(cx); d.appendChild(row);
-      function render(){
-        var live=ieLive('photos');
-        h.textContent='Reference photos ('+ie.imgs.length+'/4)';
-        ieThumbs(box,live,false);
-        if(!ie.imgs.length) box.appendChild(ieMk('div','tpa-ie-empty','Tap Upload photos (or the + button) to add 1 to 4 photos.'));
-        up.textContent=ie.imgs.length?'Add more':'Upload photos';
-        up.disabled=!live||ie.imgs.length>=4; go.disabled=!live||!ie.imgs.length; cx.disabled=!live;
-      }
-      ie.views.push({el:d,fn:render}); render();
-    },260);
-  }
-  function cardHeadEl(d){ var h=document.createElement('h4'); d.appendChild(h); return h; }
-  function ieThumbs(box,removable,big){
-    box.textContent=''; box.className='tpa-ie-grid'+(big?' big n'+Math.min(ie.imgs.length,4):'');
-    ie.imgs.forEach(function(im,i){
-      var t=ieMk('div','tpa-ie-tile'), img=document.createElement('img'); img.src=im.src; img.alt='Image '+(i+1); t.appendChild(img);
-      t.appendChild(ieMk('b','',String(i+1)));
-      if(removable){ var x=ieMk('button','','×'); x.type='button'; x.setAttribute('aria-label','Remove image '+(i+1)); x.onclick=function(){ if(!ieLive('photos')) return; ie.imgs.splice(i,1); ieRefresh(); }; t.appendChild(x); }
-      box.appendChild(t);
-    });
-  }
-  async function ieAddFiles(files){
-    var list=Array.prototype.slice.call(files||[]); if(!list.length) return;
-    if(session.task!=='imageedit'||session.step==='busy'){ addMsg('assistant',"Hang on, I'm still working on your image. You can add photos once it's done.",null,'ask'); return; }
-    var added=[], full=0, bad=0, big=0;
-    for(var i=0;i<list.length;i++){
-      if(ie.imgs.length>=4){ full++; continue; }
-      try{ var r=await ieFromFile(list[i]); ie.imgs.push(r); added.push(r.src); }
-      catch(e){ if(e&&e.message==='too-big') big++; else bad++; }
-    }
-    if(added.length) chatImgBubble(added);
-    ieRefresh();
-    if(full) addMsg('assistant',"I can use up to **4 photos** per edit, so I left the extra ones out.",null,'ask');
-    if(big) addMsg('assistant',"One of those images is too large (max 25 MB), so I skipped it.",null,'ask');
-    if(bad) addMsg('assistant',"I couldn't read "+(bad>1?'some of those files':'one of those files')+". JPG, PNG or WebP work best.",null,'ask');
-    if(!added.length) return;
-    var st=session.step;
-    if(st==='photos'){
-      addMsg('assistant', ie.imgs.length>=4
-        ? "That's 4 photos, the maximum. Tap **Continue** when you're ready."
-        : "Got "+(added.length>1?added.length+' photos':'it')+" ("+ie.imgs.length+"/4). Add more if you like, or tap **Continue** (or say **done**).",null,'ask');
-    } else if(st==='prompt'){
-      addMsg('assistant',"Added! Photos are numbered in the order you uploaded them: image 1, image 2 and so on. Now tell me what to change.",null,'ask');
-      iePreviewCard();
-    } else if(st==='review'){
-      addMsg('assistant',"Added! I've updated the review below.",null,'ask');
-      ieReview(true);
-    }
-  }
-  function ieContinue(){
-    if(!ieLive('photos')) return;
-    if(!ie.imgs.length){ addMsg('assistant',"I need at least one photo first. Tap **Upload photos** (or the + button) to add one.",null,'ask'); return; }
-    if(ie.prompt.length>=3){ ieReview(); return; }
-    ieSet('prompt');
-    iePreviewCard();
-    addMsg('assistant',"Lovely, here's what I'm working with. Now tell me what you'd like done: **type it here, or tap the mic and say it**. Refer to photos by number, like “image 1” and “image 2”. Not sure? Tap an idea above.",null,'ask');
-  }
-
-  /* ---------- step 2: preview + ask what to do ---------- */
-  function iePreviewCard(){
-    return outCard(function(d){
-      cardHead(d,'Your photos');
-      var box=ieMk('div','tpa-ie-grid'); d.appendChild(box);
-      d.appendChild(ieMk('div','tpa-ie-sub','Ideas'));
-      var row=ieMk('div','tpa-action-btns'), btns=[];
-      IE_IDEAS.filter(function(t){ return ie.imgs.length>1||!/image 2/.test(t); }).forEach(function(t){
-        var b=ieBtn(t,function(){ if(!ieLive('prompt')) return; addMsg('user',t); ie.prompt=t; ieReview(); },true); btns.push(b); row.appendChild(b);
-      });
-      var more=ieBtn('Add or change photos',function(){ if(ieLive('prompt')) ieBackToPhotos(); },true); btns.push(more); row.appendChild(more);
-      d.appendChild(row);
-      function render(){ ieThumbs(box,false,true); var live=ieLive('prompt'); btns.forEach(function(b){ b.disabled=!live; }); }
-      ie.views.push({el:d,fn:render}); render();
-    },260);
-  }
-  function ieBackToPhotos(){
-    ieSet('photos');
-    addMsg('assistant',"Sure! Add or remove photos below, then tap **Continue**.",null,'ask');
-    ieUploadCard();
-  }
-
-  /* ---------- step 3: review before generating ---------- */
-  function ieReview(quiet){
-    ieSet('review');
-    if(!quiet) addMsg('assistant',"Here's your edit. Give it a quick look before I generate it.",null,'ask');
-    outCard(function(d){
-      cardHead(d,'Review your edit');
-      var box=ieMk('div','tpa-ie-grid'); d.appendChild(box);
-      d.appendChild(ieMk('div','tpa-ie-sub','What I will do'));
-      var q=ieMk('div','tpa-ie-prompt'); d.appendChild(q);
-      d.appendChild(ieMk('div','tpa-ie-sub','Shape'));
-      var shapes=ieMk('div','tpa-ie-shapes'), sb=[];
-      IE_SHAPES.forEach(function(s){
-        var b=ieMk('button','',s[1]); b.type='button';
-        b.onclick=function(){ if(!ieLive('review')) return; ie.aspect=s[0]; ieRefresh(); };
-        sb.push([s[0],b]); shapes.appendChild(b);
-      });
-      d.appendChild(shapes);
-      d.appendChild(ieMk('div','tpa-ie-cost','This uses '+ieCost()+' credits. If it fails, they are returned.'));
-      var row=ieMk('div','tpa-action-btns');
-      var gen=ieBtn('Generate',function(){ if(ieLive('review')) ieGenerate(); });
-      var ed=ieBtn('Edit instruction',function(){ if(ieLive('review')){ ieSet('prompt'); addMsg('assistant',"No problem. Type (or say) the new instruction and I'll update the review.",null,'ask'); } },true);
-      var ph=ieBtn('Change photos',function(){ if(ieLive('review')) ieBackToPhotos(); },true);
-      var cx=ieBtn('Cancel',function(){ if(ieLive('review')) ieCancel(); },true);
-      [gen,ed,ph,cx].forEach(function(b){ row.appendChild(b); }); d.appendChild(row);
-      function render(){
-        var live=ieLive('review');
-        ieThumbs(box,false,false); q.textContent=ie.prompt;
-        sb.forEach(function(p){ p[1].className=(ie.aspect===p[0]?'on':''); p[1].disabled=!live; });
-        [gen,ed,ph,cx].forEach(function(b){ b.disabled=!live; });
-      }
-      ie.views.push({el:d,fn:render}); render();
-    },300);
-    if(!quiet) addMsg('assistant',"Happy with it? Tap **Generate** or just say **yes**. Or type a new instruction to change it.",null,'confirm');
-  }
-
-  /* ---------- step 4: generate + show the result ---------- */
-  async function ieGenerate(){
-    if(ie.busy||!ieLive('review')) return;
-    if(!ie.imgs.length||ie.prompt.length<3){ addMsg('assistant',"I still need a photo and an instruction before I can generate.",null,'ask'); return; }
-    var u=currentUser(); if(!u){ addMsg('assistant',"You're signed out. Sign in and we'll pick this up again.",null,'ask'); return; }
-    ie.busy=true;
-    var paid=await spend('imageedit');
-    if(!paid.ok){
-      ie.busy=false;
-      if(paid.short) addMsg('assistant',"I'd love to, but this edit needs **"+(paid.cost||ieCost())+" credits** and you have **"+(paid.balance!=null?paid.balance:0)+"**. Top up and ask me to edit photos again.",[
-        {label:'Buy credits',fn:function(){ startCreditsChat('buy credits'); }}
-      ],'ask');
-      else addMsg('assistant',"I couldn't take the credits just now, so nothing was generated. Please try again in a moment.",null,'ask');
-      return;
-    }
-    ieSet('busy');
-    addMsg('assistant',pickOf(["On it! Painting your image now…","Working on it, one moment while I edit your photos…"]),null,'ack');
-    try{ await outQ; }catch(e){}
-    var prog=ieMk('div','tpa-m a tpa-card tpa-ie-prog'), t0=Date.now();
-    var spin=ieMk('i','tpa-spin'), msg=ieMk('span','','');
-    prog.appendChild(spin); prog.appendChild(msg); log.appendChild(prog); scrollDown();
-    function tick(){ var s=Math.floor((Date.now()-t0)/1000); msg.textContent=IE_PROGRESS[Math.min(3,Math.floor(s/7))]+' '+s+'s'; }
-    tick(); var timer=setInterval(tick,1000);
-    var d=ieDims(), ctrl=new AbortController(), to=setTimeout(function(){ ctrl.abort(); },150000), res=null, err=null;
-    try{
-      var token=await u.getIdToken();
-      var r=await fetch(ieEndpoint(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body:JSON.stringify({prompt:ie.prompt,images:ie.imgs.map(function(i){ return i.src; }),width:d[0],height:d[1]})});
-      var j={}; try{ j=await r.json(); }catch(e){}
-      if(!r.ok||!j.ok||!j.image){ var e2=new Error(j.error||('http_'+r.status)); e2.status=r.status; e2.detail=j.detail||''; throw e2; }
-      res={src:'data:'+(j.mime||'image/png')+';base64,'+j.image,mime:j.mime||'image/png',model:j.model||''};
-    }catch(e){ err=e; }
-    clearTimeout(to); clearInterval(timer);
-    try{ if(prog.parentNode) prog.parentNode.removeChild(prog); }catch(e){}
-    ie.busy=false;
-    if(res){
-      resetSession();
-      ieRefresh();
-      ieResultCard(res);
-      addMsg('assistant',"Ta-da! Here's your edited image. Tap **Download** to save it, or **Edit again** to keep tweaking it. What's next?",null,'done');
-      showChips();
-      return;
-    }
-    console.warn('[tpa] image edit failed',err);
-    refund(paid.spendId);
-    var why=err&&err.message==='ai_quota'?"The AI has used up its free daily limit. It resets at midnight UTC."
-      :err&&err.name==='AbortError'?"That took too long."
-      :err&&err.status===429?"Too many requests right now, so wait a minute."
-      :err&&err.status===401?"Your session expired, so please sign in again."
-      :err&&err.status===400?"Something was wrong with the photos or the instruction."
-      :"The image servers are busy right now. (Debug: "+(err&&err.status?err.status+' ':'')+(err&&err.message||'unknown')+(err&&err.detail?' - '+err.detail:'')+")";
-    ieSet('review');
-    addMsg('assistant',why+" Your credits were returned. Want to try again?",[
-      {label:'Try again',fn:function(){ ieGenerate(); }},
-      {label:'Edit instruction',secondary:true,fn:function(){ if(ieLive('review')){ ieSet('prompt'); addMsg('assistant',"Sure, type the new instruction.",null,'ask'); } }},
-      {label:'Cancel',secondary:true,fn:function(){ if(ieLive('review')) ieCancel(); }}
-    ],'ask');
-  }
-  function ieResultCard(res){
-    return outCard(function(d){
-      cardHead(d,'Your edited image');
-      var img=document.createElement('img'); img.className='tpa-ie-out'; img.alt='Edited image'; img.src=res.src; img.onload=scrollDown; d.appendChild(img);
-      if(res.model) d.appendChild(ieMk('div','tpa-id-note','Made with '+res.model));
-      var row=ieMk('div','tpa-action-btns');
-      row.appendChild(ieBtn('Download',function(ev){ ieDownload(res,ev.currentTarget); }));
-      row.appendChild(ieBtn('Edit again',function(){ ieEditAgain(res); },true));
-      row.appendChild(ieBtn('Regenerate',function(){ ieRegenerate(); },true));
-      row.appendChild(ieBtn('New edit',function(){ if(session.task||session.mode!=='idle'){ addMsg('assistant',"Let's finish what we're doing first.",null,'ask'); return; } startImageEdit(); },true));
-      d.appendChild(row);
-    },320);
-  }
-  async function ieDownload(res,btn){
-    var o=btn&&btn.textContent; if(btn){ btn.disabled=true; btn.textContent='Preparing…'; }
-    var ext=/jpeg/.test(res.mime)?'jpg':/webp/.test(res.mime)?'webp':'png', name='trackport-edit-'+Date.now()+'.'+ext;
-    try{
-      var b=await (await fetch(res.src)).blob(), url=URL.createObjectURL(b), a=document.createElement('a');
-      a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },4000);
-    }catch(e){
-      try{ var a2=document.createElement('a'); a2.href=res.src; a2.download=name; document.body.appendChild(a2); a2.click(); a2.remove(); }catch(_e){}
-    }
-    if(btn){ btn.disabled=false; btn.textContent=o; }
-  }
-  async function ieEditAgain(res){
-    if(session.task||session.mode!=='idle'){ addMsg('assistant',"Let's finish what we're doing first, then we can keep editing.",null,'ask'); return; }
-    try{
-      var im=await ieFromSrc(res.src);
-      ieReset(); ie.imgs=[im]; ieSet('prompt');
-      chatImgBubble([im.src]);
-      iePreviewCard();
-      addMsg('assistant',"Okay, I've set your edited image as **image 1**. What should I change next? Type it or say it.",null,'ask');
-    }catch(e){ addMsg('assistant',"I couldn't reuse that image. Try downloading it and uploading it again.",null,'ask'); }
-  }
-  function ieRegenerate(){
-    if(session.task||session.mode!=='idle'){ addMsg('assistant',"Let's finish what we're doing first.",null,'ask'); return; }
-    if(!ie.imgs.length||ie.prompt.length<3){ addMsg('assistant',"I don't have the original photos any more. Tap **New edit** to start again.",null,'ask'); return; }
-    ieSet('review'); ieGenerate();
-  }
-  function ieCancel(){
-    ieReset(); resetSession(); ieRefresh();
-    addMsg('assistant',"No worries, scrapped it! What would you like to do next?",null,'ask'); showChips();
-  }
-
-  /* Typed or spoken messages while an edit is in progress. Returns true when handled. */
-  function ieHandleText(text){
-    var t=String(text||'').replace(/\s+/g,' ').trim(), low=norm(t), st=session.step;
-    if(/^(cancel|stop|never ?mind|forget it|start over|quit|abort|no thanks)( this| it)?$/.test(low)){ if(st==='busy'){ addMsg('assistant',"I'm already painting it, so give me a moment and I'll show you the result.",null,'ask'); return true; } ieCancel(); return true; }
-    if(/^(end|close|finish|leave)( (this|the|our))? (chat|conversation)$/.test(low)||/^(bye|goodbye|good bye)\b/.test(low)){ if(st==='busy') return true; ieReset(); return false; }
-    if(st==='busy'){ addMsg('assistant',"Hang on, I'm still painting your image. It'll be here in a moment!",null,'ask'); return true; }
-    if(st==='photos'){
-      if(/^(done|continue|next|ready|go|go on|that ?s all|that is all|no more|i ?m done|ok|okay|yes|yep|sure)$/.test(low)){ ieContinue(); return true; }
-      if(!ie.imgs.length){
-        if(t.length>=6){ ie.prompt=t.slice(0,800); addMsg('assistant',"Got it, I'll use that as your instruction. Now upload the photo(s) it applies to with **Upload photos** (or the + button).",null,'ask'); }
-        else addMsg('assistant',"I need at least one photo first. Tap **Upload photos** (or the + button) to add one.",null,'ask');
-        return true;
-      }
-      if(t.length>=3){ ie.prompt=t.slice(0,800); ieReview(); return true; }
-      addMsg('assistant',"Add your photos, then tap **Continue** (or say **done**).",null,'ask');
-      return true;
-    }
-    if(st==='prompt'){
-      if(t.length<3){ addMsg('assistant',"Tell me a little more about what you'd like changed, like “change the background to a beach”.",null,'ask'); return true; }
-      ie.prompt=t.slice(0,800); ieReview(); return true;
-    }
-    if(st==='review'){
-      if(/^(yes|yep|yeah|yup|sure|ok|okay|go|go ahead|generate|do it|create|proceed|looks good|perfect|confirm)( please)?$/.test(low)){ ieGenerate(); return true; }
-      if(/^(no|nope|change|edit|edit prompt|change prompt|change it)$/.test(low)){ ieSet('prompt'); addMsg('assistant',"No problem. Type (or say) the new instruction and I'll update the review.",null,'ask'); return true; }
-      if(t.length>=3){ ie.prompt=t.slice(0,800); ieReview(); return true; }
-    }
-    return true;
-  }
-
-
-  /* ===== Image + chat-screenshot helper (Zara explains any image and suggests replies) =====
-     Flow: photo -> explain -> (chat screenshot?) ask for context or skip -> 3 reply options -> follow-ups. */
-  var vis={img:'',hist:[],ctx:'',isChat:false,lastPhoto:''};
-  function visUrl(){ return String(window.TRACKPORT_VISION_URL||AGENT_URL.replace(/\/chat$/,'/vision')); }
-  function visIdle(){ session={mode:'idle',task:null,step:0,data:{},idKind:null,sub:null}; }
-  function visIntent(raw){
-    return /\b(what('?s| is| are) (in|on) (this|the|my|that) (image|picture|photo|screenshot|pic|screen)|(explain|describe|analy[sz]e|inspect|read|check) (this|the|my|that) (image|picture|photo|screenshot|pic|chat)|(reply|respond|answer) (to )?(this|the|that) (message|chat|text|screenshot|dm)|what (should|can|do) i (say|reply|respond|text|write)|help me (reply|respond|answer))\b/i.test(String(raw||''));
-  }
-  async function visCall(payload){
-    var u=currentUser(); if(!u) throw new Error('auth');
-    var token=await u.getIdToken();
-    var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },80000);
-    try{
-      var r=await agentFetch(visUrl(),{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
-      var j={}; try{ j=await r.json(); }catch(e){}
-      if(!r.ok||!j.ok){ var er=new Error(j.error||('server '+r.status)); er.status=r.status; er.detail=j.detail||''; throw er; }
-      return j;
-    } finally { clearTimeout(tm); }
-  }
-  function visCopy(text,btn){
-    var done=function(){ var o=btn.textContent; btn.textContent='Copied'; setTimeout(function(){ btn.textContent=o; },1600); };
-    var fb=function(){
-      try{ var t=document.createElement('textarea'); t.value=text; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); done(); }
-      catch(e){ btn.textContent='Press and hold to copy'; }
-    };
-    try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done,fb); else fb(); }catch(e){ fb(); }
-  }
-  function visShowOptions(intro,options){
-    addMsg('assistant',intro,null,'ask');
-    options.forEach(function(o,i){
-      var d=document.createElement('div'); d.className='tpa-m a';
-      var h=document.createElement('strong'); h.textContent=o.label||('Option '+(i+1)); d.appendChild(h);
-      d.appendChild(document.createTextNode('\n'+o.text));
-      var row=document.createElement('div'); row.className='tpa-action-btns';
-      var b=document.createElement('button'); b.type='button'; b.textContent='Copy';
-      b.onclick=function(){ visCopy(o.text,b); };
-      row.appendChild(b); d.appendChild(row);
-      enqueueOut(o.text.length,function(){ log.appendChild(d); scrollDown(); });
-    });
-  }
-  function visAfterReplies(){
-    addMsg('assistant',"Want me to tweak them? You can tap a button or just type what you want, like \"say no politely\".",[
-      {label:'Shorter',fn:function(){ visTweak('Make all replies shorter'); }},
-      {label:'More formal',secondary:true,fn:function(){ visTweak('Make all replies more formal and polite'); }},
-      {label:'More casual',secondary:true,fn:function(){ visTweak('Make all replies more casual and friendly'); }},
-      {label:'Done',secondary:true,fn:function(){ visEnd(); }}
-    ],'ask');
-  }
-  function visTweak(instr){
-    if(session.task!=='vision'||busy||session.step==='busy') return;
-    addMsg('user',instr); visRun('reply',instr);
-  }
-  function visEnd(msg){
-    visIdle();
-    addMsg('assistant',msg||"All done! Send me another screenshot or image any time, or tell me what else you need.",null,'done');
-    showChips();
-  }
-  function visAskContext(){
-    session.step='askctx';
-    addMsg('assistant',"This looks like a chat. Would you like to tell me more about it (who it is with, what happened before, what you want to achieve)? That helps me understand the full picture and write a better reply. Or say no and I'll suggest replies based on the screenshot alone.",[
-      {label:"Yes, I'll share",fn:function(){ if(session.task!=='vision'||session.step!=='askctx'||busy) return; addMsg('user',"Yes, I'll share"); visShare(); }},
-      {label:'No, just reply',secondary:true,fn:function(){ if(session.task!=='vision'||session.step!=='askctx'||busy) return; addMsg('user','No, just reply'); visNoShare(); }}
-    ],'ask');
-  }
-  function visShare(){
-    session.step='ctx';
-    addMsg('assistant',"Great! Tell me what's going on: who is this person to you, what led up to this conversation, and what outcome you want. Type it all in one message. You can also say skip.",null,'ask');
-  }
-  function visNoShare(){ vis.ctx=''; visRun('reply',''); }
-  async function visRun(mode,question){
-    var prev=session.step; session.step='busy';
-    busy=true; sendBtn.disabled=true; var typing=typingEl();
-    try{
-      var j=await visCall({mode:mode,image:vis.img,question:question||'',context:vis.ctx,history:vis.hist.slice(-8)});
-      typing.remove();
-      if(mode==='reply'){
-        visShowOptions(j.intro,j.options);
-        vis.hist.push({role:'assistant',text:'Suggested replies: '+j.options.map(function(o){ return '['+o.label+'] '+o.text; }).join(' | ')});
-        session.step='followup'; visAfterReplies();
-      } else if(mode==='describe'){
-        addMsg('assistant',j.reply,null,'ask'); vis.hist.push({role:'assistant',text:j.reply});
-        vis.isChat=!!j.isChat;
-        if(vis.isChat) visAskContext();
-        else { session.step='followup'; addMsg('assistant',"Want to know anything else about it? Just ask, or tap Done.",[{label:'Done',secondary:true,fn:function(){ if(session.task==='vision'&&!busy) visEnd(); }}],'ask'); }
-      } else {
-        addMsg('assistant',j.reply,null,'ask'); vis.hist.push({role:'assistant',text:j.reply});
-        session.step='followup';
-      }
-    }catch(err){
-      console.warn('[tpa] vision failed',err);
-      typing.remove(); session.step=(prev&&prev!=='busy')?prev:'followup';
-      var msg=(err&&err.message==='ai_quota')?"Zara's AI has used up its free daily limit. It resets at midnight UTC, so please try again later.":(err&&err.status===429)?"You're sending images a bit fast. Give me a minute and try again.":(err&&err.status===401)?"Your session expired. Please sign in again and send the image once more.":(err&&err.status===400)?"I couldn't read that image. Please try a clear JPG, PNG or WebP.":"Sorry, I couldn't look at that image just now. Please try again in a moment.\n\n(Debug: "+(err&&err.status?err.status+' ':'')+(err&&err.message||'unknown')+(err&&err.detail?' - '+err.detail:'')+")";
-      addMsg('assistant',msg,[{label:'Try again',fn:function(){ if(session.task==='vision'&&!busy) visRun(mode,question); }},{label:'Cancel',secondary:true,fn:function(){ if(session.task==='vision'&&!busy) visEnd('No problem, cancelled.'); }}],'ask');
-    }
-    busy=false; sendBtn.disabled=false; scrollDown();
-  }
-  function startVision(dataUrl){
-    vis.img=dataUrl; vis.lastPhoto=dataUrl; vis.hist=[]; vis.ctx=''; vis.isChat=false;
-    session={mode:'idle',task:'vision',step:'busy',data:{},idKind:null,sub:null};
-    addMsg('assistant',"Let me take a good look at it.",null,'ack');
-    visRun('describe','');
-  }
-  /* Handles typed text while the vision helper is active. Returns true if it consumed the message. */
-  async function visHandleText(text){
-    if(session.task!=='vision') return false;
-    var low=String(text||'').trim().toLowerCase().replace(/[.!?]+$/,'');
-    if(session.step==='busy'||busy){ addMsg('assistant',"Hang on, I'm still looking at your image.",null,'ask'); return true; }
-    if(/^(done|stop|exit|cancel|that'?s all|finish|close|no thanks|nothing else)$/.test(low)){ visEnd(); return true; }
-    if(isEndIntent(text)||/\b(shipment|flight|receipt|credits?|call me|go to|open the|log ?out)\b/i.test(text)){ visIdle(); return false; }
-    if(session.step==='askctx'){
-      if(/^(no|nope|nah|skip|no just reply|just reply|no thanks)$/.test(low)){ visNoShare(); return true; }
-      if(/^(yes|yeah|yep|sure|ok|okay|yes please)$/.test(low)){ visShare(); return true; }
-      vis.ctx=String(text).slice(0,1500); vis.hist.push({role:'user',text:'Context about the chat: '+vis.ctx}); visRun('reply',''); return true;
-    }
-    if(session.step==='ctx'){
-      if(/^(no|nope|nah|skip|no thanks|nothing)$/.test(low)){ visNoShare(); return true; }
-      vis.ctx=String(text).slice(0,1500); vis.hist.push({role:'user',text:'Context about the chat: '+vis.ctx}); visRun('reply',''); return true;
-    }
-    vis.hist.push({role:'user',text:String(text).slice(0,600)});
-    if(vis.isChat&&/\b(reply|respond|say|shorter|longer|formal|casual|polite|friendly|firm|funny|rewrite|another|different|tone|decline|refuse|accept|apolog)/i.test(text)) visRun('reply',String(text).slice(0,600));
-    else visRun('followup',String(text).slice(0,600));
-    return true;
-  }
-
-  /* Route a single photo the user attached with the + button */
-  function routeChatPhoto(dataUrl){
-    chatImgBubble([dataUrl]); vis.lastPhoto=dataUrl;
-    if(session.task==='vision'){ if(busy||session.step==='busy'){ addMsg('assistant',"Hang on, I'm still looking at the last image.",null,'ask'); return; } startVision(dataUrl); return; }
-    if(session.mode==='pay'){ addMsg('assistant',"That looks like a photo. For your payment, please use the receipt upload button on the payment step.",null,'ask'); return; }
-    if(session.task==='shipment'){ setPackagePic(dataUrl); addMsg('assistant','Package picture attached. I’ll include it when you create the shipment.'); return; }
-    if(session.task==='id'){
-      session.data.photo=dataUrl;
-      var steps=currentSteps(), s=steps[session.step];
-      if(session.mode==='collect'&&s&&s.key==='photo'&&idInChat()){ session.step++; session.ack=''; addMsg('assistant','Portrait added.',null,'ack'); askCurrent(); }
-      else addMsg('assistant',"Got the portrait! I'll use it on the card when we reach the photo step.",null,'ask');
-      return;
-    }
-    if(session.task||session.mode!=='idle'){ addMsg('assistant',"Nice photo! Let's finish what we're doing first, then I can use it.",null,'ask'); return; }
-    var free=function(){ if(session.task||session.mode!=='idle'){ addMsg('assistant',"Let's finish the current task first.",null,'ask'); return false; } return true; };
-    addMsg('assistant',"Nice photo! What would you like me to do with it?",[
-      {label:'What is in this?',fn:function(){ if(!free()) return; startVision(dataUrl); }},
-      {label:'Help me reply',secondary:true,fn:function(){ if(!free()) return; startVision(dataUrl); }},
-      {label:'Edit it with AI',fn:function(){ if(!free()) return; ieFromSrc(dataUrl).then(function(im){ startImageEdit('',[im]); }).catch(function(){ addMsg('assistant',"I couldn't read that image. Please try another one.",null,'ask'); }); }},
-      {label:'Use as package picture',secondary:true,fn:function(){ if(!free()) return; setPackagePic(dataUrl); startTask('shipment','create a shipment'); }},
-      {label:'Use as ID portrait',secondary:true,fn:function(){ if(!free()) return; startTask('id','id card'); session.data.photo=dataUrl; }}
-    ],'ask');
-  }
-
-  (function setupPhotoUpload(){
-    var attach=$('tpa-attach'), picker=$('tpa-package-file'); if(!attach||!picker) return;
-    attach.addEventListener('click',function(){ picker.click(); });
-    picker.addEventListener('change',function(){
-      var files=Array.prototype.slice.call(picker.files||[]); picker.value='';
-      if(!files.length) return;
-      var imgs=files.filter(function(f){ return /^image\//i.test(f.type||''); });
-      if(!imgs.length){ addMsg('assistant','Please choose an image file (JPG, PNG or WebP).'); return; }
-      if(session.task==='imageedit'){ ieAddFiles(imgs); return; }
-      if(imgs.length>1&&!session.task&&session.mode==='idle'){ startImageEdit(); ieAddFiles(imgs); return; }
-      var file=imgs[0];
-      if(file.size>12*1024*1024){ addMsg('assistant','That image is too large. Please choose one under 12 MB.'); return; }
-      chatPhotoData(file).then(routeChatPhoto).catch(function(){ addMsg('assistant','I couldn’t read that image. Please try another picture.'); });
-    });
-  })();
-
   async function sendText(text){
     text=(text||'').trim(); if(!text||busy) return;
     var chips=$('tpa-chips'); if(chips) chips.remove();
@@ -27937,16 +27218,12 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     var u=currentUser();
     if(!u){ addMsg('assistant',"Looks like you're not signed in yet. Sign in and I'll be happy to help!"); return; }
     if(session.mode==='idle'&&!session.task&&await applyChatRecordEdit(text)) return;
-    if(session.task==='imageedit' && ieHandleText(text)) return;
-    if(session.task==='vision' && await visHandleText(text)) return;
     if(isEndIntent(text)){ endChat(); return; }
     if(ended){ ended=false; addMsg('assistant',pickOf(["Oh, you're back! I missed you for, like, a whole minute. Let's pick things up.","Welcome back! Okay, where were we? Let's get going."])); }
 
     if(!call.on && callIntent(text)){ await startCallFromChat(); return; }
     if(session.mode==='contact'){ busy=true; sendBtn.disabled=true; try{ await handleContactChat(text); }finally{ busy=false; sendBtn.disabled=false; } return; }
     if(session.mode==='request'){ busy=true; sendBtn.disabled=true; try{ await handleRequestChat(text); }finally{ busy=false; sendBtn.disabled=false; } return; }
-    if(!session.task && session.mode==='idle' && visIntent(text) && !imageEditIntent(text)){ if(vis.lastPhoto) startVision(vis.lastPhoto); else addMsg('assistant',"Sure! Tap the + button to upload the image or chat screenshot and I'll take a look.",null,'ask'); return; }
-    if(!session.task && session.mode==='idle' && imageEditIntent(text)){ startImageEdit(); return; }
     var rq=(!session.task&&session.mode==='idle')?reqIntent(text):null;
     if(rq){ startRequestChat(rq.text); return; }
     if(!session.task && session.mode!=='pay'){
@@ -27996,8 +27273,6 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
           addMsg('assistant',cc.ok?"Done! I've passed your contact details to the Nbaworld team, and they'll reach out to you.":(cc.error||"I couldn't send that, sorry. Please try again in a moment."),null,'done');
         } else if(act && act.type==='ui' && act.data && Array.isArray(act.data.steps)){
           await runUi(act.data.steps);
-        } else if(act && act.type==='imageedit' && !session.task && session.mode==='idle'){
-          startImageEdit(act.data&&act.data.prompt);
         } else if(act && act.type==='call' && !call.on){
           await startCallFromChat(true);
         }
@@ -28018,6 +27293,26 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   }
 
   form.addEventListener('submit',function(e){ e.preventDefault(); var t=input.value; input.value=''; sendText(t); });
+  (function setupPackageUpload(){
+    var attach=$('tpa-attach'), picker=$('tpa-package-file'); if(!attach||!picker)return;
+    attach.addEventListener('click',function(){picker.click();});
+    picker.addEventListener('change',function(){
+      var file=picker.files&&picker.files[0]; if(!file)return;
+      if(!/^image\//i.test(file.type)){addMsg('assistant','Please choose an image file for the package picture.');picker.value='';return;}
+      if(file.size>12*1024*1024){addMsg('assistant','That image is too large. Please choose one under 12 MB.');picker.value='';return;}
+      var reader=new FileReader(); reader.onload=function(){
+        var im=new Image(); im.onload=function(){
+          var max=1100,scale=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*scale);c.height=Math.round(im.height*scale);
+          var cx=c.getContext('2d');cx.drawImage(im,0,0,c.width,c.height);queuedPackageImage=c.toDataURL('image/jpeg',.82);
+          if(session.task==='shipment')session.data.productImage=queuedPackageImage;
+          var old=$('tpa-upload-note');if(old)old.remove();var note=document.createElement('div');note.className='tpa-upload-note';note.id='tpa-upload-note';
+          var thumb=document.createElement('img');thumb.src=queuedPackageImage;thumb.alt='Package picture preview';var label=document.createElement('span');label.textContent='Package picture attached';var rm=document.createElement('button');rm.type='button';rm.textContent='×';rm.setAttribute('aria-label','Remove package picture');rm.onclick=function(){queuedPackageImage='';if(session.data)delete session.data.productImage;note.remove();picker.value='';};note.append(thumb,label,rm);form.parentNode.insertBefore(note,form);
+          addMsg('assistant','Package picture attached. I’ll include it when you create the shipment.');
+        };im.onerror=function(){addMsg('assistant','I couldn’t read that image. Please try another picture.');};im.src=String(reader.result||'');
+      };reader.readAsDataURL(file);picker.value='';
+    });
+  })();
+
   var tries=0;
   (function attach(){
     var a=getAuth();
@@ -28042,26 +27337,7 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   function tpVoiceHosts(){ var a=[TP_VOICE_HOST]; [TP_VOICE_HOST_BACKUP,TP_VOICE_HOST_BACKUP2].forEach(function(h){ if(h&&a.indexOf(h)<0) a.push(h); }); return a; }
   function tpVoiceMarkBad(h){ try{ sessionStorage.setItem('tp-voice-bad:'+h,String(Date.now()+8*60*1000)); }catch(e){} }
   function tpVoiceIsBad(h){ try{ return Number(sessionStorage.getItem('tp-voice-bad:'+h)||0)>Date.now(); }catch(e){ return false; } }
-  /* Fresh page load = fresh start: forget which voice servers failed earlier so they are all tried again. */
-  try{ Object.keys(sessionStorage).forEach(function(k){ if(k.indexOf('tp-voice-bad:')===0) sessionStorage.removeItem(k); }); }catch(e){}
   function tpVoiceStartIndex(hosts){ for(var i=0;i<hosts.length;i++){ if(!tpVoiceIsBad(hosts[i])) return i; } return 0; }
-  /* Reachability check, repeated on EVERY page load / refresh (and when the connection comes back), never remembered across reloads.
-     It only orders the servers (healthy first); no server is ever skipped for good, so a recovered server is used again. */
-  var tpVoiceHealth={}, tpVoiceProbeP=null;
-  function tpVoiceProbe(){
-    if(tpVoiceProbeP) return tpVoiceProbeP;
-    tpVoiceProbeP=Promise.all(tpVoiceHosts().map(function(h){
-      var ctrl=window.AbortController?new AbortController():null, tm=setTimeout(function(){ try{ ctrl&&ctrl.abort(); }catch(e){} },4000);
-      return fetch('https://'+h+'/health',{cache:'no-store',signal:ctrl?ctrl.signal:undefined}).then(function(r){ return r.json().catch(function(){ return null; }).then(function(j){ tpVoiceHealth[h]=(r.ok&&j&&j.ok)?'up':'down'; }); })
-        .catch(function(){ tpVoiceHealth[h]='unknown'; }).then(function(){ clearTimeout(tm); });
-    })).then(function(){ tpVoiceProbeP=null; });
-    return tpVoiceProbeP;
-  }
-  function tpVoiceOrdered(){
-    var rank={up:0,unknown:1,undefined:1,down:2};
-    return tpVoiceHosts().map(function(h,i){ return {h:h,i:i}; }).sort(function(a,b){ return (rank[tpVoiceHealth[a.h]]-rank[tpVoiceHealth[b.h]])||(a.i-b.i); }).map(function(x){ return x.h; });
-  }
-  try{ tpVoiceProbe(); window.addEventListener('online',function(){ tpVoiceHealth={}; tpVoiceProbe(); }); }catch(e){}
   var TP_VOICE_AGENT='TrackPortVoiceAgent';
   var tpVoiceClientModule=null;
   function rtEventValue(ev){ return ev && ev.detail!==undefined ? ev.detail : ev; }
@@ -28090,15 +27366,9 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
   async function rtLoadClient(){
     if(tpVoiceClientModule) return tpVoiceClientModule;
     /* The app remains a single HTML file; the official framework-agnostic Cloudflare client is loaded on demand. */
-    var urls=['https://esm.sh/agents@0.23.0/voice/client?bundle&target=es2022','https://esm.sh/agents@0.23.0/voice/client?bundle','https://cdn.jsdelivr.net/npm/agents@0.23.0/dist/voice-client.js/+esm','https://esm.sh/agents/voice/client?bundle&target=es2022'], lastErr=null;
-    for(var i=0;i<urls.length;i++){
-      try{
-        var m=await Promise.race([import(urls[i]),new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); },10000); })]);
-        if(m&&m.VoiceClient){ tpVoiceClientModule=m; return m; }
-        lastErr=new Error('VoiceClient export missing');
-      }catch(e){ lastErr=e; console.warn('[TrackPort voice] client load failed from',urls[i],e); }
-    }
-    throw lastErr||new Error('Cloudflare VoiceClient could not be loaded');
+    tpVoiceClientModule=await import('https://esm.sh/agents@0.23.0/voice/client?bundle&target=es2022');
+    if(!tpVoiceClientModule||!tpVoiceClientModule.VoiceClient) throw new Error('Cloudflare VoiceClient could not be loaded');
+    return tpVoiceClientModule;
   }
   async function tpGetAdminCloudflareVoice(){
     try{
@@ -28117,16 +27387,16 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!(window.AudioContext||window.webkitAudioContext)||!window.WebSocket){addMsg('assistant','This browser does not support real-time voice calls. Please use an up-to-date Chrome, Edge or Safari browser.');return;}
     try{wakeStop();}catch(e){}
     try{stopVoice();}catch(e){}
-    Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),liveT0:0,speech:false,busy:0,state:'connecting',msgStart:msgs.length,fb:false,useSR:false,sr:null,srOn:false,srDead:false,srErr:0,pend:''});
+    Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),speech:false,busy:0,state:'connecting',msgStart:msgs.length});
     call.rt={client:null,seen:0,authed:false,status:'connecting',timer:null};
-    voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='Connecting…';cEl.orb.className='tpa-orb connecting';callSync();callState();
+    voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='Connecting securely to Cloudflare voice…';callSync();callState();
     clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
     try{
       var token=await u.getIdToken(); if(!call.on)return;
-      var mod=await Promise.race([rtLoadClient(),new Promise(function(_,rej){setTimeout(function(){rej(new Error('voice client load timeout'));},45000);})]); if(!call.on)return;
+      var mod=await rtLoadClient(); if(!call.on)return;
       var room='tp-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,24):Math.random().toString(36).slice(2)+Date.now().toString(36));
       var selectedVoice=await tpGetAdminCloudflareVoice();
-      var hosts=tpVoiceOrdered();
+      var hosts=tpVoiceHosts();
       var lap=0; /* how many times we have wrapped around the Worker list */
       var connectOn=function(idx){
         var old=call.rt;
@@ -28136,49 +27406,46 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
         var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false};
         call.rt=rt;
         function failover(why){
-          if(!call.on||call.rt!==rt||rt.gotText) return false;
-          if(hosts.length<2){ rt.failing=true; tpVoiceMarkBad(host);
-            if(String(selectedVoice).toLowerCase()!=='melo'){ selectedVoice='melo'; lap++; connectOn(0); } else callFallback(why); return true; }
+          if(!call.on||call.rt!==rt||rt.gotText||hosts.length<2) return false;
           if(rt.failing) return true; /* already switching - ignore duplicate triggers */
           rt.failing=true;
           /* Loop forever: after the last Worker, go back to the first one and keep cycling. */
           var next=(idx+1)%hosts.length, wrapped=next<=idx;
           console.warn('[TrackPort voice] switching to next voice server:',why,wrapped?'(looping back to the first)':'');
-          tpVoiceMarkBad(host); cEl.cap.textContent='';
+          tpVoiceMarkBad(host); cEl.cap.textContent=wrapped?'Trying the voice servers again…':'Switching to the backup voice server…';
           if(wrapped){
-            if(String(selectedVoice).toLowerCase()!=='melo'){ selectedVoice='melo'; lap++; console.warn('[TrackPort voice] selected voice failed on all servers, switching the call to the Melo voice'); connectOn(0); }
-            else callFallback('all voice servers failed ('+why+')');
-          }
-          else connectOn(next);
+            lap++;
+            /* short pause after a full lap so we don't hammer the Workers */
+            setTimeout(function(){ if(call.on&&call.rt===rt) connectOn(next); },1500);
+          } else connectOn(next);
           return true;
         }
         var authSent=false, authTimer=setTimeout(function(){
           if(!call.on||call.rt!==rt||rt.authed) return;
-          if(!failover('auth timeout')) callFallback('auth timeout');
+          if(!failover('auth timeout')) cEl.cap.textContent='Cloudflare voice authentication timed out. Check that the voice Worker is deployed.';
         },9000);
         client.addEventListener('connectionchange',function(ev){
           var connected=!!rtEventValue(ev);
           if(!call.on||call.rt!==rt||!connected||authSent)return;
           authSent=true;
-          try{var ctxUi=null,ctxAcc=null; try{ ctxUi=uiSpec(); }catch(e){} try{ ctxAcc=account(); }catch(e){}
-          client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,persona:{name:'Zara',title:'Zara, the Nbatools AI voice assistant'},ui:ctxUi,account:ctxAcc,app:{name:'Nbatools',costs:APP.costs,plans:APP.plans}});}
-          catch(e){console.warn('[TrackPort voice auth send]',e);if(!failover('auth send failed'))callFallback('auth send failed');}
+          try{client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,app:{name:APP.name,costs:APP.costs,plans:APP.plans}});}
+          catch(e){console.warn('[TrackPort voice auth send]',e);cEl.cap.textContent='Could not authenticate the voice connection.';}
         });
         client.addEventListener('custommessage',function(ev){
           var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
           if(!d||!call.on||call.rt!==rt)return;
           if(d.type==='trackport_auth_ok'){
-            rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='';
-            Promise.resolve(client.startCall()).catch(function(e){console.error('[TrackPort voice start]',e);if(!failover('start failed'))callFallback('start failed');});
+            rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='Starting the call…';
+            Promise.resolve(client.startCall()).catch(function(e){console.error('[TrackPort voice start]',e);if(!failover('start failed'))cEl.cap.textContent='Could not start the voice call. Please try again.';});
           } else if(d.type==='trackport_auth_error'){
-            clearTimeout(authTimer);callFallback('auth rejected');
+            clearTimeout(authTimer);cEl.cap.textContent='Voice authentication failed. Please sign in again.';
           }
         });
         client.addEventListener('statuschange',function(ev){
           var st=rtEventValue(ev); if(st&&typeof st==='object')st=st.status||st.state||st.value;
           if(!call.on||call.rt!==rt)return;
           rt.status=String(st||'listening').toLowerCase();
-          if(rt.status!=='listening'){ rt.loudFirst=0; rt.lastLoud=0; } /* sound while Zara talks / thinks is not the user */
+          call.state=rt.status;
           if(rt.bye){
             if(rt.status==='speaking') rt.byeSpoke=true;
             else if(rt.status==='listening' && rt.byeSpoke){ clearTimeout(rt.byeT); rt.byeT=setTimeout(function(){ if(call.on&&call.rt===rt) callEnd(); },700); }
@@ -28194,62 +27461,34 @@ html body .screen [data-typewriter].typing::after{display:none!important;animati
           if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
         });
         client.addEventListener('audiolevelchange',function(ev){
-          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2));
-            if(n>0.02) rt.micSeen=true; /* the mic works */
-            if(n>0.12&&rt.status==='listening'&&!call.muted){ var tn=Date.now(); if(!rt.loudFirst||tn-rt.lastLoud>3000) rt.loudFirst=tn; rt.lastLoud=tn; } }
+          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06){ rt.heardAt=rt.heardAt||Date.now(); } }
         });
         client.addEventListener('error',function(ev){
           var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
           if(call.on&&call.rt===rt){
             console.error('[TrackPort Cloudflare voice]',er);
             if(failover('error: '+er)) return;
-            if(!rt.gotText){ callFallback('error: '+er); return; }
-            cEl.cap.textContent='Voice connection problem. Tap Type to keep chatting.';
+            cEl.cap.textContent='Voice error: '+String(er||'The real-time voice service reported an error.').slice(0,150);
           }
         });
         client.connect();
         rt.diag=setInterval(function(){
           if(!call.on||call.rt!==rt){ clearInterval(rt.diag); return; }
-          if(rt.status!=='listening'||rt.gotText||call.muted){ rt.listenAt=0; return; }
+          if(rt.status!=='listening'||rt.gotText||call.muted) return;
           var now=Date.now();
-          if(!rt.listenAt) rt.listenAt=now;
-          if(!rt.micSeen && now-rt.listenAt>12000){ cEl.cap.textContent='No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
-          /* Only give up on Cloudflare when the user has clearly been talking (loud, ~12s) while we were listening and NO transcript ever came back. */
-          else if(rt.loudFirst && now-rt.lastLoud<2500 && now-rt.loudFirst>12000){
-            if(!failover('speech recognition not responding')) callFallback('speech recognition not responding');
+          if(!rt.heardAt && !rt.listenAt){ rt.listenAt=now; }
+          if(!rt.heardAt && now-rt.listenAt>12000){ cEl.cap.textContent='No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
+          else if(rt.heardAt && now-rt.heardAt>7000){
+            if(!failover('speech recognition not responding')) cEl.cap.textContent='I can hear your mic, but Cloudflare speech recognition is not responding. The voice Worker needs checking.';
           }
         },1000);
       };
       connectOn(tpVoiceStartIndex(hosts));
-      var wdT0=call.t0; clearTimeout(call.fbT);
-      call.fbT=setTimeout(function(){ var r=call.rt; if(call.on&&call.t0===wdT0&&!call.fb&&r&&!r.gotText&&['listening','thinking','speaking'].indexOf(r.status)<0) callFallback('voice server did not respond in time'); },16000);
     }catch(e){
       console.error('[TrackPort Cloudflare voice connect]',e);
-      callFallback('connect error: '+String((e&&e.message)||e));
+      cEl.cap.textContent='Could not connect to the Cloudflare voice Worker. Check its deployment and try again.';
+      setTimeout(function(){if(call.on)callEnd();},2200);
     }
-  }
-  /* Fallback: if the Cloudflare voice servers can't be reached (down, out of quota, blocked), the call keeps working with the
-     browser's own speech recognition: mic -> SpeechRecognition -> /chat -> spoken reply. */
-  async function callFallback(why){
-    if(!call.on||call.fb) return;
-    call.fb=true; var t0=call.t0; clearTimeout(call.fbT);
-    console.warn('[TrackPort voice] falling back to browser speech recognition:',why); window.tpVoiceFallbackReason=String(why||'');
-    var rt=call.rt; call.rt=null;
-    if(rt){ clearInterval(rt.diag); clearTimeout(rt.byeT); try{ rt.client.endCall(); }catch(e){} try{ rt.client.disconnect(); }catch(e){} }
-    call.state=''; call.liveT0=0;
-    if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){ cEl.cap.textContent="Voice isn't available in this browser right now. Tap Type to chat with me instead."; callState(); return; }
-    try{ var ms=await navigator.mediaDevices.getUserMedia({audio:true}); ms.getTracks().forEach(function(x){ x.stop(); }); }
-    catch(e){ cEl.cap.textContent='I need microphone access. Allow it in your browser settings, then tap Call again.'; callState(); return; }
-    var mobileMic=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'');
-    await sleep(mobileMic?500:200);
-    if(!call.on||call.t0!==t0) return;
-    Object.assign(call,{noise:0.008,frames:0,speech:false,buf:[],pre:[],busy:0,q:Promise.resolve(),sr:null,srOn:false,srErr:0,srDead:false,lastSpk:0,mobile:mobileMic,pend:''});
-    call.useSR=callRecInit();
-    clearInterval(call.timer);
-    call.timer=setInterval(function(){ if(call.on&&ended) callEnd(); else{ callState(); if(call.useSR) srTick(); } },200);
-    cEl.cap.textContent=''; callState();
-    var hi=await callIntro(); if(!call.on||call.t0!==t0) return;
-    addMsg('assistant',hi); msgs.push({role:'assistant',text:hi}); speakQ(hi);
   }
   function callMute(){
     call.muted=!call.muted;
@@ -28867,6 +28106,38 @@ html body .tpa-core{background:var(--zara-img) center 22%/cover no-repeat!import
 html body .tpa-orb{background:var(--zara-img) center 22%/cover no-repeat!important;background-color:#111!important;border-radius:50%!important}
 html body .tpa-orb.thinking{border-radius:50%!important}
 </style>
+<style id="tp-call-ui">
+/* ===== Zara call screen: photo-led, premium ===== */
+html body .tpa-call{background:#0a0c0b!important;padding:calc(26px + env(safe-area-inset-top,0px)) 20px calc(26px + env(safe-area-inset-bottom,0px))!important;overflow:hidden;color:#fff}
+html body .tpa-call::before{content:"";position:absolute;inset:-10%;background:var(--zara-img) center 25%/cover no-repeat;filter:blur(38px) saturate(1.2);opacity:.34;transform:scale(1.15);pointer-events:none}
+html body .tpa-call::after{content:"";position:absolute;inset:0;background:radial-gradient(90% 60% at 50% 38%,transparent,rgba(10,12,11,.75) 75%),linear-gradient(180deg,rgba(10,12,11,.2),rgba(10,12,11,.85));pointer-events:none}
+html body .tpa-call>*{position:relative;z-index:2}
+html body .tpa-call-top{flex-direction:column!important;justify-content:center;gap:4px!important;font-size:24px;letter-spacing:.01em;font-weight:650}
+html body .tpa-call-top i{display:none}
+html body .tpa-call-top time{margin:0!important;font-size:13px;font-weight:500;opacity:.7!important;letter-spacing:.08em}
+html body .tpa-orb-wrap{padding:8px 0}
+html body .tpa-orb{width:210px!important;height:210px!important;border:3px solid rgba(255,255,255,.22);box-shadow:0 0 0 calc(10px + var(--lvl)*30px) rgba(255,213,74,.10),0 0 0 calc(22px + var(--lvl)*50px) rgba(255,213,74,.05),0 24px 60px rgba(0,0,0,.6)!important;transition:box-shadow .25s ease}
+html body .tpa-orb.thinking{animation:tpaBreath 1.5s ease-in-out infinite!important}
+html body .tpa-orb.speaking{box-shadow:0 0 0 14px rgba(255,213,74,.16),0 0 0 30px rgba(255,213,74,.07),0 24px 60px rgba(0,0,0,.6)!important}
+html body .tpa-orb.muted{filter:grayscale(.9) brightness(.7)!important}
+html body .tpa-call-state{font-size:14px!important;font-weight:600;letter-spacing:.04em;padding:7px 16px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);margin-bottom:12px!important}
+html body .tpa-call-cap{min-height:0!important;max-width:560px;padding:12px 18px;border-radius:20px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);font-size:14px!important;line-height:1.5!important;opacity:1!important;margin-bottom:22px!important}
+html body .tpa-call-cap:empty{display:none!important}
+html body .tpa-call-btns{gap:18px!important;align-items:flex-start}
+html body .tpa-cb{display:flex!important;flex-direction:column!important;align-items:center;gap:8px;background:none!important;border:0!important;color:rgba(255,255,255,.85)!important;font-size:12px!important;font-weight:550;padding:0!important;min-width:64px;box-shadow:none!important}
+html body .tpa-cb b{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);font-size:0!important;transition:transform .35s cubic-bezier(.34,1.56,.64,1),background .25s}
+html body .tpa-cb b::before{content:"";width:26px;height:26px;background:#fff;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat}
+html body .tpa-cb:active b{transform:scale(.88)}
+html body .tpa-cb[data-c=mute]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5.5 11.5a6.5 6.5 0 0013 0M12 18v3'/%3E%3C/svg%3E")}
+html body .tpa-cb[data-c=mute].on{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 9V6a3 3 0 015.5-1.7M15 10v1a3 3 0 01-4.6 2.5M5.5 11.5a6.5 6.5 0 009.8 5.6M18.5 11.5a6.4 6.4 0 01-.4 2.2M12 18v3M3.5 3.5l17 17'/%3E%3C/svg%3E")}
+html body .tpa-cb[data-c=mute].on b{background:#fff}
+html body .tpa-cb[data-c=mute].on b::before{background:#111}
+html body .tpa-cb[data-c=spk]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.5h3.5L12 5.5v13l-4.5-4H4z'/%3E%3Cpath d='M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11'/%3E%3C/svg%3E")}
+html body .tpa-cb[data-c=spk].on{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.5h3.5L12 5.5v13l-4.5-4H4z'/%3E%3Cpath d='M16 9.5l5 5M21 9.5l-5 5'/%3E%3C/svg%3E")}
+html body .tpa-cb[data-c=kb]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='3'/%3E%3Cpath d='M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7 14h10'/%3E%3C/svg%3E")}
+html body .tpa-cb.end{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 14.5c5-4.6 12-4.6 17 0l-2.2 2.4-3.3-1.6v-2.3a9 9 0 00-5.8 0v2.3l-3.3 1.6z'/%3E%3C/svg%3E")}
+html body .tpa-cb.end b{background:#e5484d;border-color:#e5484d;box-shadow:0 10px 26px rgba(229,72,77,.45)}
+</style>
 <style id="tp-dock">
 /* ===== TrackPort dock: compact glass bar, hairline gold edge, raised Create ===== */
 .tpd{--tpd-gold:#c9a227;--tpd-act:var(--ink);--tpd-idle:var(--muted);--tpd-cbg:linear-gradient(150deg,#262c28,#0b0e0c);--tpd-cfg:#f4d36a;--tpd-cglow:rgba(201,162,39,.30);--tpd-glass:color-mix(in srgb,var(--surface) 82%,transparent);--tpd-edge:color-mix(in srgb,var(--ink) 9%,transparent)}
@@ -28898,112 +28169,13 @@ html body .tp-fixed-nav{padding:0!important}
 html body .spacer-nav{height:calc(84px + env(safe-area-inset-bottom))!important;min-height:calc(84px + env(safe-area-inset-bottom))!important}
 </style>
 
-<style id="tp-call-ui">
-/* ===== Zara call screen: iPhone-style layout, TrackPort accent ===== */
-html body .tpa-call{--tpc:var(--axe-accent,var(--accent,#ffd54a));position:absolute;inset:0;display:flex!important;flex-direction:column;align-items:center;gap:0;overflow:hidden;color:#fff;border-radius:0!important;
-  padding:calc(30px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px))!important;
-  background:radial-gradient(90% 46% at 50% 0%,color-mix(in srgb,var(--tpc) 20%,transparent),transparent 72%),linear-gradient(180deg,#14191a,#07090a 78%)!important}
-html body .tpa-call::before,html body .tpa-call::after{content:none!important;display:none!important}
-html body .tpa-call[hidden]{display:none!important}
-html body .tpa-call-top{display:flex!important;flex-direction:column!important;padding-top:4px;align-items:center;justify-content:center;gap:6px!important;width:100%;font-size:inherit!important;letter-spacing:0!important;text-align:center}
-html body .tpa-call-top i{display:none!important}
-html body .tpa-call-id{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0;max-width:100%}
-html body .tpa-call-name{font-size:clamp(24px,7vw,32px);font-weight:600;letter-spacing:-.01em;line-height:1.15;color:#fff;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-html body .tpa-call-top time{margin:0!important;font-size:17px!important;font-weight:400;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.62)!important;opacity:1!important;letter-spacing:.02em!important}
-html body .tpa-call.is-connecting .tpa-call-top time{visibility:hidden}
-html body .tpa-orb-wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;padding:10px 0}
-html body .tpa-orb{--lvl:0;width:min(58vw,220px)!important;height:min(58vw,220px)!important;border-radius:50%!important;border:3px solid var(--tpc)!important;
-  background:var(--zara-img) center 22%/cover no-repeat #111!important;
-  box-shadow:0 0 0 calc(8px + var(--lvl)*26px) color-mix(in srgb,var(--tpc) 14%,transparent),0 0 64px color-mix(in srgb,var(--tpc) 24%,transparent)!important}
-html body .tpa-orb.thinking,html body .tpa-orb.connecting{animation:tpaBreath 1.5s ease-in-out infinite!important;border-radius:50%!important}
-html body .tpa-orb.speaking{box-shadow:0 0 0 14px color-mix(in srgb,var(--tpc) 20%,transparent),0 0 0 30px color-mix(in srgb,var(--tpc) 9%,transparent),0 24px 60px rgba(0,0,0,.6)!important}
-html body .tpa-orb.muted{filter:grayscale(.9) brightness(.7)!important}
-html body .tpa-call-state{margin:0 0 8px!important;padding:6px 14px;border-radius:999px;font-size:13px!important;font-weight:600;letter-spacing:.03em;text-align:center;color:var(--tpc)!important;background:color-mix(in srgb,var(--tpc) 11%,transparent)!important;border:1px solid color-mix(in srgb,var(--tpc) 38%,transparent)!important}
-html body .tpa-call-cap{min-height:0!important;width:100%;max-width:420px;margin:0 0 16px!important;padding:0 6px;font-size:14px!important;line-height:1.45;text-align:center;color:rgba(255,255,255,.78);opacity:1!important;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
-html body .tpa-call-cap:empty{display:none!important}
-html body .tpa-call-btns{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 4px!important;width:calc(100% + 8px);max-width:440px;padding:26px 8px 22px;margin:0 0 0;border-radius:32px;background:rgba(17,23,20,.96)!important;border:1px solid rgba(255,255,255,.09)!important;box-shadow:0 -10px 40px rgba(0,0,0,.35)!important;align-items:start!important;justify-items:center}
-html body .tpa-cb{all:unset;box-sizing:border-box;display:flex!important;flex-direction:column;align-items:center;gap:8px;min-width:0;cursor:pointer;color:rgba(255,255,255,.88);font:500 12px/1.1 inherit;font-family:inherit;-webkit-tap-highlight-color:transparent}
-html body .tpa-cb b{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.12);border:0;font-size:0!important;transition:transform .12s,background .18s}
-html body .tpa-cb b::before{content:"";width:28px;height:28px;background:#fff;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat}
-html body .tpa-cb,html body .tpa-cb.on,html body .tpa-cb.end{background:none!important;border:0!important;color:rgba(255,255,255,.88)!important}
-html body .tpa-cb:active b{transform:scale(.9)}
-html body .tpa-cb:focus-visible b{outline:2px solid var(--tpc);outline-offset:3px}
-html body .tpa-cb.on b{background:var(--tpc)}
-html body .tpa-cb.on b::before{background:#111}
-html body .tpa-cb[data-c=spk]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z'/%3E%3Cpath d='M15.5 9a4.2 4.2 0 010 6M18 6.5a8 8 0 010 11'/%3E%3C/svg%3E")}
-html body .tpa-cb[data-c=spk].on{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z'/%3E%3Cpath d='M16 9.5l5 5M21 9.5l-5 5'/%3E%3C/svg%3E")}
-html body .tpa-cb[data-c=mute]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5.5 11a6.5 6.5 0 0013 0M12 17.5V21'/%3E%3C/svg%3E")}
-html body .tpa-cb[data-c=mute].on{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5.5 11a6.5 6.5 0 0013 0M12 17.5V21M3.5 3.5l17 17'/%3E%3C/svg%3E")}
-html body .tpa-cb[data-c=kb]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='6' width='19' height='12' rx='3'/%3E%3Cpath d='M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M7.5 14h9'/%3E%3C/svg%3E")}
-html body .tpa-cb.end{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 14.5c5.5-5 12.5-5 18 0l-2.2 2.6a1 1 0 01-1.2.3l-2.6-1.2a1 1 0 01-.6-.9v-1.6a11 11 0 00-6.8 0v1.6a1 1 0 01-.6.9l-2.6 1.2a1 1 0 01-1.2-.3z'/%3E%3C/svg%3E")}
-html body .tpa-cb.end{grid-column:1/-1;justify-self:center}
-html body .tpa-cb.end b{background:#ff1f4b}
-html body .tpa-callbar i{background:var(--axe-accent,var(--accent,#ffd54a))}
-@media(max-height:700px){html body .tpa-call-btns{gap:12px 4px!important;padding:16px 8px 14px}}
-@media(max-height:620px){html body .tpa-call{padding-top:calc(18px + env(safe-area-inset-top,0px))!important}html body .tpa-orb{width:min(40vw,150px)!important;height:min(40vw,150px)!important}html body .tpa-cb b{width:58px;height:58px}html body .tpa-call-btns{margin-bottom:16px}}
-@media(prefers-reduced-motion:reduce){html body .tpa-orb{animation:none!important}}
-</style>
-
-<style id="tp-image-edit-css">
-/* ===== AI image editor ===== */
-.tpie{--tpie-a:var(--axe-accent,var(--accent,#ffd54a));display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-top:6px}
-@media(min-width:900px){.tpie{grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);align-items:start}.tpie-outcard{position:sticky;top:84px}}
-.tpie-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
-.tpie-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0 9px;font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--muted)}
-.tpie-head:first-child{margin-top:0}
-.tpie-head span{display:inline-flex;align-items:center;gap:8px;color:var(--ink)}
-.tpie-head b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--tpie-a);color:#111;font-size:11px}
-.tpie-head em{font-style:normal;font-variant-numeric:tabular-nums}
-.tpie-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;border-radius:16px;transition:box-shadow .2s}
-.tpie-slots.drag{box-shadow:0 0 0 2px var(--tpie-a)}
-.tpie-tile{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--surface2);border:1px solid var(--line);padding:0}
-.tpie-tile img{width:100%;height:100%;object-fit:cover;display:block}
-.tpie-num{position:absolute;left:6px;top:6px;min-width:20px;height:20px;border-radius:10px;padding:0 6px;display:grid;place-items:center;background:rgba(0,0,0,.62);color:#fff;font-size:11px;backdrop-filter:blur(6px)}
-.tpie-x{position:absolute;right:5px;top:5px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(0,0,0,.62);color:#fff;font-size:15px;line-height:1;cursor:pointer;display:grid;place-items:center;padding:0}
-.tpie-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed color-mix(in srgb,var(--ink) 28%,transparent);background:transparent;color:var(--ink);cursor:pointer;font:600 11px/1.1 inherit;font-family:inherit;transition:border-color .2s,background .2s}
-.tpie-add:hover{border-color:var(--tpie-a);background:color-mix(in srgb,var(--tpie-a) 8%,transparent)}
-.tpie-ghost{background:transparent;border-style:dashed;opacity:.35}
-#tpie-prompt{min-height:78px;resize:vertical;border-radius:16px;padding:13px 14px;font-size:14px;line-height:1.45}
-.tpie-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-@media(max-width:700px){.tpie-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-right:-16px;padding-right:16px}.tpie-chips::-webkit-scrollbar{display:none}.tpie-chips button{flex:0 0 auto;white-space:nowrap}}
-.tpie-chips button{border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:999px;padding:6px 11px;font:500 12px/1 inherit;font-family:inherit;cursor:pointer;transition:border-color .2s}
-.tpie-chips button:hover{border-color:var(--tpie-a)}
-.tpie-seg{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
-.tpie-seg::-webkit-scrollbar{display:none}
-.tpie-seg button{flex:0 0 auto;border:1px solid var(--line);background:var(--surface2);color:var(--muted);border-radius:999px;padding:7px 13px;font:600 12px/1 inherit;font-family:inherit;cursor:pointer}
-.tpie-seg button.on{background:var(--tpie-a);border-color:var(--tpie-a);color:#111}
-.tpie-go{width:100%;margin-top:16px;padding:14px 18px;font-size:14px;font-weight:700;background:var(--tpie-a)!important;color:#111!important;gap:8px}
-.tpie-go[data-idle]{opacity:.55}
-.tpie-go:disabled{cursor:progress}
-.tpie-cost{margin-left:6px;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.14);font-size:11px;font-weight:700}
-.tpie-note{margin:10px 2px 0;font-size:12px;line-height:1.5;color:var(--muted)}
-.tpie-stage{position:relative;width:100%;border-radius:18px;overflow:hidden;background:var(--surface2);border:1px solid var(--line);max-height:70vh}
-.tpie-done{background:repeating-conic-gradient(rgba(128,128,128,.1) 0 25%,transparent 0 50%) 0 0/18px 18px}
-.tpie-done img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;margin:0 auto}
-.tpie-empty{display:grid;place-items:center;text-align:center;color:var(--muted);padding:20px;border-style:dashed}
-.tpie-empty svg{opacity:.55;margin-bottom:6px}.tpie-empty p{margin:0;font-size:13px}
-.tpie-err{color:var(--ink)}.tpie-err strong{display:block;margin-bottom:4px}.tpie-err p{line-height:1.5}
-.tpie-shimmer{position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,color-mix(in srgb,var(--tpie-a) 22%,transparent) 50%,transparent 70%) 0 0/250% 100%;animation:tpieSh 1.6s linear infinite}
-@keyframes tpieSh{from{background-position:150% 0}to{background-position:-100% 0}}
-.tpie-status{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:9px 15px;border-radius:999px;background:rgba(0,0,0,.72);color:#fff;font-size:12.5px;font-weight:600;white-space:nowrap;backdrop-filter:blur(8px)}
-.tpie-spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:tpieSp .8s linear infinite;display:inline-block}
-.tpie-spin.dark{border-color:rgba(0,0,0,.25);border-top-color:#111}
-@keyframes tpieSp{to{transform:rotate(360deg)}}
-.tpie-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.tpie-actions .btn{flex:1 1 auto}
-.tpie-meta{margin:10px 2px 0;font-size:11.5px;color:var(--muted)}
-@media(prefers-reduced-motion:reduce){.tpie-shimmer,.tpie-spin{animation:none}}
-</style>
-
 <script id="tp-call-text-clean">
 (function(){
-  /* Plain-language call messages: progress shows as "Connecting…"; real failures are no longer blanked out. */
-  var PROGRESS=/cloudflare|worker|connecting|connect securely|backup|switching|starting the call|deployed|server|voice service|authenticat/i;
+  var PROGRESS=/cloudflare|worker|connecting|connect securely|backup|switching|authenticat|starting the call|deployed|server|voice service/i;
   var FAIL=/could not|couldn't|failed|error|timed out|not responding|blocked/i;
-  var OWN={'Connecting…':1,'Voice connection problem. Tap End and try again, or use Type.':1};
   function clean(el){
-    var t=(el.textContent||'').trim(); if(!t||OWN[t]||/^(You|Zara):/.test(t)) return;
-    if(PROGRESS.test(t)) el.textContent = FAIL.test(t) ? 'Voice connection problem. Tap End and try again, or use Type.' : 'Connecting…';
+    var t=(el.textContent||'').trim(); if(!t||/^(You|Zara):/.test(t)) return;
+    if(PROGRESS.test(t)){ el.textContent = FAIL.test(t) ? 'Connection lost. Please try the call again.' : ''; }
   }
   function hook(){
     var cap=document.querySelector('.tpa-call-cap'); if(!cap){ setTimeout(hook,700); return; }
