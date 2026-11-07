@@ -12,146 +12,8 @@
 })();
 </script>
 <script>
-/* ===== Nbatools universal microphone =====
-   Records the microphone itself (works in Chrome, Firefox, Opera, Samsung, native-app wrappers...) and sends short
-   WAV clips to your speech-to-text Worker (stt-worker.js). It replaces the browser's own SpeechRecognition, so the
-   mic no longer depends on Chrome/Edge/Safari. Leave TP_STT_URL empty to keep the old browser-only behaviour.
-   Add ?stt=native to the app link to bypass this and use the browser's own speech recognition. */
-(function(){
-  var TP_STT_URL = ''; /* <-- paste your deployed Worker URL here, e.g. 'https://nbatools-stt.yourname.workers.dev' */
-  var NATIVE=window.SpeechRecognition||window.webkitSpeechRecognition||null;
-  window.__tpNativeSR=NATIVE;
-  var URL_=String(window.TRACKPORT_STT_URL||TP_STT_URL||'').trim();
-  if(!/^https:\/\//i.test(URL_)||/[?&]stt=native/.test(location.search)) return;
-  var AC=window.AudioContext||window.webkitAudioContext;
-  if(!AC||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return;
-  var sharedCtx=null, seq=0;
-  function ctx(){
-    if(!sharedCtx||sharedCtx.state==='closed'){ try{ sharedCtx=new AC(); }catch(e){ return null; } }
-    sharedCtx.__tpKeep=true;
-    if(sharedCtx.state==='suspended'){ try{ sharedCtx.resume(); }catch(e){} }
-    return sharedCtx;
-  }
-  /* iOS/Android only start audio after a tap, so warm the audio engine on the first touch. */
-  ['pointerdown','touchstart','click','keydown'].forEach(function(ev){ document.addEventListener(ev,function(){ ctx(); },true); });
-
-  function toWav(chunks,inRate){
-    var len=0,i,j; chunks.forEach(function(c){ len+=c.length; });
-    var all=new Float32Array(len), o=0; chunks.forEach(function(c){ all.set(c,o); o+=c.length; });
-    var outRate=16000, ratio=inRate/outRate, n=Math.floor(len/ratio), pcm=new Int16Array(n);
-    for(i=0;i<n;i++){
-      var a=Math.floor(i*ratio), b=Math.min(len,Math.max(a+1,Math.floor((i+1)*ratio))), sum=0;
-      for(j=a;j<b;j++) sum+=all[j];
-      var v=sum/(b-a); v=Math.max(-1,Math.min(1,v)); pcm[i]=v<0?v*0x8000:v*0x7fff;
-    }
-    var buf=new ArrayBuffer(44+pcm.length*2), dv=new DataView(buf);
-    function w(off,str){ for(var k=0;k<str.length;k++) dv.setUint8(off+k,str.charCodeAt(k)); }
-    w(0,'RIFF'); dv.setUint32(4,36+pcm.length*2,true); w(8,'WAVE'); w(12,'fmt '); dv.setUint32(16,16,true);
-    dv.setUint16(20,1,true); dv.setUint16(22,1,true); dv.setUint32(24,outRate,true); dv.setUint32(28,outRate*2,true);
-    dv.setUint16(32,2,true); dv.setUint16(34,16,true); w(36,'data'); dv.setUint32(40,pcm.length*2,true);
-    for(i=0;i<pcm.length;i++) dv.setInt16(44+i*2,pcm[i],true);
-    return new Blob([buf],{type:'audio/wav'});
-  }
-  function upload(blob,lang){
-    var ctrl=window.AbortController?new AbortController():null, tm=setTimeout(function(){ try{ ctrl&&ctrl.abort(); }catch(e){} },25000);
-    var u=URL_+(URL_.indexOf('?')<0?'?':'&')+'lang='+encodeURIComponent(String(lang||'en').slice(0,2).toLowerCase());
-    return fetch(u,{method:'POST',headers:{'Content-Type':'audio/wav'},body:blob,signal:ctrl?ctrl.signal:undefined})
-      .then(function(r){ if(!r.ok) throw new Error('stt '+r.status); return r.json(); })
-      .then(function(j){ clearTimeout(tm); return String((j&&j.text)||'').trim(); },function(e){ clearTimeout(tm); throw e; });
-  }
-
-  function TPSR(){
-    this.lang='en-US'; this.continuous=false; this.interimResults=false; this.maxAlternatives=1;
-    this.onstart=this.onend=this.onerror=this.onresult=this.onspeechstart=this.onspeechend=this.onaudiostart=null;
-    this._a=false; this._id=0; this._s=null; this._res=[]; this._q=Promise.resolve(); this._pending=0;
-  }
-  TPSR.gate=null;
-  TPSR.prototype._emit=function(name,ev){ var f=this[name]; if(typeof f==='function'){ try{ f.call(this,ev||{type:name.slice(2)}); }catch(e){ console.error(e); } } };
-  TPSR.prototype.start=function(){
-    if(this._a){ var er=new Error('recognition has already started'); er.name='InvalidStateError'; throw er; }
-    var self=this, id=++seq; this._a=true; this._id=id; this._res=[]; this._q=Promise.resolve(); this._pending=0; this._s=null;
-    navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}).then(function(stream){
-      if(!self._a||self._id!==id){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
-      self._open(stream);
-    }).catch(function(err){
-      if(self._id!==id||!self._a) return;
-      var n=err&&err.name;
-      self._fail(n==='NotAllowedError'||n==='SecurityError'||n==='PermissionDeniedError'?'not-allowed':'audio-capture');
-    });
-  };
-  TPSR.prototype._open=function(stream){
-    var self=this, c=ctx();
-    if(!c){ stream.getTracks().forEach(function(t){ t.stop(); }); this._fail('audio-capture'); return; }
-    var src=c.createMediaStreamSource(stream), proc=c.createScriptProcessor(4096,1,1), mute=c.createGain();
-    mute.gain.value=0; src.connect(proc); proc.connect(mute); mute.connect(c.destination);
-    var s={stream:stream,src:src,proc:proc,mute:mute,rate:c.sampleRate,noise:0.008,rec:false,chunks:[],pre:[],voiced:0,lastV:0,t0:0,startAt:Date.now(),sent:false};
-    this._s=s;
-    proc.onaudioprocess=function(ev){ if(self._s===s) self._tick(s,ev.inputBuffer.getChannelData(0)); };
-    this._emit('onaudiostart'); this._emit('onstart');
-  };
-  TPSR.prototype._tick=function(s,data){
-    var i, sum=0; for(i=0;i<data.length;i++) sum+=data[i]*data[i];
-    var rms=Math.sqrt(sum/data.length), now=Date.now(), gate=false;
-    try{ gate=!!(TPSR.gate&&TPSR.gate()); }catch(e){}
-    if(gate){ s.rec=false; s.chunks=[]; s.pre=[]; s.startAt=now; return; }   /* ignore Zara's own voice */
-    var copy=new Float32Array(data), thr=Math.max(0.012,s.noise*3.2), voice=rms>thr;
-    if(!voice&&!s.rec) s.noise=s.noise*0.95+rms*0.05;
-    if(voice){
-      s.lastV=now;
-      if(!s.rec){ s.rec=true; s.chunks=s.pre.slice(); s.pre=[]; s.t0=now; s.voiced=0; this._emit('onspeechstart'); }
-      s.voiced+=data.length/s.rate*1000;
-    }
-    if(s.rec){
-      s.chunks.push(copy);
-      if(now-s.lastV>(this.continuous?1000:900)||now-s.t0>25000) this._cut();
-    } else {
-      s.pre.push(copy); if(s.pre.length>4) s.pre.shift();
-      if(!this.continuous&&!s.sent&&now-s.startAt>9000) this._fail('no-speech');
-    }
-  };
-  TPSR.prototype._cut=function(){
-    var s=this._s; if(!s||!s.rec) return;
-    var chunks=s.chunks, voiced=s.voiced; s.rec=false; s.chunks=[]; this._emit('onspeechend');
-    if(voiced<220) return;   /* just a click or bump, not speech */
-    s.sent=true;
-    var wav=toWav(chunks,s.rate), self=this, id=this._id, lang=this.lang;
-    this._pending++;
-    if(!this.continuous) this._closeAudio();
-    this._q=this._q.then(function(){ return upload(wav,lang); }).then(function(text){
-      self._pending--; if(self._id!==id||!self._a) return;
-      if(text) self._result(text); else if(!self.continuous&&!self._pending) self._fail('no-speech');
-    },function(err){
-      self._pending--; if(self._id!==id||!self._a) return;
-      console.warn('[Nbatools stt]',err); self._fail('network');
-    });
-  };
-  TPSR.prototype._result=function(text){
-    var alt={transcript:text,confidence:0.9}, r=[alt]; r.isFinal=true; r.item=function(i){ return this[i]; };
-    var idx=this._res.length; this._res.push(r); this._res.item=function(i){ return this[i]; };
-    this._emit('onresult',{type:'result',resultIndex:idx,results:this._res});
-    if(!this.continuous) this._finish();
-  };
-  TPSR.prototype._closeAudio=function(){
-    var s=this._s; this._s=null; if(!s) return;
-    try{ s.proc.onaudioprocess=null; s.src.disconnect(); s.proc.disconnect(); s.mute.disconnect(); }catch(e){}
-    try{ s.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
-  };
-  TPSR.prototype._finish=function(){ if(!this._a) return; this._a=false; this._closeAudio(); this._id=++seq; this._emit('onend'); };
-  TPSR.prototype._fail=function(code){ if(!this._a) return; this._emit('onerror',{type:'error',error:code}); this._finish(); };
-  TPSR.prototype.stop=function(){
-    if(!this._a) return; var self=this, id=this._id;
-    if(this._s&&this._s.rec) this._cut();
-    this._closeAudio();
-    this._q.then(function(){ if(self._a&&self._id===id) self._finish(); });
-  };
-  TPSR.prototype.abort=function(){ if(this._a) this._finish(); };
-  TPSR.prototype.addEventListener=function(n,f){ this['on'+n]=f; };
-
-  try{ window.SpeechRecognition=TPSR; }catch(e){ try{ Object.defineProperty(window,'SpeechRecognition',{value:TPSR,configurable:true,writable:true}); }catch(e2){} }
-  try{ window.webkitSpeechRecognition=TPSR; }catch(e){ try{ Object.defineProperty(window,'webkitSpeechRecognition',{value:TPSR,configurable:true,writable:true}); }catch(e2){} }
-  window.__tpUniversalMic=true;
-  TPSR.gate=function(){ return !!(window.tpSttGate&&window.tpSttGate()); };
-})();
+/* Keeps a reference to the browser's own speech recognition (used by the wake-word feature). */
+window.__tpNativeSR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 </script>
 
 <script id="tp-h2c-oklch-fix">
@@ -27972,7 +27834,6 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     var wait=trail?1500:(/[?.!]$/.test(t)||w>=5)?250:(w<3?700:400);
     call.pendT=setTimeout(callFlush,wait);
   }
-  window.tpSttGate=function(){ try{ return !!(call.on&&isSpeaking()); }catch(e){ return false; } };
   function callRecInit(){
     var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR) return false;
     var r=new SR(); r.continuous=true; r.interimResults=true; r.lang=navigator.language||'en-US';
