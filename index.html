@@ -28941,8 +28941,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(!!rt.micMuted===want) return;
     try{ rt.client.toggleMute(); rt.micMuted=want; }catch(e){ console.warn('[Nbatools voice mic]',e); }
   }
+  /* Off by default (original behaviour). Add ?halfduplex=1 to the app link to test the mic-off-while-Zara-speaks mode. */
+  var TP_HALFDUPLEX=/[?&]halfduplex=1/.test(location.search||'');
   function rtAutoMic(rt){
-    if(!rt) return;
+    if(!rt||!TP_HALFDUPLEX) return;
     clearTimeout(rt.unmuteT);
     if(rt.status==='speaking'||rt.status==='thinking'&&rt.spoke&&rt.autoMute){
       rt.autoMute=true; rtApplyMic(rt);
@@ -29000,13 +29002,15 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     return "Microphone is blocked for this site in this browser. Tap the lock/site-settings icon next to the address bar, set Microphone to Allow, reload the page, then tap Call again. (Also check Android Settings > Apps > this browser > Permissions > Microphone.)";
   }
   /* Stable call mode: whole-sentence audio instead of the live audio stream, which breaks up ("Hel...lo") on slow or shaky mobile data.
-     Needs browser speech recognition (Chrome/Edge/Safari). Live streaming (with interruption) is the default. Add ?stable=1 to the link to use this mode, ?realtime=1 to go back. */
+     Needs browser speech recognition (Chrome/Edge/Safari). This is now the default call mode. Add ?realtime=1 to the link to use the Cloudflare live stream, ?stable=1 to come back. */
   function tpStableCall(){
     try{
       var q=location.search||'';
-      if(/[?&]stable=1/.test(q)) localStorage.setItem('tp-call-stable','1');
-      if(/[?&]realtime=1/.test(q)) localStorage.removeItem('tp-call-stable');
-      if(localStorage.getItem('tp-call-stable')!=='1') return false;
+      /* Default: the call listens with the browser's own speech recognition (same as the chat voice) and speaks whole sentences.
+         Add ?realtime=1 to the link to switch back to the Cloudflare live-stream call, ?stable=1 to return to this mode. */
+      if(/[?&]stable=1/.test(q)) localStorage.removeItem('tp-call-stable');
+      if(/[?&]realtime=1/.test(q)) localStorage.setItem('tp-call-stable','0');
+      if(localStorage.getItem('tp-call-stable')==='0') return false;
     }catch(e){ return false; }
     return !!(window.SpeechRecognition||window.webkitSpeechRecognition);
   }
@@ -29088,9 +29092,9 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           }
           if(rt.status==='speaking'){ tpRingStop(); rt.spoke=true; if(rt.wasSpeaking!==true){ rt.speakTurns=(rt.speakTurns||0)+1; if(rt.speakTurns>1&&!rt.gotText) console.warn('[Nbatools voice] Zara started a 2nd turn before the caller said anything (server-side repeat greeting)'); } rt.wasSpeaking=true; } else rt.wasSpeaking=false;
           if(rt.status!=='listening'){ rt.loudFirst=0; rt.lastLoud=0; } /* sound while Zara talks / thinks is not the user */
-          if(rt.status==='listening')cEl.cap.textContent=(rt.ringUntil&&Date.now()<rt.ringUntil)?'Ringing…':'Listening — speak naturally.';
+          if(rt.status==='listening')cEl.cap.textContent=(rt.ringUntil&&Date.now()<rt.ringUntil)?'Ringing…':(TP_HALFDUPLEX?'Listening — speak naturally.':'Listening — speak naturally. You can interrupt Zara.');
           else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
-          else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking…';
+          else if(rt.status==='speaking')cEl.cap.textContent=(TP_HALFDUPLEX?'Zara is speaking…':'Zara is speaking · talk to interrupt');
           callState();
         });
         client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
