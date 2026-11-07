@@ -27858,6 +27858,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t; else interim+=t; }
       /* While Zara talks (and for a moment after), only react to words that are NOT her own voice coming back through the mic. */
       var sp=isSpeaking();
+      if(window.__tpHalfDuplex!==false&&(sp||busy||Date.now()-(call.spokeEnd||0)<350)) return; /* no interrupting: ignore anything heard while Zara talks, or is still working out her next sentence */
       if(sp||Date.now()-(call.spokeEnd||0)<1800){
         var heard=(fin+' '+interim).toLowerCase().replace(/[^a-z0-9' ]+/g,' ').split(/\s+/).filter(Boolean);
         if(heard.length<2) return;
@@ -28938,19 +28939,20 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   function rtApplyMic(rt){
     if(!rt||!rt.client) return;
     var want=!!(call.muted||rt.autoMute);
-    if(!!rt.micMuted===want) return;
+    var cur=(typeof rt.client.isMuted==='boolean')?rt.client.isMuted:!!rt.micMuted;
+    if(cur===want){ rt.micMuted=want; return; }
     try{ rt.client.toggleMute(); rt.micMuted=want; }catch(e){ console.warn('[Nbatools voice mic]',e); }
   }
-  /* Off by default (original behaviour). Add ?halfduplex=1 to the app link to test the mic-off-while-Zara-speaks mode. */
-  var TP_HALFDUPLEX=/[?&]halfduplex=1/.test(location.search||'');
+  /* ON by default: no interruptions. Add ?halfduplex=0 to the app link to allow interrupting Zara again. */
+  var TP_HALFDUPLEX=!/[?&]halfduplex=0/.test(location.search||''); window.__tpHalfDuplex=TP_HALFDUPLEX;
   function rtAutoMic(rt){
     if(!rt||!TP_HALFDUPLEX) return;
     clearTimeout(rt.unmuteT);
-    if(rt.status==='speaking'||rt.status==='thinking'&&rt.spoke&&rt.autoMute){
+    if(rt.status==='speaking'||rt.replyOpen||(rt.status==='thinking'&&rt.spoke&&rt.autoMute)){
       rt.autoMute=true; rtApplyMic(rt);
     } else if(rt.autoMute){
-      /* short pause so the tail of Zara's voice dies away before the mic opens again */
-      rt.unmuteT=setTimeout(function(){ if(!call.on||call.rt!==rt) return; rt.autoMute=false; rtApplyMic(rt); },450);
+      /* tiny pause so the very end of Zara's voice does not leak in, then the mic opens again */
+      rt.unmuteT=setTimeout(function(){ if(!call.on||call.rt!==rt) return; rt.autoMute=false; rtApplyMic(rt); },180);
     }
   }
   function rtStopPlayback(){
@@ -29039,7 +29041,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         var old=call.rt;
         if(old&&old.client){ clearInterval(old.diag); try{old.client.endCall();}catch(e){} try{old.client.disconnect();}catch(e){} }
         var host=hosts[idx];
-        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):'')});
+        /* interruptThreshold/interruptChunks: by default ANY sound the mic hears while Zara talks (even her own voice from the phone speaker)
+           counts as the caller interrupting and cuts her audio mid-sentence - that is the cracking/skipping. Much higher values make it
+           ignore the speaker echo; only a really loud caller can still cut in. */
+        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):''),interruptThreshold:(window.__tpHalfDuplex===false?0.4:2),interruptChunks:(window.__tpHalfDuplex===false?5:99)});
         var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false,micMuted:false,autoMute:false};
         call.rt=rt;
         function failover(why){
@@ -29072,6 +29077,17 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         client.addEventListener('custommessage',function(ev){
           var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
           if(!d||!call.on||call.rt!==rt)return;
+          if(d.type==='trackport_reply_start'){
+            /* Zara is about to say a whole reply (it can have pauses in it): keep the mic off until the reply is completely finished. */
+            rt.replyOpen=true; clearTimeout(rt.replyT);
+            rt.replyT=setTimeout(function(){ if(call.on&&call.rt===rt){ rt.replyOpen=false; try{ rtAutoMic(rt); }catch(e){} } },30000); /* safety: never stay muted if the end signal is lost */
+            if(TP_HALFDUPLEX){ rt.autoMute=true; try{ rtApplyMic(rt); }catch(e){} }
+            return;
+          }
+          if(d.type==='trackport_reply_done'){
+            rt.replyOpen=false; clearTimeout(rt.replyT); try{ rtAutoMic(rt); }catch(e){}
+            return;
+          }
           if(d.type==='trackport_auth_ok'){
             /* The call is started once per connection: a repeated auth reply must never start it (and Zara's greeting) again. */
             if(rt.started){ console.warn('[Nbatools voice] duplicate auth_ok ignored'); return; } rt.started=true;
@@ -29341,7 +29357,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     var rt=call.rt;
     var callTr=msgs.slice(call.msgStart||0).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',text:String(m.text||'')}; });
     call.msgStart=0;
-    if(rt){ clearTimeout(rt.byeT); clearTimeout(rt.unmuteT); }
+    if(rt){ clearTimeout(rt.byeT); clearTimeout(rt.unmuteT); clearTimeout(rt.replyT); }
     if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
     call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
     /* Hang up means silence: stop Zara's voice, the listener, any reply still being written, and every audio engine the call opened. */
