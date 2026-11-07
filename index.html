@@ -29159,6 +29159,8 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         call.rt=rt;
         function failover(why){
           if(!call.on||call.rt!==rt||rt.gotText) return false;
+          /* Once Zara has spoken, never restart the call or fall back (that made her introduce herself a second time). */
+          if(rt.spoke){ if(!/^speech recognition/.test(String(why))) cEl.cap.textContent='Voice connection problem. Tap End and try calling again.'; return true; }
           if(hosts.length<2){ rt.failing=true; tpVoiceMarkBad(host); callFallback(why); return true; }
           if(rt.failing) return true; /* already switching - ignore duplicate triggers */
           rt.failing=true;
@@ -29200,7 +29202,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
             if(rt.status==='speaking') rt.byeSpoke=true;
             else if(rt.status==='listening' && rt.byeSpoke){ clearTimeout(rt.byeT); rt.byeT=setTimeout(function(){ if(call.on&&call.rt===rt) callEnd(); },700); }
           }
-          if(rt.status==='speaking')tpRingStop();
+          if(rt.status==='speaking'){tpRingStop();rt.spoke=true;}
           if(rt.status==='listening'){rt.heardAt=0;rt.listenAt=0;}
           if(rt.status==='listening')cEl.cap.textContent=(rt.ringUntil&&Date.now()<rt.ringUntil)?'Ringing…':'Listening — speak naturally. You can interrupt Zara.';
           else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
