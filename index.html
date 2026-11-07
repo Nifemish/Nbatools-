@@ -6123,6 +6123,23 @@ h2,.hero h2,.lp-hero h1,.auth-form h2,.onboard-copy h1,.visual-copy h1{font-size
  h2,.hero h2,.lp-hero h1,.auth-form h2,.onboard-copy h1,.visual-copy h1{font-size:clamp(1.8rem,7.5vw,2.65rem)!important}
 }
 </style>
+<style id="tp-preauth-dark-header">
+/* Light mode header starts at the dashboard. Landing, sign in and registration keep the dark header. */
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth,html[data-theme="light"] body .topbar.tp-ref-header.tp-axe-header.tp-pre-auth{background:color-mix(in oklch,var(--axe-bg) 80%,transparent)!important;color:var(--axe-ink)!important;-webkit-backdrop-filter:saturate(1.5) blur(20px)!important;backdrop-filter:saturate(1.5) blur(20px)!important;border-bottom:1px solid color-mix(in oklch,var(--axe-accent) 20%,var(--axe-line))!important;box-shadow:0 22px 50px -34px rgba(0,0,0,.7)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth::after{background:linear-gradient(90deg,transparent 0,color-mix(in oklch,var(--axe-accent) 45%,transparent) 50%,transparent 100%)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-brand,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-brand b{color:var(--axe-ink)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-brand b span,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-brand svg{color:var(--axe-accent)!important;fill:var(--axe-accent)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-brand small{color:var(--axe-copy)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-icon,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-menu{background:transparent!important;border:1px solid color-mix(in oklch,var(--axe-accent) 32%,transparent)!important;color:var(--axe-ink)!important;box-shadow:none!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-icon:hover,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-menu:hover{border-color:var(--axe-accent)!important;color:var(--axe-accent)!important;background:transparent!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-icon svg,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-ref-menu svg{stroke:currentColor!important;color:inherit!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-header-cta{background:var(--axe-accent)!important;color:var(--axe-on-accent)!important;border:0!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-signin,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-desktop>.tp-nav-item,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-more-btn{color:var(--axe-ink)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-desktop>.tp-nav-item:hover,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-desktop>.tp-nav-item.is-active,html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-signin:hover{color:var(--axe-accent)!important}
+html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-desktop>.tp-nav-item::after{background:var(--axe-accent)!important}
+/* Welcome page: no header (logo / Skip bar) */
+.tpw-top{display:none!important}
+</style>
 </head>
 <body>
 <script id="tp-svg-icons">
@@ -6749,7 +6766,7 @@ function topbar(title='Nbatools',back=''){
  const inApp = !!state.user;
  const signin = inApp ? '' : `<button type="button" class="tp-axe-signin" onclick="nav('login')">Sign in</button>`;
  const cta = inApp ? '' : `<button type="button" class="tp-axe-header-cta" onclick="nav(state.user?'create':'welcome')">${state.user?'Create Shipment':'Get Started'} ${tpRefIcon('arrow')}</button>`;
- return `<header class="topbar tp-ref-header tp-axe-header"><nav class="topbar-nav" aria-label="Nbatools navigation">${tpRefBrand()}<div class="tp-axe-desktop">${tpTopbarMenu(inApp)}</div><div class="tp-ref-actions">${signin}${inApp&&typeof tpCreditChip==='function'?tpCreditChip():''}<button class="tp-ref-icon tp-ref-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch to ${state.theme==='dark'?'light':'dark'} mode" title="Switch theme"><span aria-hidden="true">${tpRefIcon(state.theme==='dark'?'sun':'moon')}</span></button>${cta}<button class="tp-ref-menu" type="button" onclick="openAppMenu();this.setAttribute('aria-expanded','true')" id="tp-menu-open" aria-label="Open menu" aria-expanded="false">${tpRefIcon('menu')}</button></div></nav></header>${appDrawerMarkup()}`;
+ return `<header class="topbar tp-ref-header tp-axe-header${inApp?'':' tp-pre-auth'}"><nav class="topbar-nav" aria-label="Nbatools navigation">${tpRefBrand()}<div class="tp-axe-desktop">${tpTopbarMenu(inApp)}</div><div class="tp-ref-actions">${signin}${inApp&&typeof tpCreditChip==='function'?tpCreditChip():''}<button class="tp-ref-icon tp-ref-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch to ${state.theme==='dark'?'light':'dark'} mode" title="Switch theme"><span aria-hidden="true">${tpRefIcon(state.theme==='dark'?'sun':'moon')}</span></button>${cta}<button class="tp-ref-menu" type="button" onclick="openAppMenu();this.setAttribute('aria-expanded','true')" id="tp-menu-open" aria-label="Open menu" aria-expanded="false">${tpRefIcon('menu')}</button></div></nav></header>${appDrawerMarkup()}`;
 }
 
 function tpRefGoSection(id){closeAppMenu();if(document.getElementById(id)){document.getElementById(id).scrollIntoView({behavior:'smooth'});return;}if(state.user){nav('home');return;}nav('landing');setTimeout(function(){document.getElementById(id)?.scrollIntoView({behavior:'smooth'});},400);}
@@ -25022,7 +25039,8 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
 
 <div id="tpa-root">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-    <symbol id="tpa-chat" viewBox="0 0 24 24"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.2 3.6a.6.6 0 0 1-1-.46V16A3.5 3.5 0 0 1 4 12.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path class="tpa-star" d="M12 6.4l.95 2.4 2.4.95-2.4.95-.95 2.4-.95-2.4-2.4-.95 2.4-.95z" fill="currentColor"/></symbol>
+    <symbol id="tpa-chat-solid" viewBox="0 0 24 24"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.2 3.6a.6.6 0 0 1-1-.46V16A3.5 3.5 0 0 1 4 12.5z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 6.4l.95 2.4 2.4.95-2.4.95-.95 2.4-.95-2.4-2.4-.95 2.4-.95z" style="fill:var(--tpa-star,#111)"/></symbol>
+<symbol id="tpa-chat" viewBox="0 0 24 24"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.2 3.6a.6.6 0 0 1-1-.46V16A3.5 3.5 0 0 1 4 12.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path class="tpa-star" d="M12 6.4l.95 2.4 2.4.95-2.4.95-.95 2.4-.95-2.4-2.4-.95 2.4-.95z" fill="currentColor"/></symbol>
     <symbol id="tpa-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="tpa-spk" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="tpa-spk-off" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
@@ -25059,7 +25077,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   </div>
 
   <button class="tpa-fab" id="tpa-fab" aria-label="Open Zara, NBATOOLS AI assistant" type="button">
-    <span class="tpa-core"><svg class="tpa-i"><use href="#tpa-chat"/></svg></span><span class="tpa-live"></span><span class="tpa-badge" id="tpa-badge" aria-hidden="true">1</span>
+    <span class="tpa-core"><svg class="tpa-i"><use href="#tpa-chat-solid"/></svg></span><span class="tpa-live"></span><span class="tpa-badge" id="tpa-badge" aria-hidden="true">1</span>
   </button>
 </div>
 
@@ -25809,7 +25827,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   }
   /* Speech queue: a new bubble waits for the previous one to finish instead of cutting it off mid-sentence */
   var speechQ=[], speechBusy=false, speechInternal=false, speechWD=null, ackSpeech='';
-  function speakQ(text){ if(!voiceOn) return; try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(call.on){ try{ ttsPrefetch(text); }catch(e){} } if(!speechBusy) nextSpeech(); }
+  function speakQ(text){ if(!voiceOn) return; if(call.on&&call.rt&&!call.fb) return; /* live call already speaks this reply: never play it a second time */ try{ call.said=((call.said||'')+' '+text).slice(-700); }catch(e){} speechQ.push(text); if(call.on){ try{ ttsPrefetch(text); }catch(e){} } if(!speechBusy) nextSpeech(); }
   function nextSpeech(){
     clearTimeout(speechWD);
     if(!speechQ.length){
@@ -30827,6 +30845,9 @@ html body #tpa-fab .tpa-core .tpa-i .tpa-star,html body #tpa-fab .tpa-core .tpa-
 html[data-theme="light"] body #tpa-fab .tpa-core .tpa-i{color:#111!important;filter:none!important}
 html[data-theme="light"] body #tpa-fab .tpa-core .tpa-i .tpa-star,html[data-theme="light"] body #tpa-fab .tpa-core .tpa-star{color:#111!important}
 html body .tpa-fab .tpa-live{width:11px;height:11px;right:0;top:1px;border-width:2px}
+/* Dashboard chat icon: a filled (solid) icon, no background circle. */
+html body #tpa-fab{--tpa-star:#111}
+html[data-theme="light"] body #tpa-fab{--tpa-star:#fff}
 </style>
 <style id="tp-no-yellow-auth-buttons">
 /* Welcome page "Already have an account? Log in" and the "Google" sign-in button: no yellow fill. */
