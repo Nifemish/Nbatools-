@@ -28045,7 +28045,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       try{ b.classList.toggle('active',!!call.on); }catch(e){}
     }catch(e){ console.warn('[tpa] call button',e); }
   }
-  tpEnsureCallBtn(); setInterval(tpEnsureCallBtn,1500);
+  tpEnsureCallBtn(); setInterval(function(){ try{ if(call&&call.on) return; }catch(e){} tpEnsureCallBtn(); },1500);
 
   /* ===== "Hey Zara" wake word: always listening while the app is open and Zara is idle ===== */
   var WK='tpa_wake', WAKE_RE=/\b(?:(?:hey|hay|hi|hello|ok|okay)[\s,]+(?:zara|zarah|zahra|zaara|zaira|sara|sarah|zora|zarra|xara|sahra|zahara)|zara|zarah|zaara|zaira)\b[\s,.!?:-]*/i;
@@ -28899,7 +28899,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     });
   })();
   window.addEventListener('hashchange',refresh);
-  setInterval(refresh,400);
+  var tpRefreshTick=0; setInterval(function(){ try{ if(call&&call.on&&(++tpRefreshTick%6)) return; }catch(e){} refresh(); },400); /* 6x slower while a call is running */
 
   /* ===== Cloudflare Agents real-time voice call (no Gemini) =====
      Continuous microphone audio, server-side turn detection, streamed GLM replies,
@@ -29026,6 +29026,15 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     try{stopVoice();}catch(e){}
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),liveT0:0,speech:false,busy:0,state:'connecting',msgStart:msgs.length,fb:false,useSR:false,sr:null,srOn:false,srDead:false,srErr:0,pend:''});
     call.rt={client:null,seen:0,authed:false,status:'connecting',timer:null};call.rung=false;try{tpRingPrepare();}catch(e){}
+    try{ document.documentElement.classList.add('tp-call-lite'); }catch(e){}
+    /* Build stamp: proves which version of the app is really running (an installed web app can keep serving an old cached copy). */
+    try{
+      var _bt='Nbatools build 2026-11-07 r9 · '+(tpStableCall()?'browser-voice call':'cloud-voice call')+(window.__tpHalfDuplex===false?' · interrupts on':' · no-interrupt');
+      console.log('[Nbatools]',_bt);
+      var _bd=document.createElement('div'); _bd.textContent=_bt;
+      _bd.style.cssText='position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2147483647;background:rgba(0,0,0,.82);color:#ffd54a;font:600 11px/1.3 system-ui,sans-serif;padding:6px 12px;border-radius:999px;pointer-events:none;max-width:92vw;text-align:center';
+      document.body.appendChild(_bd); setTimeout(function(){ try{ _bd.remove(); }catch(e){} },9000);
+    }catch(e){}
     call.prevVoice=voiceOn;
     voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='calling…';try{kpReset();}catch(e){}cEl.orb.className='tpa-orb connecting';callSync();callState();
     clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
@@ -29119,7 +29128,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
         });
         client.addEventListener('audiolevelchange',function(ev){
-          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.02) rt.micSeen=true; if(n>0.12&&rt.status==='listening'&&!call.muted){ var tn=Date.now(); if(!rt.loudFirst||tn-rt.lastLoud>3000) rt.loudFirst=tn; rt.lastLoud=tn; } }
+          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ var _lv=Date.now(); if(_lv-(rt.lvlAt||0)>140){ rt.lvlAt=_lv; cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); } if(n>0.02) rt.micSeen=true; if(n>0.12&&rt.status==='listening'&&!call.muted){ var tn=Date.now(); if(!rt.loudFirst||tn-rt.lastLoud>3000) rt.loudFirst=tn; rt.lastLoud=tn; } }
         });
         client.addEventListener('error',function(ev){
           var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
@@ -29360,6 +29369,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(rt){ clearTimeout(rt.byeT); clearTimeout(rt.unmuteT); clearTimeout(rt.replyT); }
     if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
     call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
+    try{ document.documentElement.classList.remove('tp-call-lite'); }catch(e){}
     /* Hang up means silence: stop Zara's voice, the listener, any reply still being written, and every audio engine the call opened. */
     try{ call.aborted=true; if(call.ctrl) call.ctrl.abort(); }catch(e){}
     try{ if(call.sr){ var _sr=call.sr; _sr.onend=_sr.onerror=_sr.onresult=_sr.onstart=null; _sr.abort(); } }catch(e){} call.sr=null; call.srOn=false;
@@ -30296,6 +30306,15 @@ html[data-theme="light"] .tpd .tpd-c .tpd-ic{color:inherit!important}
 @media(min-width:700px){html body .tpd .tpd-bar{width:440px!important}}
 </style>
 
+<style id="tp-call-lite">
+/* While a voice call is running, switch off every costly visual effect (blur/glass, animations, transitions, shadows) so the phone
+   spends its power on the audio. The normal look comes back automatically when the call ends. */
+html.tp-call-lite *,html.tp-call-lite *::before,html.tp-call-lite *::after{
+  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  animation:none!important;transition:none!important;
+  box-shadow:none!important;text-shadow:none!important;filter:none!important;will-change:auto!important;scroll-behavior:auto!important}
+html.tp-call-lite .tpa-orb{transform:none!important}
+</style>
 <style id="tp-header-luxe-light">
 /* ===== Light mode header: white frosted glass, everything black (dark mode untouched) ===== */
 html[data-theme="light"] body .tp-ref-header.tp-axe-header,html[data-theme="light"] body .topbar.tp-ref-header{
