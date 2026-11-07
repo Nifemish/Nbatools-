@@ -28933,6 +28933,24 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   var TP_VOICE_AGENT='TrackPortVoiceAgent';
   var tpVoiceClientModule=null;
   function rtEventValue(ev){ return ev && ev.detail!==undefined ? ev.detail : ev; }
+  /* Half-duplex call: the microphone is switched off while Zara is speaking (so she can never hear herself through the
+     speaker) and switched back on when she finishes. The user's own Mute button still wins. */
+  function rtApplyMic(rt){
+    if(!rt||!rt.client) return;
+    var want=!!(call.muted||rt.autoMute);
+    if(!!rt.micMuted===want) return;
+    try{ rt.client.toggleMute(); rt.micMuted=want; }catch(e){ console.warn('[Nbatools voice mic]',e); }
+  }
+  function rtAutoMic(rt){
+    if(!rt) return;
+    clearTimeout(rt.unmuteT);
+    if(rt.status==='speaking'||rt.status==='thinking'&&rt.spoke&&rt.autoMute){
+      rt.autoMute=true; rtApplyMic(rt);
+    } else if(rt.autoMute){
+      /* short pause so the tail of Zara's voice dies away before the mic opens again */
+      rt.unmuteT=setTimeout(function(){ if(!call.on||call.rt!==rt) return; rt.autoMute=false; rtApplyMic(rt); },450);
+    }
+  }
   function rtStopPlayback(){
     var rt=call.rt; if(!rt) return;
     try{ if(rt.client) rt.client.endCall(); }catch(e){}
@@ -29018,7 +29036,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         if(old&&old.client){ clearInterval(old.diag); try{old.client.endCall();}catch(e){} try{old.client.disconnect();}catch(e){} }
         var host=hosts[idx];
         var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):'')});
-        var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false};
+        var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false,micMuted:false,autoMute:false};
         call.rt=rt;
         function failover(why){
           if(!call.on||call.rt!==rt||rt.gotText) return false;
@@ -29051,6 +29069,8 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
           if(!d||!call.on||call.rt!==rt)return;
           if(d.type==='trackport_auth_ok'){
+            /* The call is started once per connection: a repeated auth reply must never start it (and Zara's greeting) again. */
+            if(rt.started){ console.warn('[Nbatools voice] duplicate auth_ok ignored'); return; } rt.started=true;
             rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='Ringing…';call.rung=true;rt.ringUntil=Date.now()+5600;tpRingStart();
             Promise.resolve(client.startCall()).catch(function(e){console.error('[Nbatools voice start]',e);if(!failover('start failed'))callFallback('start failed');});
           } else if(d.type==='trackport_auth_error'){
@@ -29061,15 +29081,16 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           var st=rtEventValue(ev); if(st&&typeof st==='object')st=st.status||st.state||st.value;
           if(!call.on||call.rt!==rt)return;
           rt.status=String(st||'listening').toLowerCase();
+          try{ rtAutoMic(rt); }catch(e){}
           if(rt.bye){
             if(rt.status==='speaking') rt.byeSpoke=true;
             else if(rt.status==='listening' && rt.byeSpoke){ clearTimeout(rt.byeT); rt.byeT=setTimeout(function(){ if(call.on&&call.rt===rt) callEnd(); },700); }
           }
-          if(rt.status==='speaking'){tpRingStop();rt.spoke=true;}
+          if(rt.status==='speaking'){ tpRingStop(); rt.spoke=true; if(rt.wasSpeaking!==true){ rt.speakTurns=(rt.speakTurns||0)+1; if(rt.speakTurns>1&&!rt.gotText) console.warn('[Nbatools voice] Zara started a 2nd turn before the caller said anything (server-side repeat greeting)'); } rt.wasSpeaking=true; } else rt.wasSpeaking=false;
           if(rt.status!=='listening'){ rt.loudFirst=0; rt.lastLoud=0; } /* sound while Zara talks / thinks is not the user */
-          if(rt.status==='listening')cEl.cap.textContent=(rt.ringUntil&&Date.now()<rt.ringUntil)?'Ringing…':'Listening — speak naturally. You can interrupt Zara.';
+          if(rt.status==='listening')cEl.cap.textContent=(rt.ringUntil&&Date.now()<rt.ringUntil)?'Ringing…':'Listening — speak naturally.';
           else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
-          else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking · talk to interrupt';
+          else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking…';
           callState();
         });
         client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
@@ -29137,7 +29158,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   function callMute(){
     call.muted=!call.muted;
     var rt=call.rt;
-    try{if(rt&&rt.client)rt.client.toggleMute();}catch(e){console.warn('[Nbatools voice mute]',e);}
+    try{ rtApplyMic(rt); }catch(e){console.warn('[Nbatools voice mute]',e);}
     cEl.cap.textContent=call.muted?'Microphone muted':'Listening — speak naturally.';
     callSync();callState();
   }
@@ -29316,7 +29337,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     var rt=call.rt;
     var callTr=msgs.slice(call.msgStart||0).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',text:String(m.text||'')}; });
     call.msgStart=0;
-    if(rt){ clearTimeout(rt.byeT); }
+    if(rt){ clearTimeout(rt.byeT); clearTimeout(rt.unmuteT); }
     if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
     call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
     /* Hang up means silence: stop Zara's voice, the listener, any reply still being written, and every audio engine the call opened. */
