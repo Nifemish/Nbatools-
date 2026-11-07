@@ -28045,7 +28045,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       try{ b.classList.toggle('active',!!call.on); }catch(e){}
     }catch(e){ console.warn('[tpa] call button',e); }
   }
-  tpEnsureCallBtn(); setInterval(function(){ try{ if(call&&call.on) return; }catch(e){} tpEnsureCallBtn(); },1500);
+  tpEnsureCallBtn(); setInterval(tpEnsureCallBtn,1500);
 
   /* ===== "Hey Zara" wake word: always listening while the app is open and Zara is idle ===== */
   var WK='tpa_wake', WAKE_RE=/\b(?:(?:hey|hay|hi|hello|ok|okay)[\s,]+(?:zara|zarah|zahra|zaara|zaira|sara|sarah|zora|zarra|xara|sahra|zahara)|zara|zarah|zaara|zaira)\b[\s,.!?:-]*/i;
@@ -28899,7 +28899,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     });
   })();
   window.addEventListener('hashchange',refresh);
-  var tpRefreshTick=0; setInterval(function(){ try{ if(call&&call.on&&(++tpRefreshTick%6)) return; }catch(e){} refresh(); },400); /* 6x slower while a call is running */
+  setInterval(refresh,400);
 
   /* ===== Cloudflare Agents real-time voice call (no Gemini) =====
      Continuous microphone audio, server-side turn detection, streamed GLM replies,
@@ -29005,15 +29005,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   }
   /* Stable call mode: whole-sentence audio instead of the live audio stream, which breaks up ("Hel...lo") on slow or shaky mobile data.
      Needs browser speech recognition (Chrome/Edge/Safari). This is now the default call mode. Add ?realtime=1 to the link to use the Cloudflare live stream, ?stable=1 to come back. */
+  /* Stable call mode is the default: complete spoken sentences avoid fragments caused by a live audio stream
+     on slow or unstable mobile connections. Only an explicit ?realtime=1 opts into the live stream. */
   function tpStableCall(){
-    try{
-      var q=location.search||'';
-      /* Default: the call listens with the browser's own speech recognition (same as the chat voice) and speaks whole sentences.
-         Add ?realtime=1 to the link to switch back to the Cloudflare live-stream call, ?stable=1 to return to this mode. */
-      if(/[?&]stable=1/.test(q)) localStorage.removeItem('tp-call-stable');
-      if(/[?&]realtime=1/.test(q)) localStorage.setItem('tp-call-stable','0');
-      if(localStorage.getItem('tp-call-stable')==='0') return false;
-    }catch(e){ return false; }
+    if(/[?&]realtime=1(?:&|$)/.test(location.search||'')) return false;
     return !!(window.SpeechRecognition||window.webkitSpeechRecognition);
   }
   async function callStart(opts){
@@ -29026,15 +29021,6 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     try{stopVoice();}catch(e){}
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),liveT0:0,speech:false,busy:0,state:'connecting',msgStart:msgs.length,fb:false,useSR:false,sr:null,srOn:false,srDead:false,srErr:0,pend:''});
     call.rt={client:null,seen:0,authed:false,status:'connecting',timer:null};call.rung=false;try{tpRingPrepare();}catch(e){}
-    try{ document.documentElement.classList.add('tp-call-lite'); }catch(e){}
-    /* Build stamp: proves which version of the app is really running (an installed web app can keep serving an old cached copy). */
-    try{
-      var _bt='Nbatools build 2026-11-07 r9 · '+(tpStableCall()?'browser-voice call':'cloud-voice call')+(window.__tpHalfDuplex===false?' · interrupts on':' · no-interrupt');
-      console.log('[Nbatools]',_bt);
-      var _bd=document.createElement('div'); _bd.textContent=_bt;
-      _bd.style.cssText='position:fixed;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:2147483647;background:rgba(0,0,0,.82);color:#ffd54a;font:600 11px/1.3 system-ui,sans-serif;padding:6px 12px;border-radius:999px;pointer-events:none;max-width:92vw;text-align:center';
-      document.body.appendChild(_bd); setTimeout(function(){ try{ _bd.remove(); }catch(e){} },9000);
-    }catch(e){}
     call.prevVoice=voiceOn;
     voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='calling…';try{kpReset();}catch(e){}cEl.orb.className='tpa-orb connecting';callSync();callState();
     clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
@@ -29128,7 +29114,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
         });
         client.addEventListener('audiolevelchange',function(ev){
-          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ var _lv=Date.now(); if(_lv-(rt.lvlAt||0)>140){ rt.lvlAt=_lv; cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); } if(n>0.02) rt.micSeen=true; if(n>0.12&&rt.status==='listening'&&!call.muted){ var tn=Date.now(); if(!rt.loudFirst||tn-rt.lastLoud>3000) rt.loudFirst=tn; rt.lastLoud=tn; } }
+          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.02) rt.micSeen=true; if(n>0.12&&rt.status==='listening'&&!call.muted){ var tn=Date.now(); if(!rt.loudFirst||tn-rt.lastLoud>3000) rt.loudFirst=tn; rt.lastLoud=tn; } }
         });
         client.addEventListener('error',function(ev){
           var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
@@ -29369,7 +29355,6 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(rt){ clearTimeout(rt.byeT); clearTimeout(rt.unmuteT); clearTimeout(rt.replyT); }
     if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
     call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
-    try{ document.documentElement.classList.remove('tp-call-lite'); }catch(e){}
     /* Hang up means silence: stop Zara's voice, the listener, any reply still being written, and every audio engine the call opened. */
     try{ call.aborted=true; if(call.ctrl) call.ctrl.abort(); }catch(e){}
     try{ if(call.sr){ var _sr=call.sr; _sr.onend=_sr.onerror=_sr.onresult=_sr.onstart=null; _sr.abort(); } }catch(e){} call.sr=null; call.srOn=false;
@@ -29845,7 +29830,7 @@ html body .spacer-nav{height:calc(84px + env(safe-area-inset-bottom))!important;
 /* ===== Zara call screen: iPhone-style layout, Nbatools accent ===== */
 html body .tpa-call{--tpc:var(--axe-accent,var(--accent,#ffd54a));position:absolute;inset:0;display:flex!important;flex-direction:column;align-items:center;gap:0;overflow:hidden;color:#fff;border-radius:0!important;
   padding:calc(30px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px))!important;
-  background:radial-gradient(90% 46% at 50% 0%,color-mix(in srgb,var(--tpc) 20%,transparent),transparent 72%),linear-gradient(180deg,#14191a,#07090a 78%)!important}
+  background:#0b0e0d!important}
 html body .tpa-call::before,html body .tpa-call::after{content:none!important;display:none!important}
 html body .tpa-call[hidden]{display:none!important}
 html body .tpa-call-top{display:flex!important;flex-direction:column!important;padding-top:4px;align-items:center;justify-content:center;gap:6px!important;width:100%;font-size:inherit!important;letter-spacing:0!important;text-align:center}
@@ -29857,14 +29842,13 @@ html body .tpa-call.is-connecting .tpa-call-top time{visibility:hidden}
 html body .tpa-orb-wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0;padding:10px 0}
 html body .tpa-orb{--lvl:0;width:min(58vw,220px)!important;height:min(58vw,220px)!important;border-radius:50%!important;border:3px solid var(--tpc)!important;
   background:var(--zara-img) center 22%/cover no-repeat #111!important;
-  box-shadow:0 0 0 calc(8px + var(--lvl)*26px) color-mix(in srgb,var(--tpc) 14%,transparent),0 0 64px color-mix(in srgb,var(--tpc) 24%,transparent)!important}
-html body .tpa-orb.thinking,html body .tpa-orb.connecting{animation:tpaBreath 1.5s ease-in-out infinite!important;border-radius:50%!important}
-html body .tpa-orb.speaking{box-shadow:0 0 0 14px color-mix(in srgb,var(--tpc) 20%,transparent),0 0 0 30px color-mix(in srgb,var(--tpc) 9%,transparent),0 24px 60px rgba(0,0,0,.6)!important}
+  box-shadow:none!important;transform:none!important;transition:none!important}
+html body .tpa-orb.thinking,html body .tpa-orb.connecting,html body .tpa-orb.speaking{animation:none!important;border-radius:50%!important;box-shadow:none!important}
 html body .tpa-orb.muted{filter:grayscale(.9) brightness(.7)!important}
 html body .tpa-call-state{margin:0 0 8px!important;padding:6px 14px;border-radius:999px;font-size:13px!important;font-weight:600;letter-spacing:.03em;text-align:center;color:var(--tpc)!important;background:color-mix(in srgb,var(--tpc) 11%,transparent)!important;border:1px solid color-mix(in srgb,var(--tpc) 38%,transparent)!important}
 html body .tpa-call-cap{min-height:0!important;width:100%;max-width:420px;margin:0 0 16px!important;padding:0 6px;font-size:14px!important;line-height:1.45;text-align:center;color:rgba(255,255,255,.78);opacity:1!important;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 html body .tpa-call-cap:empty{display:none!important}
-html body .tpa-call-btns{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 4px!important;width:calc(100% + 8px);max-width:440px;padding:26px 8px 22px;margin:0 0 0;border-radius:32px;background:rgba(17,23,20,.96)!important;border:1px solid rgba(255,255,255,.09)!important;box-shadow:0 -10px 40px rgba(0,0,0,.35)!important;align-items:start!important;justify-items:center}
+html body .tpa-call-btns{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 4px!important;width:calc(100% + 8px);max-width:440px;padding:26px 8px 22px;margin:0 0 0;border-radius:32px;background:rgba(17,23,20,.96)!important;border:1px solid rgba(255,255,255,.09)!important;box-shadow:none!important;align-items:start!important;justify-items:center}
 html body .tpa-cb{all:unset;box-sizing:border-box;display:flex!important;flex-direction:column;align-items:center;gap:8px;min-width:0;cursor:pointer;color:rgba(255,255,255,.88);font:500 12px/1.1 inherit;font-family:inherit;-webkit-tap-highlight-color:transparent}
 html body .tpa-cb b{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:rgba(255,255,255,.12);border:0;font-size:0!important;transition:transform .12s,background .18s}
 html body .tpa-cb b::before{content:"";width:28px;height:28px;background:#fff;-webkit-mask:var(--ic) center/contain no-repeat;mask:var(--ic) center/contain no-repeat}
@@ -30306,15 +30290,6 @@ html[data-theme="light"] .tpd .tpd-c .tpd-ic{color:inherit!important}
 @media(min-width:700px){html body .tpd .tpd-bar{width:440px!important}}
 </style>
 
-<style id="tp-call-lite">
-/* While a voice call is running, switch off every costly visual effect (blur/glass, animations, transitions, shadows) so the phone
-   spends its power on the audio. The normal look comes back automatically when the call ends. */
-html.tp-call-lite *,html.tp-call-lite *::before,html.tp-call-lite *::after{
-  -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
-  animation:none!important;transition:none!important;
-  box-shadow:none!important;text-shadow:none!important;filter:none!important;will-change:auto!important;scroll-behavior:auto!important}
-html.tp-call-lite .tpa-orb{transform:none!important}
-</style>
 <style id="tp-header-luxe-light">
 /* ===== Light mode header: white frosted glass, everything black (dark mode untouched) ===== */
 html[data-theme="light"] body .tp-ref-header.tp-axe-header,html[data-theme="light"] body .topbar.tp-ref-header{
