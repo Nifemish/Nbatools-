@@ -24908,7 +24908,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
     <symbol id="tpa-chat-solid" viewBox="0 0 24 24"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.2 3.6a.6.6 0 0 1-1-.46V16A3.5 3.5 0 0 1 4 12.5z" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 6.4l.95 2.4 2.4.95-2.4.95-.95 2.4-.95-2.4-2.4-.95 2.4-.95z" style="fill:var(--tpa-star,#111)"/></symbol>
 <symbol id="tpa-chat" viewBox="0 0 24 24"><path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6a3.5 3.5 0 0 1-3.5 3.5H11l-4.2 3.6a.6.6 0 0 1-1-.46V16A3.5 3.5 0 0 1 4 12.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path class="tpa-star" d="M12 6.4l.95 2.4 2.4.95-2.4.95-.95 2.4-.95-2.4-2.4-.95 2.4-.95z" fill="currentColor"/></symbol>
-    <symbol id="tpa-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="tpa-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="tpa-spk" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="tpa-spk-off" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="tpa-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
@@ -25331,7 +25331,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(!visible) return;
     hidePop(true); fab.classList.remove('unread'); panel.classList.add('open'); fab.classList.add('away'); try{ wakeStop(); }catch(e){}
     if(!greeted){
-      greeted=true;
+      greeted=true; window.__zaraIntroduced=true;
       var _wl=zaraIntro(); addMsg('assistant',_wl); msgs.push({role:'assistant',text:_wl});
       showChips();
     }
@@ -27917,7 +27917,12 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   /* Pause grace: a short or finished sentence goes out quickly; if you trail off ("and...", "so...", "umm") or are still mid-thought, Zara waits longer. */
   function callFlush(){ clearTimeout(call.pendT); var x=String(call.pend||'').trim(); call.pend=''; if(x&&call.on&&!call.muted) callHeard(x); }
   function callQueue(fin){
-    call.pend=(call.pend?call.pend+' ':'')+fin; clearTimeout(call.pendT);
+    var _n=function(x){ return String(x||'').toLowerCase().replace(/[^a-z0-9' ]+/g,' ').replace(/\s+/g,' ').trim(); };
+    var _p=_n(call.pend), _f=_n(fin);
+    if(_p&&_f&&_f.indexOf(_p)===0) call.pend=fin;
+    else if(_p&&_f&&_p.indexOf(_f)===0){ /* same words again: ignore */ }
+    else call.pend=(call.pend?call.pend+' ':'')+fin;
+    clearTimeout(call.pendT);
     var t=call.pend.trim(), w=t.split(/\s+/).length;
     var trail=/(?:^|\s)(and|but|so|because|or|then|like|uh|um|umm|uhm|erm|well|the|a|an|to|of|my|is|that|which|if|when|with|for)$|,$/i.test(t);
     var wait=trail?1500:(/[?.!]$/.test(t)||w>=5)?250:(w<3?700:400);
@@ -27944,7 +27949,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     r.onresult=function(e){
       if(call.muted) return;
       var fin='', interim='';
-      for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) fin+=t; else interim+=t; }
+      var _fs=[],_is=[];
+      for(var i=e.resultIndex;i<e.results.length;i++){ var t=e.results[i][0].transcript; if(e.results[i].isFinal) _fs.push(t); else _is.push(t); }
+      function _cum(arr){ var out=[]; arr.forEach(function(t){ var n=norm(t); if(!n) return; if(out.length){ var p=norm(out[out.length-1]); if(n.indexOf(p)===0){ out[out.length-1]=t; return; } if(p.indexOf(n)===0) return; } out.push(t); }); return out.join(' '); }
+      fin=_cum(_fs); interim=_cum(_is);
       /* While Zara talks (and for a moment after), only react to words that are NOT her own voice coming back through the mic. */
       var sp=isSpeaking();
       if(sp||Date.now()-(call.spokeEnd||0)<1800){
@@ -27985,30 +27993,14 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(call.muted||isSpeaking()){ if(call.srOn){ try{ call.sr.abort(); }catch(e){} } if(!call.muted) call.lastSpk=Date.now(); return; }
     if(!call.srOn&&Date.now()-(call.lastSpk||0)>300){ try{ call.sr.start(); }catch(e){} }
   }
-  function callIntroLocal(){
-    var n=dashboardUserName(), nm=(n&&n!=='there')?', '+n:'';
-    return pickOf([
-      "Hello"+nm+"! This is Zara, the Nbatools AI voice assistant. I'm listening, so tell me what you need. You can type any time too.",
-      zaraTod()+nm+"! I'm Zara, the Nbatools AI voice assistant. I'm here and listening. How can I help?",
-      "Hi"+nm+"! Zara here, the Nbatools AI voice assistant. Just talk to me whenever you're ready, or type if you prefer."
-    ]);
+  /* The live call is a separate agent: Nbatools customer service. It always opens with its own greeting, independent of the chat assistant. */
+  var CS_GREETING="Hi, welcome to Nbatools customer service. May I know your name and where you're calling from?";
+  function csRule(){
+    var u=zaraUser();
+    return "You are a live customer service agent for NBATOOLS, speaking with a caller on a phone call. You are NOT the chat AI assistant and you are NOT called Zara; never say you are Zara or an AI chat assistant, and never refer to the chat or repeat anything said there. Your opening line is always: '"+CS_GREETING+"'. First learn the caller's name and where they are calling from"+(u?" (the account name is "+u+", but still ask and use the name the caller gives)":"")+", then help with their issue like a polite, calm, professional customer service agent. Keep replies to one to three short spoken sentences.";
   }
-  /* The AI writes the greeting; if it is slow or unreachable we use the local one so the call never waits long. */
-  async function callIntro(){
-    var fb=callIntroLocal(); if(!AGENT_URL) return fb;
-    try{
-      var u=currentUser(); if(!u) return fb;
-      var token=await u.getIdToken(), ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },4500);
-      var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body:JSON.stringify({messages:[{role:'user',text:"[A voice call has just connected. You are Zara, the assistant; I am the user calling you, and I am NOT Zara. Greet me in one or two short, warm, natural sentences, as you would answer a phone call. Open with \"Hi\" or \"Hello\" (or a time-of-day greeting), use my first name if you know it, say you're listening, and ask how you can help. Introduce yourself as Zara, the Nbatools AI voice assistant, and never say TrackPort. Never open with \"Hey\" or \"Heyyy\". No emojis, no lists, no actions.]"}],
-          account:account(),ui:uiSpec(),session:{mode:'idle',task:null,step:0,data:{}},app:{name:'Nbatools',costs:APP.costs,plans:APP.plans},persona:{name:'Zara',title:'Zara, the Nbatools AI voice assistant',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),identity:zaraRule(),style:'Warm, calm, natural spoken English. Short sentences suitable for a phone call.'}})});
-      clearTimeout(tm);
-      var j={}; try{ j=await r.json(); }catch(e){}
-      var t=String(j.reply||'').replace(/\[\[HUMAN\]\]/g,'').replace(/\s+/g,' ').trim();
-      if(!t||t.length>320||/^hey/i.test(t)||/trackport/i.test(t)||!/nbatools/i.test(t)) return fb;
-      return t;
-    }catch(e){ return fb; }
-  }
+  function callIntroLocal(){ return CS_GREETING; }
+  async function callIntro(){ return CS_GREETING; }
   async function callStart(opts){
     if(call.on){ call.mini=false; callSync(); return; }
     if(!currentUser()){ addMsg('assistant',"Sign in first and then we can chat by voice."); return; }
@@ -28838,7 +28830,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         var token=await u.getIdToken();
         var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },inCall?20000:45000);
         var wantsUi=!inCall||/\b(go to|open|click|tap|press|scroll|type|fill|change|switch|log ?out|theme|dark|light|page|screen|button|menu|settings|profile)\b/i.test(text);
-        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({voiceCall:inCall,messages:msgs.slice(inCall?Math.max(call.msgStart||0,msgs.length-8):-24),account:account(),ui:wantsUi?uiSpec():undefined,session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:(wantsUi?UI_HELP:undefined),callMode:(inCall?'LIVE PHONE CALL. Reply like a person on the phone: one to three short spoken sentences, plain words, no lists, no markdown, no emojis. Answer first, then ask at most one short question.':undefined),name:'Zara',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'Your name is Zara. If asked your name or who you are, say: I\'m Zara, your NBATOOLS assistant, and I\'m here to help. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat. '+zaraRule(),smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
+        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({voiceCall:inCall,messages:msgs.slice(inCall?Math.max(call.msgStart||0,msgs.length-8):-24),account:account(),ui:wantsUi?uiSpec():undefined,session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:(wantsUi?UI_HELP:undefined),callMode:(inCall?'LIVE PHONE CALL. Reply like a person on the phone: one to three short spoken sentences, plain words, no lists, no markdown, no emojis. Answer first, then ask at most one short question.':undefined),name:(inCall?'Nbatools customer service':'Zara'),aiName:(inCall?'Nbatools customer service':'Zara'),userName:zaraUser(),roles:(inCall?csRule():zaraRule()),style:(inCall?'Polite, calm, professional customer service agent on a phone call; clear natural spoken English, short sentences.':'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.'),identity:(inCall?csRule():'Your name is Zara. If asked your name or who you are, say: I\'m Zara, your NBATOOLS assistant, and I\'m here to help. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat. '+zaraRule()),smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
         clearTimeout(tm);
         var j={}; try{ j=await r.json(); }catch(e){}
         var reply=j.reply;
@@ -29043,7 +29035,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           if(!call.on||call.rt!==rt||!connected||authSent)return;
           authSent=true;
           try{var ctxUi=null,ctxAcc=null; try{ ctxUi=uiSpec(); }catch(e){} try{ ctxAcc=account(); }catch(e){}
-          client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,persona:{name:'Zara',title:'Zara, the Nbatools AI voice assistant'},ui:ctxUi,account:ctxAcc,app:{name:'Nbatools',costs:APP.costs,plans:APP.plans}});}
+          client.sendJSON({type:'trackport_auth',token:token,userName:zaraUser(),voice:selectedVoice,persona:{name:'Nbatools customer service',title:'Nbatools customer service agent',role:'customer_service',greeting:CS_GREETING,instructions:csRule()},ui:ctxUi,account:ctxAcc,app:{name:'Nbatools',costs:APP.costs,plans:APP.plans}});}
           catch(e){console.warn('[TrackPort voice auth send]',e);if(!failover('auth send failed'))callFallback('auth send failed');}
         });
         client.addEventListener('custommessage',function(ev){
@@ -30760,5 +30752,41 @@ html:not([data-theme="light"]) body #tpa-root .tpa-m.u,html:not([data-theme="lig
   setInterval(sync,500);
 })();
 </script>
+<style id="tp-zara-final-look">
+/* ===== Zara chat: frosted-glass header (same as main app header), bolder text, deeper shadows, roomier layout, bigger send arrow ===== */
+html[data-theme="light"] body #tpa-root .tpa-head{background:rgba(255,255,255,.72)!important;background-image:none!important;color:#0a0a0a!important;-webkit-backdrop-filter:blur(26px) saturate(180%)!important;backdrop-filter:blur(26px) saturate(180%)!important;border-bottom:1px solid rgba(255,255,255,.7)!important;box-shadow:0 10px 30px -14px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.95)!important}
+html[data-theme="light"] body #tpa-root .tpa-head::after{display:block!important;background:linear-gradient(90deg,transparent 0,rgba(0,0,0,.14) 20%,rgba(0,0,0,.22) 50%,rgba(0,0,0,.14) 80%,transparent 100%)!important;opacity:1!important}
+html[data-theme="light"] body #tpa-root .tpa-head .tpa-name,html[data-theme="light"] body #tpa-root .tpa-head time{color:#0a0a0a!important;font-weight:800!important}
+html[data-theme="light"] body #tpa-root .tpa-head .tpa-status{color:#1c1c1c!important;opacity:1!important;font-weight:600!important}
+html[data-theme="light"] body #tpa-root .tpa-head .tpa-hbar button,html[data-theme="light"] body #tpa-root .tpa-head .tpa-x,html[data-theme="light"] body #tpa-root .tpa-head .tpa-hb{background:rgba(255,255,255,.55)!important;border:1px solid rgba(0,0,0,.28)!important;color:#0a0a0a!important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:0 4px 12px -6px rgba(0,0,0,.25)!important}
+html[data-theme="light"] body #tpa-root .tpa-head .tpa-hbar button *,html[data-theme="light"] body #tpa-root .tpa-head .tpa-hbar svg{color:#0a0a0a!important;stroke:#0a0a0a!important}
+html[data-theme="light"] body #tpa-root .tpa-head .tpa-endbtn{background:rgba(255,255,255,.55)!important;color:#0a0a0a!important;border:1px solid rgba(0,0,0,.4)!important;font-weight:700!important}
+/* roomier layout */
+html body #tpa-root .tpa-log{gap:26px!important;padding-top:28px!important;padding-bottom:26px!important}
+html body #tpa-root .tpa-m{padding:16px 20px!important;font-size:16px!important;line-height:1.55!important;font-weight:600!important;margin-bottom:6px!important}
+html body #tpa-root .tpa-m strong{font-weight:800!important}
+html body #tpa-root .tpa-form{padding-top:18px!important;padding-bottom:12px!important;gap:12px!important}
+html body #tpa-root .tpa-foot{padding-top:6px!important;font-weight:600!important;font-size:12px!important}
+html body #tpa-root .tpa-chips{gap:12px!important;margin-top:6px!important}
+/* bolder, darker text */
+html[data-theme="light"] body #tpa-root .tpa-m.a,html[data-theme="light"] body #tpa-root .tpa-m.a *{color:#000!important}
+html[data-theme="light"] body #tpa-root .tpa-m.a{border:1.5px solid rgba(0,0,0,.18)!important}
+html[data-theme="light"] body #tpa-root .tpa-m.u,html[data-theme="light"] body #tpa-root .tpa-m.u *{color:#fff!important;font-weight:650!important}
+html:not([data-theme="light"]) body #tpa-root .tpa-m.a,html:not([data-theme="light"]) body #tpa-root .tpa-m.a *{color:#fff!important}
+html[data-theme="light"] body #tpa-root .tpa-in{color:#000!important;font-weight:650!important;border:1.5px solid rgba(0,0,0,.35)!important}
+html[data-theme="light"] body #tpa-root .tpa-in::placeholder{color:rgba(0,0,0,.62)!important;font-weight:600!important;opacity:1!important}
+html[data-theme="light"] body #tpa-root .tpa-foot{color:#1c1c1c!important}
+html[data-theme="light"] body #tpa-root .tpa-chip,html[data-theme="light"] body #tpa-root .tpa-reqbtn{color:#000!important;font-weight:700!important;border:1.5px solid rgba(0,0,0,.4)!important}
+html[data-theme="light"] body #tpa-root .tpa-mic,html[data-theme="light"] body #tpa-root .tpa-attach,html[data-theme="light"] body #tpa-root .tpa-form .tpa-agent-toggle{color:#000!important;border:1.5px solid rgba(0,0,0,.35)!important}
+html body #tpa-root .tpa-mic svg,html body #tpa-root .tpa-attach svg{stroke-width:2.4!important}
+/* clearly visible shadows */
+html[data-theme="light"] body #tpa-root .tpa-m.u,html[data-theme="light"] body #tpa-root .tpa-m.a{box-shadow:0 8px 0 0 rgba(0,0,0,.34),0 18px 26px -10px rgba(0,0,0,.32)!important}
+html:not([data-theme="light"]) body #tpa-root .tpa-m.u,html:not([data-theme="light"]) body #tpa-root .tpa-m.a{box-shadow:0 8px 0 0 rgba(0,0,0,.8),0 18px 26px -10px rgba(0,0,0,.6)!important}
+/* big, clear send arrow */
+html body #tpa-root .tpa-send{width:60px!important;height:60px!important;font-size:30px!important;box-shadow:0 6px 0 0 rgba(0,0,0,.3),0 12px 22px -8px rgba(0,0,0,.4)!important}
+html body #tpa-root .tpa-send svg,html body #tpa-root .tpa-send .tpa-i{width:32px!important;height:32px!important;stroke-width:3.2!important}
+html body #tpa-root .tpa-send svg *{stroke-width:3.2!important}
+html body #tpa-root .tpa-mic,html body #tpa-root .tpa-attach,html body #tpa-root .tpa-form .tpa-agent-toggle{width:52px!important;height:52px!important}
+</style>
 </body>
 </html>
