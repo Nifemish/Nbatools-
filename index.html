@@ -1038,6 +1038,18 @@ h1,h2,h3,p{margin-top:0}.title{font-size:clamp(38px,7vw,72px);line-height:.96;le
 @keyframes nbsBar{to{transform:scaleX(1)}}
 .nbs-bar.off{opacity:0}
 @media (prefers-reduced-motion:reduce){.nbs-dust{display:none}.nbs-aura,.nbs-splash.lit .nbs-aura{animation:none!important}.nbs-orbit .spark{animation:none!important}.nbs-bar::after,.nbs-word.glint{animation:none!important}.nbs-logo,.nbs-ring-g,.nbs-gear-g,.nbs-word,.nbs-word span,.nbs-sub,.nbs-sub i,.nbs-aura,.nbs-orbit,.nbs-orbit *{transition-duration:.01s!important;transition-delay:0s!important}}
+
+/* ===== Splash: only spinning logo + wordmark ===== */
+.nbs-splash{background:#050505}
+.nbs-aura,.nbs-dust,.nbs-orbit,.nbs-grain,.nbs-sub,.nbs-bar{display:none!important}
+.nbs-logo,.nbs-logo.in,.nbs-logo.small{width:54px;height:54px;opacity:1;transform:none;filter:none;transition:none}
+.nbs-logo svg{animation:nbsLogoCw 1.6s linear infinite;transform-origin:50% 50%}
+.nbs-ring-g,.nbs-gear-g,.nbs-logo.in .nbs-ring-g,.nbs-logo.in .nbs-gear-g{transform:none;transition:none}
+@keyframes nbsLogoCw{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.nbs-word,.nbs-word.show{max-width:320px;margin-left:16px;transition:none}
+.nbs-word{color:#fff;font-weight:500;letter-spacing:.24em;text-transform:uppercase}
+.nbs-word span{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){.nbs-logo svg{animation:nbsLogoCw 3s linear infinite!important}}
 /* In-app progression loader — same visual language */
 .tp-page-loader{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:rgba(4,6,5,.74);-webkit-backdrop-filter:blur(16px) saturate(130%);backdrop-filter:blur(16px) saturate(130%);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .28s ease,visibility .28s ease}
 .tp-page-loader.on{opacity:1;visibility:visible;pointer-events:auto}
@@ -6029,32 +6041,14 @@ html[data-theme="light"] body .tp-ref-header.tp-axe-header.tp-pre-auth .tp-axe-d
 .tp-notice small{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--n);margin-bottom:3px}.tp-notice strong{display:block;font-size:16px}
 .tp-notice p{margin:6px 0 0;font-size:14px;line-height:1.5}.tp-notice em{display:block;margin-top:6px;font-size:12px;color:var(--muted)}
 </style>
-<div id="loader" class="nbs-splash" role="status" aria-live="polite" aria-label="Loading Nbatools"><div class="nbs-aura"></div><div class="nbs-dust" id="nbsDust" aria-hidden="true"></div><svg class="nbs-orbit" id="nbsOrbit" viewBox="0 0 240 240" aria-hidden="true"><circle class="o1" cx="120" cy="120" r="112"/><circle class="o2" cx="120" cy="120" r="100"/><g class="spark"><circle cx="120" cy="8" r="2.6"/></g></svg><div class="nbs-group" id="nbsGroup"><div class="nbs-logo" id="nbsLogo"><svg viewBox="0 0 768 768" aria-hidden="true"><defs><linearGradient id="nbsGold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="768" y2="768" spreadMethod="reflect"><stop offset="0" stop-color="#e6bf10"/><stop offset=".28" stop-color="#fad721"/><stop offset=".5" stop-color="#fff7a8"/><stop offset=".72" stop-color="#fad721"/><stop offset="1" stop-color="#e6bf10"/><animateTransform attributeName="gradientTransform" type="translate" from="-768 -768" to="768 768" dur="4.2s" repeatCount="indefinite"/></linearGradient></defs><g class="nbs-ring-g"><path d="M684.4,346.5 L686.1,362.2 L713.7,371.3 L713.7,400.7 L686.1,409.8 L684.4,425.5 L684.4,425.5 L681.9,441.2 L706.2,457.1 L698.6,485.5 L669.6,487.1 L663.9,502.0 L663.9,502.0 L657.5,516.4 L676.8,538.1 L662.2,563.6 L633.7,557.6 L624.4,570.5 L624.4,570.5 L614.4,582.8 L627.5,608.7 L606.7,629.5 L580.8,616.4 L568.5,626.4 L568.5,626.4 L555.6,635.7 L561.6,664.2 L536.1,678.8 L514.4,659.5 L500.0,665.9 L500.0,665.9 L485.1,671.6 L483.5,700.6 L455.1,708.2 L439.2,683.9 L423.5,686.4 L423.5,686.4 L407.8,688.1 L398.7,715.7 L369.3,715.7 L360.2,688.1 L344.5,686.4 L344.5,686.4 L328.8,683.9 L312.9,708.2 L284.5,700.6 L282.9,671.6 L268.0,665.9 L268.0,665.9 L253.6,659.5 L231.9,678.8 L206.4,664.2 L212.4,635.7 L199.5,626.4 L199.5,626.4 L187.2,616.4 L161.3,629.5 L140.5,608.7 L153.6,582.8 L143.6,570.5 L143.6,570.5 L134.3,557.6 L105.8,563.6 L91.2,538.1 L110.5,516.4 L104.1,502.0 L104.1,502.0 L98.4,487.1 L69.4,485.5 L61.8,457.1 L86.1,441.2 L83.6,425.5 L83.6,425.5 L81.9,409.8 L54.3,400.7 L54.3,371.3 L81.9,362.2 L83.6,346.5 L83.6,346.5 L86.1,330.8 L61.8,314.9 L69.4,286.5 L98.4,284.9 L104.1,270.0 L104.1,270.0 L110.5,255.6 L91.2,233.9 L105.8,208.4 L134.3,214.4 L143.6,201.5 L143.6,201.5 L153.6,189.2 L140.5,163.3 L161.3,142.5 L187.2,155.6 L199.5,145.6 L199.5,145.6 L212.4,136.3 L206.4,107.8 L231.9,93.2 L253.6,112.5 L268.0,106.1 L268.0,106.1 L282.9,100.4 L284.5,71.4 L312.9,63.8 L328.8,88.1 L344.5,85.6 L344.5,85.6 L360.2,83.9 L369.3,56.3 L398.7,56.3 L407.8,83.9 L423.5,85.6 L423.5,85.6 L439.2,88.1 L455.1,63.8 L483.5,71.4 L485.1,100.4 L500.0,106.1 L500.0,106.1 L514.4,112.5 L536.1,93.2 L561.6,107.8 L555.6,136.3 L568.5,145.6 L568.5,145.6 L580.8,155.6 L606.7,142.5 L627.5,163.3 L614.4,189.2 L624.4,201.5 L624.4,201.5 L633.7,214.4 L662.2,208.4 L676.8,233.9 L657.5,255.6 L663.9,270.0 L663.9,270.0 L669.6,284.9 L698.6,286.5 L706.2,314.9 L681.9,330.8 L684.4,346.5 Z M646,386 A262,262 0 1,0 122,386 A262,262 0 1,0 646,386 Z" fill-rule="evenodd"/></g><g class="nbs-gear-g"><path d="M323.5,240.0 L345.8,232.7 L349.8,192.0 L418.2,192.0 L422.2,232.7 L444.5,240.0 L444.5,240.0 L465.4,250.6 L497.0,224.6 L545.4,273.0 L519.4,304.6 L530.0,325.5 L530.0,325.5 L537.3,347.8 L578.0,351.8 L578.0,420.2 L537.3,424.2 L530.0,446.5 L530.0,446.5 L519.4,467.4 L545.4,499.0 L497.0,547.4 L465.4,521.4 L444.5,532.0 L444.5,532.0 L422.2,539.3 L418.2,580.0 L349.8,580.0 L345.8,539.3 L323.5,532.0 L323.5,532.0 L302.6,521.4 L271.0,547.4 L222.6,499.0 L248.6,467.4 L238.0,446.5 L238.0,446.5 L230.7,424.2 L190.0,420.2 L190.0,351.8 L230.7,347.8 L238.0,325.5 L238.0,325.5 L248.6,304.6 L222.6,273.0 L271.0,224.6 L302.6,250.6 L323.5,240.0Z M262,386 a122,122 0 1,0 244,0 a122,122 0 1,0 -244,0Z" fill-rule="evenodd" stroke-width="6" stroke-linejoin="round"/></g></svg></div><div class="nbs-word" id="nbsWord">Nbatools</div></div><div class="nbs-grain" aria-hidden="true"></div></div>
+<div id="loader" class="nbs-splash" role="status" aria-live="polite" aria-label="Loading Nbatools"><div class="nbs-group" id="nbsGroup"><div class="nbs-logo" id="nbsLogo"><svg viewBox="0 0 768 768" aria-hidden="true"><defs><linearGradient id="nbsGold" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="768" y2="768" spreadMethod="reflect"><stop offset="0" stop-color="#e6bf10"/><stop offset=".28" stop-color="#fad721"/><stop offset=".5" stop-color="#fff7a8"/><stop offset=".72" stop-color="#fad721"/><stop offset="1" stop-color="#e6bf10"/><animateTransform attributeName="gradientTransform" type="translate" from="-768 -768" to="768 768" dur="4.2s" repeatCount="indefinite"/></linearGradient></defs><g class="nbs-ring-g"><path d="M684.4,346.5 L686.1,362.2 L713.7,371.3 L713.7,400.7 L686.1,409.8 L684.4,425.5 L684.4,425.5 L681.9,441.2 L706.2,457.1 L698.6,485.5 L669.6,487.1 L663.9,502.0 L663.9,502.0 L657.5,516.4 L676.8,538.1 L662.2,563.6 L633.7,557.6 L624.4,570.5 L624.4,570.5 L614.4,582.8 L627.5,608.7 L606.7,629.5 L580.8,616.4 L568.5,626.4 L568.5,626.4 L555.6,635.7 L561.6,664.2 L536.1,678.8 L514.4,659.5 L500.0,665.9 L500.0,665.9 L485.1,671.6 L483.5,700.6 L455.1,708.2 L439.2,683.9 L423.5,686.4 L423.5,686.4 L407.8,688.1 L398.7,715.7 L369.3,715.7 L360.2,688.1 L344.5,686.4 L344.5,686.4 L328.8,683.9 L312.9,708.2 L284.5,700.6 L282.9,671.6 L268.0,665.9 L268.0,665.9 L253.6,659.5 L231.9,678.8 L206.4,664.2 L212.4,635.7 L199.5,626.4 L199.5,626.4 L187.2,616.4 L161.3,629.5 L140.5,608.7 L153.6,582.8 L143.6,570.5 L143.6,570.5 L134.3,557.6 L105.8,563.6 L91.2,538.1 L110.5,516.4 L104.1,502.0 L104.1,502.0 L98.4,487.1 L69.4,485.5 L61.8,457.1 L86.1,441.2 L83.6,425.5 L83.6,425.5 L81.9,409.8 L54.3,400.7 L54.3,371.3 L81.9,362.2 L83.6,346.5 L83.6,346.5 L86.1,330.8 L61.8,314.9 L69.4,286.5 L98.4,284.9 L104.1,270.0 L104.1,270.0 L110.5,255.6 L91.2,233.9 L105.8,208.4 L134.3,214.4 L143.6,201.5 L143.6,201.5 L153.6,189.2 L140.5,163.3 L161.3,142.5 L187.2,155.6 L199.5,145.6 L199.5,145.6 L212.4,136.3 L206.4,107.8 L231.9,93.2 L253.6,112.5 L268.0,106.1 L268.0,106.1 L282.9,100.4 L284.5,71.4 L312.9,63.8 L328.8,88.1 L344.5,85.6 L344.5,85.6 L360.2,83.9 L369.3,56.3 L398.7,56.3 L407.8,83.9 L423.5,85.6 L423.5,85.6 L439.2,88.1 L455.1,63.8 L483.5,71.4 L485.1,100.4 L500.0,106.1 L500.0,106.1 L514.4,112.5 L536.1,93.2 L561.6,107.8 L555.6,136.3 L568.5,145.6 L568.5,145.6 L580.8,155.6 L606.7,142.5 L627.5,163.3 L614.4,189.2 L624.4,201.5 L624.4,201.5 L633.7,214.4 L662.2,208.4 L676.8,233.9 L657.5,255.6 L663.9,270.0 L663.9,270.0 L669.6,284.9 L698.6,286.5 L706.2,314.9 L681.9,330.8 L684.4,346.5 Z M646,386 A262,262 0 1,0 122,386 A262,262 0 1,0 646,386 Z" fill-rule="evenodd"/></g><g class="nbs-gear-g"><path d="M323.5,240.0 L345.8,232.7 L349.8,192.0 L418.2,192.0 L422.2,232.7 L444.5,240.0 L444.5,240.0 L465.4,250.6 L497.0,224.6 L545.4,273.0 L519.4,304.6 L530.0,325.5 L530.0,325.5 L537.3,347.8 L578.0,351.8 L578.0,420.2 L537.3,424.2 L530.0,446.5 L530.0,446.5 L519.4,467.4 L545.4,499.0 L497.0,547.4 L465.4,521.4 L444.5,532.0 L444.5,532.0 L422.2,539.3 L418.2,580.0 L349.8,580.0 L345.8,539.3 L323.5,532.0 L323.5,532.0 L302.6,521.4 L271.0,547.4 L222.6,499.0 L248.6,467.4 L238.0,446.5 L238.0,446.5 L230.7,424.2 L190.0,420.2 L190.0,351.8 L230.7,347.8 L238.0,325.5 L238.0,325.5 L248.6,304.6 L222.6,273.0 L271.0,224.6 L302.6,250.6 L323.5,240.0Z M262,386 a122,122 0 1,0 244,0 a122,122 0 1,0 -244,0Z" fill-rule="evenodd" stroke-width="6" stroke-linejoin="round"/></g></svg></div><div class="nbs-word" id="nbsWord">Nbatools</div></div></div>
 <script id="nbs-splash-js">
 (function(){
   var L=document.getElementById('loader'); if(!L) return;
-  var Lg=document.getElementById('nbsLogo'),W=document.getElementById('nbsWord'),O=document.getElementById('nbsOrbit'),D=document.getElementById('nbsDust');
-  var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
-  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-  window.__nbsSplashMs=4000; /* total time before the app is revealed */
-  function tc(c){ try{ var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content',c); }catch(e){} }
-  tc('#060606');   /* status bar matches the dark splash */
-  /* wordmark: letter by letter */
-  var txt=W.textContent; W.setAttribute('aria-label',txt); W.textContent='';
-  for(var i=0;i<txt.length;i++){ var sp=document.createElement('span'); sp.style.setProperty('--i',i); sp.setAttribute('aria-hidden','true'); sp.textContent=txt[i]; W.appendChild(sp); }
-  /* drifting gold dust */
-  if(!reduce&&D){ for(var k=0;k<16;k++){ var p=document.createElement('i'), s=1+Math.random()*2;
-    p.style.cssText='left:'+(Math.random()*100).toFixed(1)+'%;width:'+s.toFixed(1)+'px;height:'+s.toFixed(1)+'px;--o:'+(.3+Math.random()*.5).toFixed(2)+';--dx:'+((Math.random()-.5)*60).toFixed(0)+'px;animation-duration:'+(7+Math.random()*7).toFixed(1)+'s;animation-delay:'+(Math.random()*5).toFixed(1)+'s';
-    D.appendChild(p); } }
-  async function run(){
-    await sleep(150);  L.classList.add('lit');                                   /* 1. warm light rises, hairline orbit draws itself */
-    await sleep(350);  Lg.classList.add('in');                                   /* 2. logo materialises from soft focus, gold light travelling over it */
-    if(reduce){ await sleep(300); Lg.classList.add('small'); O.classList.add('rel'); W.classList.add('show'); return; }
-    await sleep(1700); O.classList.add('rel'); Lg.classList.add('small');         /* 3. orbit releases, mark settles to make room */
-    await sleep(250);  W.classList.add('show');                                  /* 4. wordmark unveils, tracked and letter by letter */
-    await sleep(1600); W.classList.add('glint'); /* 5. final gold bloom, then hold */
-  }
-  run();
+  var Lg=document.getElementById('nbsLogo'),W=document.getElementById('nbsWord');
+  window.__nbsSplashMs=2000; /* total time before the app is revealed */
+  try{ var m=document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content','#060606'); }catch(e){}
+  Lg.classList.add('in','small'); W.classList.add('show');
 })();
 </script>
 <div id="tp-fixed-header" class="tp-fixed-header" hidden></div>
@@ -6699,7 +6693,7 @@ async function tpDeclinePolicy(){
  const gate=document.getElementById('tp-policy-gate');if(gate)gate.remove();
  try{if(firebaseAuth)await firebaseAuth.signOut();}catch(e){console.warn('Sign-out after policy decline failed',e);}
  tpClearActiveData();state.user=null;window.trackQ='';window.trackRemote=null;try{if(typeof setAdminUnlocked==='function')setAdminUnlocked(false);}catch(_e){}save();
- location.hash='#/register';render();
+ location.hash='#/welcome';render();
 }
 
 function landingPage(){
@@ -6978,7 +6972,7 @@ function lxStrength(v){
 }
 function auth(mode){
 const reg=mode==='register';
-const backTarget = 'landing';
+const backTarget = 'welcome';
 const ic={
  user:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>',
  mail:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg>',
@@ -7107,7 +7101,7 @@ async function signOutUser(){
  try{ if(typeof setAdminUnlocked==='function') setAdminUnlocked(false); }catch(_e){}
  tpClearActiveData();state.user=null;window.trackQ='';window.trackRemote=null;save();
  try{ document.body.classList.remove('tp-menu-open'); }catch(_e){}
- nav('landing');
+ nav('welcome');
 }
 async function registerUser(){
  const name=document.getElementById('fullName').value.trim();
@@ -12859,13 +12853,13 @@ function idAuPort(p){
 
 
 function route(){
-const p=decodeURIComponent(location.hash.slice(1)||'landing').replace(/^\/+/, '');
+const p=decodeURIComponent(location.hash.slice(1)||'welcome').replace(/^\/+/, '');
 const isPublicTrack=/^(track|pickup|shipment-receipt)\//.test(p);
 if(state.user&&['landing','welcome','login','register','','home-marketing'].includes(p)){try{location.replace('#/home');}catch(_e){}return home();}
-if(!state.user && !isPublicTrack && !['landing','welcome','login','register'].includes(p))return landingPage();
+if(!state.user && !isPublicTrack && !['landing','welcome','login','register'].includes(p))return welcome();
 if(p==='subscription')return tpSubscriptionPage();if(p.startsWith('payment/'))return tpPaymentPage(p.slice(8));
 if(p.startsWith('pickup/')){window.trackQ=p.slice(7);return track()}
-if(p==='landing'||p===''||p==='home-marketing')return landingPage();
+if(p==='landing'||p===''||p==='home-marketing')return welcome();
 if(p==='welcome')return welcome();if(p==='login')return auth('login');if(p==='register')return auth('register');
   if(p==='home')return home();if(p==='create')return create();if(p==='image-edit'||p==='create-image-edit')return tpImageEditPage();if(p==='video-downloader'||p==='create-video-downloader')return tpVdPage();if(p==='wa-status'||p==='create-wa-status')return tpWaPage();if(p==='create-shipment')return shipmentForm();if(p==='create-flight')return flightForm();if(p==='create-receipt'||p.startsWith('create-receipt/')){try{return receiptForm();}catch(err){console.warn('[receipt]',err);return `<div class="screen"><div class="container">${topbar('Receipt','create')}<div class="card empty"><strong>Receipt workspace failed to load</strong><p>${esc(String(err&&err.message||err))}</p><button class="btn btn-accent" onclick="location.reload()">Reload</button></div>${navBar('create')}</div></div>`;}}if(p==='receipt-history')return receiptHistory();
 if(p==='id-creations'||p==='create-id-card')return idCreationsHubPort();
@@ -13163,7 +13157,7 @@ async function boot(){
     } else if(state.user && !String(state.user.uid||'').startsWith('local-')){
      state.user=null; save();
      const p=(location.hash.slice(1)||'').replace(/^\/+/,'');
-     if(p && !/^(track|pickup|shipment-receipt)\//.test(p) && !['landing','welcome','login','register'].includes(p)) nav('landing');
+     if(p && !/^(track|pickup|shipment-receipt)\//.test(p) && !['landing','welcome','login','register'].includes(p)) nav('welcome');
      else render();
     }
    });
@@ -13172,7 +13166,10 @@ async function boot(){
   // No Firebase: trust localStorage remembered user
   state.first=false; save();
  }
- if(!location.hash) location.hash = state.user ? 'home' : 'landing';
+ if(!state.user){ /* every cold start while signed out begins at the welcome page */
+  var _h=String(location.hash||'').replace(/^#\/?/,'');
+  if(!/^(track|pickup|shipment-receipt)\//.test(_h)) location.hash='#/welcome';
+ } else if(!location.hash) location.hash='home';
  setTimeout(()=>{ const l=document.getElementById('loader'); if(l){ l.classList.add('out'); setTimeout(()=>l.remove(),950); } try{ document.querySelector('meta[name=theme-color]')?.setAttribute('content', state.theme==='dark' ? '#080b0a' : '#f3f5f1'); }catch(_){} render(); }, (window.__nbsSplashMs||3900)+600);
 }
 boot();
@@ -23341,7 +23338,7 @@ ${licenseCardMarkup(typeKey, cardData)}
   var originalRoute=window.route;
   if(typeof originalRoute==='function'){
     window.route=function(){
-      var path=String(location.hash.slice(1)||'landing').replace(/^\/+/,'');
+      var path=String(location.hash.slice(1)||'welcome').replace(/^\/+/,'');
       if(path==='dashboard'){if(window.state&&state.user)return home();window.tpPendingWorkspaceRoute='home';return auth('login');}
       if(servicePages[path])return servicePage(path);
       if(infoPages[path])return destinationPage(infoPages[path].eyebrow,infoPages[path].title,infoPages[path].description,infoPages[path].body);
@@ -27985,7 +27982,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   }
   function srTick(){
     if(!call.sr||!call.on||call.srDead) return;
-    if(call.muted){ if(call.srOn){ try{ call.sr.abort(); }catch(e){} } return; }
+    if(call.muted||isSpeaking()){ if(call.srOn){ try{ call.sr.abort(); }catch(e){} } if(!call.muted) call.lastSpk=Date.now(); return; }
     if(!call.srOn&&Date.now()-(call.lastSpk||0)>300){ try{ call.sr.start(); }catch(e){} }
   }
   function callIntroLocal(){
@@ -28051,8 +28048,9 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
 
   /* ===== "Hey Zara" wake word: always listening while the app is open and Zara is idle ===== */
   var WK='tpa_wake', WAKE_RE=/\b(?:(?:hey|hay|hi|hello|ok|okay)[\s,]+(?:zara|zarah|zahra|zaara|zaira|sara|sarah|zora|zarra|xara|sahra|zahara)|zara|zarah|zaara|zaira)\b[\s,.!?:-]*/i;
-  var wake={on:true,rec:null,run:false,err:0,dead:false,needTap:false,tapAt:0,t:null,armed:false,fired:0};
-  try{ if(localStorage.getItem(WK)==='0') wake.on=false; }catch(e){}
+  var wake={on:false,rec:null,run:false,err:0,dead:false,needTap:false,tapAt:0,t:null,armed:false,fired:0};
+  /* Wake word disabled to test call-audio crackling (always-on mic). Re-enable by setting localStorage tpa_wake=1 and wake.on=true. */
+  try{ if(localStorage.getItem(WK)==='1') wake.on=true; }catch(e){}
   function wakeReply(){ var n=zaraUser(), nm=n?', '+n:''; return pickOf(["Yes"+nm+", I'm here. How can I help?","Hi"+nm+"! I'm listening. Go ahead.","Hello"+nm+"! What can I do for you?"]); }
   function wakeSupported(){ return !!(window.__tpNativeSR); }
   function wakeShouldRun(){ return wake.on&&!wake.dead&&!wake.needTap&&wakeSupported()&&signedIn&&!call.on&&!panel.classList.contains('open')&&!document.hidden; }
@@ -30726,5 +30724,41 @@ html[data-theme="light"] body .lx-btn.lx-btn-ghost{color:var(--ink,#111)!importa
 html:not([data-theme="light"]) body .lx-btn.lx-btn-ghost *,html[data-theme="light"] body .lx-btn.lx-btn-ghost *{background:none!important;color:inherit!important}
 html body .lx-btn.lx-btn-ghost:hover{background:rgba(255,255,255,.06)!important}
 </style>
+<style id="tp-zara-ui-tweaks">
+/* Zara chat header = same glass/blur look as the main app header */
+html body #tpa-root .tpa-head{background:color-mix(in srgb,var(--axe-bg,var(--bg,#f3f5f1)) 80%,transparent)!important;background-image:none!important;-webkit-backdrop-filter:saturate(1.5) blur(20px)!important;backdrop-filter:saturate(1.5) blur(20px)!important;border-bottom:1px solid color-mix(in srgb,var(--ink,#101311) 12%,transparent)!important;box-shadow:0 22px 50px -34px rgba(0,0,0,.7)!important;color:var(--ink,#101311)!important}
+html body #tpa-root .tpa-head::after{display:none!important}
+html body #tpa-root .tpa-head .tpa-name,html body #tpa-root .tpa-head .tpa-status,html body #tpa-root .tpa-head time{color:var(--ink,#101311)!important}
+html body #tpa-root .tpa-head .tpa-status{opacity:.7}
+html body #tpa-root .tpa-head .tpa-hbar button,html body #tpa-root .tpa-head .tpa-x{color:var(--ink,#101311)!important;background:color-mix(in srgb,var(--ink,#101311) 8%,transparent)!important;border:1px solid color-mix(in srgb,var(--ink,#101311) 14%,transparent)!important}
+html body #tpa-root .tpa-head .tpa-hbar button *{color:inherit!important}
+/* My chat bubble + send button: dark mode = app yellow with black text; light mode = black with white text */
+html:not([data-theme="light"]) body #tpa-root .tpa-m.u,html:not([data-theme="light"]) body #tpa-root .tpa-send{background:var(--tpa-a)!important;background-image:none!important;color:var(--tpa-on,#111)!important;border:0!important}
+html:not([data-theme="light"]) body #tpa-root .tpa-m.u *{color:var(--tpa-on,#111)!important}
+html:not([data-theme="light"]) body #tpa-root .tpa-send *,html:not([data-theme="light"]) body #tpa-root .tpa-send svg{color:var(--tpa-on,#111)!important;stroke:var(--tpa-on,#111)!important;filter:none!important}
+html[data-theme="light"] body #tpa-root .tpa-m.u,html[data-theme="light"] body #tpa-root .tpa-send{background:#0b0b0b!important;background-image:none!important;color:#fff!important;border:0!important}
+html[data-theme="light"] body #tpa-root .tpa-m.u *{color:#fff!important}
+html[data-theme="light"] body #tpa-root .tpa-send *,html[data-theme="light"] body #tpa-root .tpa-send svg{color:#fff!important;stroke:#fff!important;filter:none!important}
+/* Chat bubbles float: sharp (no blur) shadow underneath */
+html body #tpa-root .tpa-m.u,html body #tpa-root .tpa-m.a{box-shadow:0 5px 0 0 rgba(0,0,0,.2)!important}
+html:not([data-theme="light"]) body #tpa-root .tpa-m.u,html:not([data-theme="light"]) body #tpa-root .tpa-m.a{box-shadow:0 5px 0 0 rgba(0,0,0,.6)!important}
+</style>
+<script id="tp-zara-call-fullscreen">
+/* While the call screen is open, tint the phone's status bar with the call colour so the call fills the whole screen. */
+(function(){
+  var saved=null, CALL='#707274';
+  function meta(){ return document.querySelector('meta[name=theme-color]'); }
+  function sync(){
+    try{
+      var c=document.querySelector('.tpa-call'), m=meta(); if(!m) return;
+      var open=!!(c&&!c.hidden&&c.offsetParent!==null||c&&!c.hidden&&getComputedStyle(c).display!=='none');
+      if(open&&saved===null){ saved=m.getAttribute('content')||''; m.setAttribute('content',CALL); }
+      else if(!open&&saved!==null){ m.setAttribute('content',saved); saved=null; }
+    }catch(e){}
+  }
+  try{ new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','class']}); }catch(e){}
+  setInterval(sync,500);
+})();
+</script>
 </body>
 </html>
