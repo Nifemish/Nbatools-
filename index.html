@@ -5887,20 +5887,29 @@ html[data-theme="light"] body .tp-ycta,html[data-theme="light"] body .tp-ycta *{
     if(m){return +m[1]>.78&&+m[2]>.58&&+m[3]<.45;}
     return false;
   }
-  var busy=false;
+  var busy=false, mo=null;
+  var OPTS={subtree:true,childList:true,attributes:true,attributeFilter:['class','data-theme']};  /* inline-style changes (animations, scrolling) no longer trigger a full page scan */
   function scan(){
     busy=false;
-    var els=document.querySelectorAll(SEL);
-    for(var i=0;i<els.length;i++){
-      var e=els[i],y=false;
-      try{y=isYellow(getComputedStyle(e).backgroundColor);}catch(_){}
-      if(y!==e.classList.contains('tp-ycta'))e.classList.toggle('tp-ycta',y);
+    /* Our own class changes must NOT wake this observer again. Before, a yellow button was flagged, turned black by the light-mode
+       rule, then un-flagged (it no longer looked yellow), turned yellow again, and so on every frame: the page flickered/shook in light mode. */
+    if(mo) mo.disconnect();
+    try{
+      var els=document.querySelectorAll(SEL);
+      for(var i=0;i<els.length;i++){
+        var e=els[i], had=e.classList.contains('tp-ycta'), y=false;
+        if(had) e.classList.remove('tp-ycta');   /* read the button's real colour, without our own black override */
+        try{y=isYellow(getComputedStyle(e).backgroundColor);}catch(_){}
+        if(y) e.classList.add('tp-ycta');        /* final state is set before the browser paints, so nothing flickers */
+      }
+    }finally{
+      if(mo) mo.observe(document.documentElement,OPTS);
     }
   }
-  function sched(){if(!busy){busy=true;requestAnimationFrame(scan);}}
+  function sched(){if(!busy){busy=true;setTimeout(scan,180);}}   /* at most about 5 scans a second */
   function start(){
+    mo=new MutationObserver(sched);
     scan();
-    new MutationObserver(sched).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style','data-theme']});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
@@ -14399,6 +14408,15 @@ input,select,textarea{
     letter-spacing:-.025em!important;
   }
 }
+</style>
+<style id="tp-cart-steady">
+/* Cart / store controls stay perfectly still: no animation, transition, movement or blur on them. */
+.tp-cart-chip,.tp-cart-n,.tp-st-btn,.tp-cr-send,.tp-cr-ghost,.tp-ct-open,.tp-ct-total,.tp-ct-total b{
+  animation:none!important;transition:none!important;transform:none!important;filter:none!important;will-change:auto!important}
+html[data-theme="light"] body .tp-cart-n{background:#0a0a0a!important;color:#fff!important}
+html[data-theme="light"] body .tp-st-btn:not(.alt),html[data-theme="light"] body .tp-cr-send,html[data-theme="light"] body .tp-ct-open.ok{
+  background:#0a0a0a!important;background-image:none!important;color:#fff!important;border-color:#0a0a0a!important}
+html[data-theme="light"] body .tp-st-btn:not(.alt) *,html[data-theme="light"] body .tp-cr-send *{color:#fff!important}
 </style>
 </head>`)
       .replace(
@@ -27696,21 +27714,23 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   function callBuild(){
     if(cEl.ov) return;
     var ov=document.createElement('div'); ov.className='tpa-call'; ov.hidden=true;
-    ov.innerHTML='<div class="tpa-call-top"><div class="tpa-call-id"><span class="tpa-call-name">Zara - Nbatools ai</span><time>00:00</time></div></div>'
-      +'<div class="tpa-orb-wrap"><div class="tpa-orb connecting"></div></div><div class="tpa-call-state">Connecting…</div><div class="tpa-call-cap"></div>'
+    ov.innerHTML='<div class="tpa-call-top"><div class="tpa-call-id"><span class="tpa-call-state">calling…</span><span class="tpa-call-name">NBA Tools Customer Service</span><time>00:00</time></div></div>'
+      +'<div class="tpa-orb-wrap"><div class="tpa-orb connecting"></div></div><div class="tpa-call-cap"></div>'
+      +'<div class="tpa-kp" hidden><div class="tpa-kp-disp"></div><div class="tpa-kp-grid"><button type="button" class="tpa-kk" data-k="1" aria-label="1"><span>1</span><i></i></button><button type="button" class="tpa-kk" data-k="2" aria-label="2"><span>2</span><i>ABC</i></button><button type="button" class="tpa-kk" data-k="3" aria-label="3"><span>3</span><i>DEF</i></button><button type="button" class="tpa-kk" data-k="4" aria-label="4"><span>4</span><i>GHI</i></button><button type="button" class="tpa-kk" data-k="5" aria-label="5"><span>5</span><i>JKL</i></button><button type="button" class="tpa-kk" data-k="6" aria-label="6"><span>6</span><i>MNO</i></button><button type="button" class="tpa-kk" data-k="7" aria-label="7"><span>7</span><i>PQRS</i></button><button type="button" class="tpa-kk" data-k="8" aria-label="8"><span>8</span><i>TUV</i></button><button type="button" class="tpa-kk" data-k="9" aria-label="9"><span>9</span><i>WXYZ</i></button><button type="button" class="tpa-kk" data-k="*" aria-label="*"><span>*</span><i></i></button><button type="button" class="tpa-kk" data-k="0" aria-label="0"><span>0</span><i>+</i></button><button type="button" class="tpa-kk" data-k="#" aria-label="#"><span>#</span><i></i></button></div><div class="tpa-kp-foot"><button type="button" class="tpa-cb end" data-c="end" aria-label="End call"><b></b>End</button><button type="button" class="tpa-kp-hide" data-c="padhide">Hide</button></div></div>'
       +'<div class="tpa-call-btns">'
       +'<button type="button" class="tpa-cb" data-c="spk" aria-label="Speaker"><b></b>Speaker</button>'
       +'<button type="button" class="tpa-cb" data-c="mute" aria-label="Mute"><b></b>Mute</button>'
-      +'<button type="button" class="tpa-cb" data-c="kb" aria-label="Type a message"><b></b>Type</button>'
+      +'<button type="button" class="tpa-cb" data-c="pad" aria-label="Keypad"><b></b>Keypad</button>'
       +'<button type="button" class="tpa-cb end" data-c="end" aria-label="End call"><b></b>End</button></div>';
     panel.appendChild(ov);
     var bar=document.createElement('div'); bar.className='tpa-callbar'; bar.hidden=true;
     bar.innerHTML='<i></i><span>On call · 00:00</span><button type="button" data-c="mute">Mute</button><button type="button" data-c="open">Expand</button><button type="button" class="end" data-c="end">End</button>';
     panel.insertBefore(bar,log);
+    try{ var _capEl=ov.querySelector('.tpa-call-cap'); new MutationObserver(function(){ ov.classList.toggle('cap-warn',/problem|no sound|microphone|isn.t available|couldn.t/i.test(_capEl.textContent||'')); }).observe(_capEl,{childList:true,characterData:true,subtree:true}); }catch(e){}
     cEl={ov:ov,bar:bar,orb:ov.querySelector('.tpa-orb'),st:ov.querySelector('.tpa-call-state'),cap:ov.querySelector('.tpa-call-cap'),time:ov.querySelector('time'),btxt:bar.querySelector('span')};
-    function act(e){ var b=e.target.closest('[data-c]'); if(!b) return; var c=b.getAttribute('data-c');
+    function act(e){ var kk=e.target.closest('[data-k]'); if(kk){ kpPress(kk.getAttribute('data-k')); return; } var b=e.target.closest('[data-c]'); if(!b) return; var c=b.getAttribute('data-c');
       if(c==='mute') callMute(); else if(c==='min'){ call.mini=true; callSync(); } else if(c==='spk'){ voiceToggle.click(); callSync(); }
-      else if(c==='kb'){ call.mini=true; callSync(); try{ input.focus(); }catch(x){} }
+      else if(c==='pad'){ kpToggle(true); } else if(c==='padhide'){ kpToggle(false); }
       else if(c==='open'){ call.mini=false; callSync(); } else if(c==='end') callEnd(); }
     ov.addEventListener('click',act); bar.addEventListener('click',act);
     cEl.orbTap=ov.querySelector('.tpa-orb-wrap'); cEl.orbTap.addEventListener('click',function(){ if(call.on&&isSpeaking()){ bargeIn(); call.lastSpk=0; srTick(); } });
@@ -27735,7 +27755,91 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(st!=='connecting'&&!call.liveT0) call.liveT0=Date.now();
     if(st===call.state) return; call.state=st;
     cEl.orb.className='tpa-orb '+st; cEl.orb.style.setProperty('--lvl','0'); cEl.ov.classList.toggle('is-connecting',st==='connecting');
-    cEl.st.textContent={connecting:'Connecting…',muted:'Mic muted',thinking:'Thinking…',speaking:'Zara is speaking · talk or tap to interrupt',hearing:'Listening…',listening:'Listening…'}[st];
+    cEl.st.textContent=cEl.ov.classList.contains('is-ringing')?'calling…':{connecting:'calling…',muted:'Mic muted',thinking:'Thinking…',speaking:'Speaking…',hearing:'Listening…',listening:'Listening…'}[st];
+  }
+  /* ===== Ringing tone: plays while the call "rings", before Zara answers ===== */
+  var tpRingCtx=null, tpRingNodes=null, tpRingTimer=null;
+  function tpRingPrepare(){
+    try{
+      var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+      if(!tpRingCtx||tpRingCtx.state==='closed') tpRingCtx=new AC();
+      if(tpRingCtx.state==='suspended') tpRingCtx.resume();
+    }catch(e){}
+  }
+  function tpRingStop(){
+    clearTimeout(tpRingTimer); tpRingTimer=null;
+    try{ if(cEl&&cEl.ov&&cEl.ov.classList.contains('is-ringing')){ cEl.ov.classList.remove('is-ringing'); if(call&&call.on) call.state=''; } }catch(e){}
+    try{
+      if(tpRingNodes&&tpRingCtx){
+        var now=tpRingCtx.currentTime;
+        tpRingNodes.gain.gain.cancelScheduledValues(now);
+        tpRingNodes.gain.gain.setValueAtTime(0,now);
+        try{ tpRingNodes.o1.stop(now+0.02); }catch(e){}
+        try{ tpRingNodes.o2.stop(now+0.02); }catch(e){}
+      }
+    }catch(e){}
+    tpRingNodes=null;
+    /* Close the ringing sound engine so it can never compete with Zara's live voice. */
+    try{ var rc=tpRingCtx; tpRingCtx=null; if(rc&&rc.state!=='closed') setTimeout(function(){ try{ rc.close(); }catch(e){} },60); }catch(e){}
+  }
+  /* Two ring bursts (2s on, 1s off, 2s on) = 5 seconds, like a phone ringback tone. */
+  function tpRingStart(){
+    tpRingStop(); tpRingPrepare(); if(!tpRingCtx) return;
+    try{
+      var c=tpRingCtx, t=c.currentTime+0.05, g=c.createGain(), o1=c.createOscillator(), o2=c.createOscillator();
+      o1.frequency.value=440; o2.frequency.value=480; g.gain.value=0;
+      o1.connect(g); o2.connect(g); g.connect(c.destination);
+      [[0,2],[3,5]].forEach(function(b){
+        g.gain.setValueAtTime(0,t+b[0]);
+        g.gain.linearRampToValueAtTime(0.14,t+b[0]+0.04);
+        g.gain.setValueAtTime(0.14,t+b[1]-0.06);
+        g.gain.linearRampToValueAtTime(0,t+b[1]);
+      });
+      o1.start(t); o2.start(t); o1.stop(t+5.2); o2.stop(t+5.2);
+      tpRingNodes={gain:g,o1:o1,o2:o2};
+      tpRingTimer=setTimeout(tpRingStop,5400);
+      if(cEl&&cEl.ov){ cEl.ov.classList.add('is-ringing'); if(cEl.st) cEl.st.textContent='calling…'; }
+    }catch(e){ console.warn('[Nbatools ring]',e); }
+  }
+  function tpRingFor(ms){ tpRingStart(); return new Promise(function(res){ setTimeout(res,ms); }); }
+  /* ===== Keypad (phone-menu style): digits are sent to Zara, who reads numbered options like a real customer service line ===== */
+  var kpBuf='', kpTimer=null;
+  var KP_TONES={'1':[697,1209],'2':[697,1336],'3':[697,1477],'4':[770,1209],'5':[770,1336],'6':[770,1477],'7':[852,1209],'8':[852,1336],'9':[852,1477],'*':[941,1209],'0':[941,1336],'#':[941,1477]};
+  function kpTone(d){
+    try{
+      tpRingPrepare(); var c=tpRingCtx, f=KP_TONES[d]; if(!c||!f) return;
+      var t=c.currentTime, g=c.createGain();
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.12,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.14);
+      g.connect(c.destination);
+      f.forEach(function(hz){ var o=c.createOscillator(); o.frequency.value=hz; o.connect(g); o.start(t); o.stop(t+0.16); });
+      setTimeout(function(){ try{ tpRingStop(); }catch(e){} },450);   /* close the tone's audio engine right after the key beep so it never competes with Zara's voice */
+    }catch(e){}
+  }
+  function kpShow(){ var d=cEl&&cEl.ov&&cEl.ov.querySelector('.tpa-kp-disp'); if(d) d.textContent=kpBuf; }
+  function kpToggle(on){
+    if(!cEl||!cEl.ov) return;
+    var kp=cEl.ov.querySelector('.tpa-kp'); if(kp) kp.hidden=!on;
+    cEl.ov.classList.toggle('kp-open',!!on);
+  }
+  function kpReset(){ clearTimeout(kpTimer); kpBuf=''; kpToggle(false); kpShow(); }
+  /* One key = a menu choice (sent after a short pause). Several keys = a typed number. # sends at once. * alone = repeat the options. */
+  function kpPress(d){
+    if(!call.on||!/^[0-9*#]$/.test(d)) return;
+    var rt=call.rt; if(rt&&!call.fb&&(!rt.authed||(rt.ringUntil&&Date.now()<rt.ringUntil+400))) return;
+    kpTone(d); try{ if(navigator.vibrate) navigator.vibrate(8); }catch(e){}
+    clearTimeout(kpTimer);
+    if(d==='#'){ kpSend(); return; }
+    if(d==='*'){ if(kpBuf){ kpBuf=''; kpShow(); } else { kpBuf='*'; kpShow(); kpSend(); } return; }
+    if(kpBuf.length>=16) return;
+    kpBuf+=d; kpShow(); kpTimer=setTimeout(kpSend,1400);
+  }
+  function kpSend(){
+    clearTimeout(kpTimer); var d=kpBuf; kpBuf=''; setTimeout(function(){ if(!kpBuf) kpShow(); },700);
+    if(!d||!call.on) return;
+    var rt=call.rt, say=d==='*'?'I pressed star to hear the options again.':'I pressed '+d.split('').join(' ')+' on the keypad.';
+    if(call.fb||!rt||!rt.client){ callHeard(say); return; }
+    try{ rt.client.sendJSON({type:'trackport_dtmf',digits:d}); rt.gotText=true; }catch(e){ console.warn('[Nbatools keypad]',e); return; }
+    try{ addMsg('user','Keypad: '+(d==='*'?'*':d)); msgs.push({role:'user',text:say}); }catch(e){}
   }
   function bargeIn(){ try{ speechQ.length=0; cancelSpeech(); speechBusy=false; clearTimeout(speechWD); ttsCache={}; }catch(e){} }
   /* You started talking while Zara was still working out her answer: drop that answer so she can listen to you instead. */
@@ -27927,7 +28031,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     await sleep(mobileMic?350:150);
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),noise:0.008,frames:0,speech:false,buf:[],pre:[],busy:0,q:Promise.resolve(),state:'',sr:null,srOn:false,useSR:false,srErr:0,srDead:false,lastSpk:0,mobile:mobileMic,quick:!!(opts&&opts.quick)});
     call.useSR=callRecInit();
-    voiceOn=true; lsSet(VKEY_ON,'1'); setVoiceUI(); callBuild(); cEl.cap.textContent=''; callSync(); callState();
+    voiceOn=true; lsSet(VKEY_ON,'1'); setVoiceUI(); callBuild(); cEl.cap.textContent=''; try{ kpReset(); }catch(e){} callSync(); callState();
     clearInterval(call.timer); call.timer=setInterval(function(){ if(call.on&&ended) callEnd(); else{ callState(); if(call.useSR) srTick(); } },200);
     if(opts&&opts.cmd){ callHeard(opts.cmd); return; }
     var hi=(opts&&opts.quick)?wakeReply():await callIntro(); if(!call.on) return; addMsg('assistant',hi); msgs.push({role:'assistant',text:hi}); speakQ(hi);
@@ -28736,7 +28840,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         var token=await u.getIdToken();
         var ctrl=new AbortController(), tm=setTimeout(function(){ ctrl.abort(); },inCall?20000:45000);
         var wantsUi=!inCall||/\b(go to|open|click|tap|press|scroll|type|fill|change|switch|log ?out|theme|dark|light|page|screen|button|menu|settings|profile)\b/i.test(text);
-        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({voiceCall:inCall,messages:msgs.slice(inCall?-8:-24),account:account(),ui:wantsUi?uiSpec():undefined,session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:(wantsUi?UI_HELP:undefined),callMode:(inCall?'LIVE PHONE CALL. Reply like a person on the phone: one to three short spoken sentences, plain words, no lists, no markdown, no emojis. Answer first, then ask at most one short question.':undefined),name:'Zara',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'Your name is Zara. If asked your name or who you are, say: I\'m Zara, your NBATOOLS assistant, and I\'m here to help. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat. '+zaraRule(),smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
+        var r=await agentFetch(AGENT_URL,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({voiceCall:inCall,messages:msgs.slice(inCall?Math.max(call.msgStart||0,msgs.length-8):-24),account:account(),ui:wantsUi?uiSpec():undefined,session:{mode:session.mode,task:session.task,step:session.step,data:session.data},app:{name:APP.name,costs:APP.costs,plans:APP.plans},persona:{capabilities:(wantsUi?UI_HELP:undefined),callMode:(inCall?'LIVE PHONE CALL. Reply like a person on the phone: one to three short spoken sentences, plain words, no lists, no markdown, no emojis. Answer first, then ask at most one short question.':undefined),name:'Zara',aiName:'Zara',userName:zaraUser(),roles:zaraRule(),style:'Warm, cheerful, sweet, playful, emotionally expressive, natural and respectful. Sound like a thoughtful human conversation partner, not a scripted help desk. Vary wording naturally; use light emojis sparingly; acknowledge feelings; use contractions and conversational phrasing.',identity:'Your name is Zara. If asked your name or who you are, say: I\'m Zara, your NBATOOLS assistant, and I\'m here to help. I can handle many kinds of tasks; just tell me what you need and I\'ll help right here in this chat. '+zaraRule(),smallTalk:{howAreYou:'Yeah, I\'m good. How about yourself?',whatDoing:'Uhm, nothing much, just here serving you.'},understanding:'Understand typos, slang, abbreviations, informal grammar, synonyms and likely intent. If a message is ambiguous, say what you think they mean and ask one friendly clarifying question. Never pretend to understand or invent facts.',reasoning:'Think through the request before answering. Make sensible, clearly labelled guesses only when useful; state uncertainty honestly.',taskFocus:'Remember the active task and its latest step. If the user briefly changes topic, respond politely and naturally, then gently remind them where they paused. Do not lose collected details or mistake unrelated chat for a form answer.',distraction:'Handle jokes, greetings, casual chat and unrelated interruptions kindly, then invite the user back to their current task without sounding controlling.',voice:'Use expressive, natural spoken phrasing with varied sentence rhythm, gentle pauses, warm enthusiasm and question intonation. Match the emotion to the situation; do not sound excessively excited during serious topics.'}})});
         clearTimeout(tm);
         var j={}; try{ j=await r.json(); }catch(e){}
         var reply=j.reply;
@@ -28872,6 +28976,27 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     }catch(e){console.warn('[TrackPort admin voice setting]',e);}
     try{return String(window.tpCloudflareVoice||localStorage.getItem('tp-cloudflare-voice-admin-cache')||'melo');}catch(e){return String(window.tpCloudflareVoice||'melo');}
   }
+  /* ===== Automatic microphone control (no interrupting) =====
+     The microphone is switched OFF by the app while Zara is talking (so she can never hear herself through the phone speaker,
+     which is what caused the cracking/skipping) and switched back ON a moment after she finishes. Your own Mute button still
+     works and always wins. */
+  function rtApplyMic(rt){
+    if(!rt||!rt.client) return;
+    var want=!!(call.muted||rt.autoMute);
+    var cur=(typeof rt.client.isMuted==='boolean')?rt.client.isMuted:!!rt.micMuted;
+    if(cur===want){ rt.micMuted=want; return; }
+    try{ rt.client.toggleMute(); rt.micMuted=want; }catch(e){ console.warn('[Nbatools voice mic]',e); }
+  }
+  function rtAutoMic(rt){
+    if(!rt) return;
+    clearTimeout(rt.unmuteT);
+    if(rt.status==='speaking'||rt.replyOpen||(rt.status==='thinking'&&rt.autoMute)){
+      rt.autoMute=true; rtApplyMic(rt);                      /* Zara is talking (or about to): mic off */
+    } else if(rt.autoMute){
+      /* a short pause so the very end of her voice dies away, then the mic opens for you */
+      rt.unmuteT=setTimeout(function(){ if(!call.on||call.rt!==rt) return; rt.autoMute=false; rtApplyMic(rt); },300);
+    }
+  }
   async function callStart(opts){
     if(call.on){call.mini=false;callSync();return;}
     var u=currentUser(); if(!u){addMsg('assistant','Sign in first and then we can chat by voice.');return;}
@@ -28879,8 +29004,9 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     try{wakeStop();}catch(e){}
     try{stopVoice();}catch(e){}
     Object.assign(call,{on:true,mini:false,muted:false,t0:Date.now(),liveT0:0,speech:false,busy:0,state:'connecting',msgStart:msgs.length,fb:false,useSR:false,sr:null,srOn:false,srDead:false,srErr:0,pend:''});
+    try{ resetSession(); }catch(e){}   /* a new call never continues an unfinished job from the chat */
     call.rt={client:null,seen:0,authed:false,status:'connecting',timer:null};
-    voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='Connecting…';cEl.orb.className='tpa-orb connecting';callSync();callState();
+    voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='calling…';try{kpReset();}catch(e){}cEl.orb.className='tpa-orb connecting';callSync();callState();
     clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
     try{
       var token=await u.getIdToken(); if(!call.on)return;
@@ -28893,11 +29019,12 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         var old=call.rt;
         if(old&&old.client){ clearInterval(old.diag); try{old.client.endCall();}catch(e){} try{old.client.disconnect();}catch(e){} }
         var host=hosts[idx];
-        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):'')});
+        var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):''),interruptThreshold:2,interruptChunks:99}); /* interrupting is off: the app mutes the mic while Zara talks */
         var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false};
         call.rt=rt;
         function failover(why){
           if(!call.on||call.rt!==rt||rt.gotText) return false;
+          if(rt.spoke){ cEl.cap.textContent="I'm having trouble hearing you. Please hang up and call again."; rt.heardAt=0; rt.listenAt=Date.now(); return true; }
           if(hosts.length<2){ rt.failing=true; tpVoiceMarkBad(host); callFallback(why); return true; }
           if(rt.failing) return true; /* already switching - ignore duplicate triggers */
           rt.failing=true;
@@ -28924,7 +29051,15 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         client.addEventListener('custommessage',function(ev){
           var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
           if(!d||!call.on||call.rt!==rt)return;
+          if(d.type==='trackport_reply_start'){
+            rt.replyOpen=true; clearTimeout(rt.replyT);
+            rt.replyT=setTimeout(function(){ if(call.on&&call.rt===rt){ rt.replyOpen=false; try{ rtAutoMic(rt); }catch(e){} } },30000);   /* safety: never stay muted if the end signal is lost */
+            rt.autoMute=true; try{ rtApplyMic(rt); }catch(e){}
+            return;
+          }
+          if(d.type==='trackport_reply_done'){ rt.replyOpen=false; clearTimeout(rt.replyT); try{ rtAutoMic(rt); }catch(e){} return; }
           if(d.type==='trackport_auth_ok'){
+            if(rt.started) return; rt.started=true;
             rt.authed=true;clearTimeout(authTimer);cEl.cap.textContent='';
             Promise.resolve(client.startCall()).catch(function(e){console.error('[TrackPort voice start]',e);if(!failover('start failed'))callFallback('start failed');});
           } else if(d.type==='trackport_auth_error'){
@@ -28935,13 +29070,16 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           var st=rtEventValue(ev); if(st&&typeof st==='object')st=st.status||st.state||st.value;
           if(!call.on||call.rt!==rt)return;
           rt.status=String(st||'listening').toLowerCase();
+          if(rt.status==='speaking') rt.spoke=true;
+          try{ rtAutoMic(rt); }catch(e){}
+          if(rt.status==='speaking'||rt.status==='listening'){ rt.heardAt=0; rt.listenAt=0; }   /* start the 'no sound' timers fresh each turn */
           if(rt.bye){
             if(rt.status==='speaking') rt.byeSpoke=true;
             else if(rt.status==='listening' && rt.byeSpoke){ clearTimeout(rt.byeT); rt.byeT=setTimeout(function(){ if(call.on&&call.rt===rt) callEnd(); },700); }
           }
-          if(rt.status==='listening')cEl.cap.textContent='Listening — speak naturally. You can interrupt Zara.';
+          if(rt.status==='listening')cEl.cap.textContent='Listening — speak naturally.';
           else if(rt.status==='thinking')cEl.cap.textContent='Zara is thinking…';
-          else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking · talk to interrupt';
+          else if(rt.status==='speaking')cEl.cap.textContent='Zara is speaking…';
           callState();
         });
         client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
@@ -28950,7 +29088,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent='You: '+String(t).slice(-180); }
         });
         client.addEventListener('audiolevelchange',function(ev){
-          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06){ rt.heardAt=rt.heardAt||Date.now(); } }
+          var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06&&rt.status==='listening'){ rt.heardAt=rt.heardAt||Date.now(); } }
         });
         client.addEventListener('error',function(ev){
           var er=rtEventValue(ev); if(er&&typeof er==='object')er=er.message||er.error||'';
@@ -28967,7 +29105,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
           if(rt.status!=='listening'||rt.gotText||call.muted) return;
           var now=Date.now();
           if(!rt.heardAt && !rt.listenAt){ rt.listenAt=now; }
-          if(!rt.heardAt && now-rt.listenAt>12000){ cEl.cap.textContent='No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
+          if(!rt.heardAt && now-rt.listenAt>12000){ cEl.cap.textContent=rt.spoke?"I'm listening. Go ahead whenever you're ready.":'No sound is reaching the app from your microphone. Check the browser microphone permission.'; }
           else if(rt.heardAt && now-rt.heardAt>7000){
             if(!failover('speech recognition not responding')) callFallback('speech recognition not responding');
           }
@@ -28986,6 +29124,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   async function callFallback(why){
     if(!call.on||call.fb) return;
     call.fb=true; var t0=call.t0; clearTimeout(call.fbT);
+    try{ resetSession(); }catch(e){}
     console.warn('[TrackPort voice] falling back to browser speech recognition:',why);
     var rt=call.rt; call.rt=null;
     if(rt){ clearInterval(rt.diag); clearTimeout(rt.byeT); try{ rt.client.endCall(); }catch(e){} try{ rt.client.disconnect(); }catch(e){} }
@@ -29007,7 +29146,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   function callMute(){
     call.muted=!call.muted;
     var rt=call.rt;
-    try{if(rt&&rt.client)rt.client.toggleMute();}catch(e){console.warn('[TrackPort voice mute]',e);}
+    try{ rtApplyMic(rt); }catch(e){console.warn('[TrackPort voice mute]',e);}
     cEl.cap.textContent=call.muted?'Microphone muted':'Listening — speak naturally.';
     callSync();callState();
   }
@@ -29183,7 +29322,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     var rt=call.rt;
     var callTr=msgs.slice(call.msgStart||0).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',text:String(m.text||'')}; });
     call.msgStart=0;
-    if(rt){ clearTimeout(rt.byeT); }
+    if(rt){ clearTimeout(rt.byeT); clearTimeout(rt.unmuteT); clearTimeout(rt.replyT); }
     if(rt&&rt.client){try{rt.client.endCall();}catch(e){}try{rt.client.disconnect();}catch(e){}}
     call.rt=null;call.stream=null;call.ctx=null;call.src=null;call.proc=null;call.speech=false;callSync();
     if(!ended)addMsg('assistant','Call ended ('+t+'). You can keep typing or call again anytime.');
@@ -29652,7 +29791,7 @@ html body .spacer-nav{height:calc(84px + env(safe-area-inset-bottom))!important;
 </style>
 
 <style id="tp-call-ui">
-/* ===== Zara call screen: iPhone-style layout, TrackPort accent ===== */
+/* ===== Zara call screen: iPhone-style layout, Nbatools accent ===== */
 html body .tpa-call{--tpc:var(--axe-accent,var(--accent,#ffd54a));position:absolute;inset:0;display:flex!important;flex-direction:column;align-items:center;gap:0;overflow:hidden;color:#fff;border-radius:0!important;
   padding:calc(30px + env(safe-area-inset-top,0px)) 14px calc(16px + env(safe-area-inset-bottom,0px))!important;
   background:radial-gradient(90% 46% at 50% 0%,color-mix(in srgb,var(--tpc) 20%,transparent),transparent 72%),linear-gradient(180deg,#14191a,#07090a 78%)!important}
@@ -29695,6 +29834,40 @@ html body .tpa-callbar i{background:var(--axe-accent,var(--accent,#ffd54a))}
 @media(max-height:700px){html body .tpa-call-btns{gap:12px 4px!important;padding:16px 8px 14px}}
 @media(max-height:620px){html body .tpa-call{padding-top:calc(18px + env(safe-area-inset-top,0px))!important}html body .tpa-orb{width:min(40vw,150px)!important;height:min(40vw,150px)!important}html body .tpa-cb b{width:58px;height:58px}html body .tpa-call-btns{margin-bottom:16px}}
 @media(prefers-reduced-motion:reduce){html body .tpa-orb{animation:none!important}}
+</style>
+<style id="tp-call-ios">
+/* ===== Call screen: iPhone-style grey gradient, no avatar, four buttons, keypad ===== */
+html body .tpa-call{background:linear-gradient(180deg,#707274 0%,#5b5e62 38%,#464950 72%,#383b42 100%)!important;color:#fff!important;padding:calc(58px + env(safe-area-inset-top,0px)) 14px calc(24px + env(safe-area-inset-bottom,0px))!important}
+html body .tpa-call .tpa-call-top{padding-top:30px}
+html body .tpa-call .tpa-call-id{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:100%}
+html body .tpa-call .tpa-call-state{order:-1;display:none;background:none!important;border:0!important;padding:0!important;margin:0!important;color:rgba(255,255,255,.62)!important;font-size:20px!important;font-weight:600!important;letter-spacing:0!important}
+html body .tpa-call.is-connecting .tpa-call-state,html body .tpa-call.is-ringing .tpa-call-state{display:block}
+html body .tpa-call .tpa-call-name{font-size:clamp(26px,8vw,34px);font-weight:700;color:#fff;text-align:center;white-space:normal;line-height:1.15}
+html body .tpa-call .tpa-call-top time{font-size:18px!important;color:rgba(255,255,255,.62)!important}
+html body .tpa-call.is-connecting .tpa-call-top time,html body .tpa-call.is-ringing .tpa-call-top time{display:none!important}
+html body .tpa-call .tpa-orb{display:none!important}
+html body .tpa-call .tpa-call-cap{display:none!important}
+html body .tpa-call.cap-warn .tpa-call-cap{display:block!important;color:#fff;font-size:14px;margin-bottom:14px!important;text-align:center}
+html body .tpa-call .tpa-call-btns{background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:0 6px 6px!important;gap:26px 10px!important;max-width:380px;width:100%}
+html body .tpa-call .tpa-cb{color:#fff!important;font-size:14px!important;font-weight:400!important}
+html body .tpa-call .tpa-cb b{width:74px;height:74px;background:rgba(255,255,255,.22)!important}
+html body .tpa-call .tpa-cb.on b{background:#fff!important}
+html body .tpa-call .tpa-cb.on b::before{background:#1c1c1e!important}
+html body .tpa-call .tpa-cb.end b{background:#ff453a!important}
+html body .tpa-call .tpa-cb[data-c=pad]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3E%3Ccircle cx='5' cy='3' r='1.9'/%3E%3Ccircle cx='12' cy='3' r='1.9'/%3E%3Ccircle cx='19' cy='3' r='1.9'/%3E%3Ccircle cx='5' cy='9' r='1.9'/%3E%3Ccircle cx='12' cy='9' r='1.9'/%3E%3Ccircle cx='19' cy='9' r='1.9'/%3E%3Ccircle cx='5' cy='15' r='1.9'/%3E%3Ccircle cx='12' cy='15' r='1.9'/%3E%3Ccircle cx='19' cy='15' r='1.9'/%3E%3Ccircle cx='12' cy='21' r='1.9'/%3E%3C/svg%3E")}
+html body .tpa-call.kp-open .tpa-call-btns{display:none!important}
+html body .tpa-call .tpa-kp{display:flex;flex-direction:column;align-items:center;width:100%;max-width:380px}
+html body .tpa-call .tpa-kp[hidden]{display:none!important}
+html body .tpa-call .tpa-kp-disp{min-height:46px;font-size:34px;font-weight:300;letter-spacing:.08em;font-variant-numeric:tabular-nums;text-align:center;margin-bottom:8px}
+html body .tpa-call .tpa-kp-grid{display:grid;grid-template-columns:repeat(3,76px);gap:14px 22px;justify-content:center}
+html body .tpa-call .tpa-kk{all:unset;box-sizing:border-box;width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:#fff;-webkit-tap-highlight-color:transparent;user-select:none}
+html body .tpa-call .tpa-kk:active{background:rgba(255,255,255,.5)}
+html body .tpa-call .tpa-kk span{font-size:32px;line-height:1;font-weight:400}
+html body .tpa-call .tpa-kk i{font-style:normal;font-size:10px;letter-spacing:.14em;font-weight:600;min-height:11px;opacity:.9}
+html body .tpa-call .tpa-kp-foot{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;width:100%;margin-top:16px}
+html body .tpa-call .tpa-kp-foot .tpa-cb.end{grid-column:2!important;justify-self:center}
+html body .tpa-call .tpa-kp-hide{all:unset;grid-column:3;justify-self:center;color:#fff;font-size:17px;cursor:pointer;padding:10px}
+@media(max-height:780px){html body .tpa-call{padding-top:calc(40px + env(safe-area-inset-top,0px))!important}html body .tpa-call .tpa-kp-grid{grid-template-columns:repeat(3,64px);gap:10px 20px}html body .tpa-call .tpa-kk{width:64px;height:64px}html body .tpa-call .tpa-kk span{font-size:28px}html body .tpa-call .tpa-kp-disp{min-height:38px;font-size:28px}html body .tpa-call .tpa-cb b{width:64px;height:64px}}
 </style>
 <style id="nbatools-no-yellow-outlines">
 /* Photos the user sends in the chat: no yellow bubble frame around them */
@@ -29760,10 +29933,10 @@ html body .tpa-orb,html body .tpa-orb.listening,html body .tpa-orb.speaking,html
   /* Plain-language call messages: progress shows as "Connecting…"; real failures are no longer blanked out. */
   var PROGRESS=/cloudflare|worker|connecting|connect securely|backup|switching|starting the call|deployed|server|voice service|authenticat/i;
   var FAIL=/could not|couldn't|failed|error|timed out|not responding|blocked/i;
-  var OWN={'Connecting…':1,'Voice connection problem. Tap End and try again, or use Type.':1};
+  var OWN={'Connecting…':1,'Voice connection problem. Tap End and try again.':1};
   function clean(el){
     var t=(el.textContent||'').trim(); if(!t||OWN[t]||/^(You|Zara):/.test(t)) return;
-    if(PROGRESS.test(t)) el.textContent = FAIL.test(t) ? 'Voice connection problem. Tap End and try again, or use Type.' : 'Connecting…';
+    if(PROGRESS.test(t)) el.textContent = FAIL.test(t) ? 'Voice connection problem. Tap End and try again.' : 'Connecting…';
   }
   function hook(){
     var cap=document.querySelector('.tpa-call-cap'); if(!cap){ setTimeout(hook,700); return; }
@@ -30046,7 +30219,8 @@ html[data-theme="light"] body :is(.status,.receipt-status){background:#eef1ec!im
 html[data-theme="light"] body .section-row h3::before{background:#0a0a0a!important}
 html[data-theme="light"] body :is(.quick .card,.choice,.tool)::before{background:#0a0a0a!important}
 html[data-theme="light"] body .stat,html[data-theme="light"] body .stat:nth-child(even){border-top-color:#0a0a0a!important}
-html[data-theme="light"] body .tp-st-btn.go,html[data-theme="light"] body .tp-ct-open.ok{background:#0a0a0a!important;color:#fff!important;border-color:#0a0a0a!important}
+html[data-theme="light"] body .tp-st-btn.go,html[data-theme="light"] body .tp-ct-open.ok,html[data-theme="light"] body .tp-cr-send{background:#0a0a0a!important;color:#fff!important;border-color:#0a0a0a!important}
+html[data-theme="light"] body .tp-cr-send *{color:#fff!important}
 html[data-theme="light"] body :is(.field input,.field textarea,.field select,input,textarea,select):focus{border-color:#0a0a0a!important;box-shadow:0 0 0 3px rgba(10,10,10,.12)!important}
 html[data-theme="light"] .tpd{--tpd-gold:#0a0a0a;--tpd-act:#0a0a0a;--tpd-cglow:rgba(10,10,10,.28)}
 html[data-theme="light"] .tpd .tpd-c .tpd-ic{color:var(--axe-accent)!important}
