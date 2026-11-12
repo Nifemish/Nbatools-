@@ -2,6 +2,35 @@
 <html lang="en">
 <head>
 <script>
+/* iOS/Safari audio unlock: iPhones only allow sound that is started from a tap. We "prime" one shared <audio> element,
+   one AudioContext and the speech engine on the first tap, then re-use them for every later spoken reply. */
+(function(){
+  var SILENT='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  window.__tpIOS=/iPad|iPhone|iPod/.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  window.__tpSharedAudio=null; window.__tpAC=null;
+  function unlock(){
+    try{ var AC=window.AudioContext||window.webkitAudioContext; if(AC){ if(!window.__tpAC) window.__tpAC=new AC(); if(window.__tpAC.state!=='running') window.__tpAC.resume(); } }catch(e){}
+    try{
+      if(!window.__tpSharedAudio){ var a=new Audio(); a.setAttribute('playsinline',''); a.setAttribute('webkit-playsinline',''); a.src=SILENT; window.__tpSharedAudio=a; }
+      var p=window.__tpSharedAudio.play(); if(p&&p.catch) p.catch(function(){});
+    }catch(e){}
+    try{ if(window.speechSynthesis){ var u=new SpeechSynthesisUtterance(' '); u.volume=0; window.speechSynthesis.speak(u); } }catch(e){}
+  }
+  window.__tpUnlockAudio=unlock;
+  ['touchend','pointerup','click','keydown'].forEach(function(ev){ document.addEventListener(ev,unlock,{capture:true,passive:true}); });
+})();
+</script>
+<script>
+window.USA_LICENSE_STATES=[
+  {id:'hawaii', title:"Hawaii Driver's License"},
+  {id:'texas', title:"Texas Driver's License"},
+  {id:'pennsylvania', title:"Pennsylvania Driver's License"},
+  {id:'new-jersey', title:"New Jersey Driver's License"},
+  {id:'new-york', title:"New York Driver's License"},
+  {id:'california', title:"California Driver's License"},
+  {id:'florida', title:"Florida Driver's License"},
+  {id:'virginia', title:"Virginia Driver's License"}
+];
 /* Keeps a reference to the browser's own speech recognition (used by the wake-word feature). */
 window.__tpNativeSR=window.SpeechRecognition||window.webkitSpeechRecognition||null;
 </script>
@@ -11072,14 +11101,8 @@ function idLicenseUsaHub(){
   if(typeof pageUsaLicenseChooser==='function'){
     try{ return wrapIdPage(stripOriginalChrome(pageUsaLicenseChooser()), 'USA licenses', 'id-license'); }catch(e){ console.warn(e); }
   }
-  const states=[
-    {id:'hawaii', title:"Hawaii Driver's License"},
-    {id:'texas', title:"Texas Driver's License"},
-    {id:'pennsylvania', title:"Pennsylvania Driver's License"},
-    {id:'new-jersey', title:"New Jersey Driver's License"},
-    {id:'new-york', title:"New York Driver's License"}
-  ];
-  return wrapIdPage(`<div class="license-choice-shell"><div class="license-choice"><header class="license-choice-header"><h1>USA Driver's License</h1><p>Choose a state to open its driver's license generator and create a personalized card.</p></header><div class="license-choice-grid">${states.map(s=>`<a href="#/create-license/${s.id}" class="license-choice-card"><span class="license-choice-icon">▤</span><span class="license-choice-copy"><span class="license-choice-kicker">United States</span><span class="license-choice-title">${esc(s.title)}</span></span><span class="license-choice-arrow">→</span></a>`).join('')}</div><a href="#/create-license" class="license-choice-back">← Back to countries</a></div></div>`, 'USA licenses', 'id-license');
+  const states=window.USA_LICENSE_STATES;
+  return wrapIdPage(`<div class="license-choice-shell"><div class="license-choice"><header class="license-choice-header"><h1>USA Driver's License</h1><p>Choose a state to open its driver's license mockup generator. Output is a sample for design and demonstration only.</p></header><div class="license-choice-grid">${states.map(s=>`<a href="#/create-license/${s.id}" class="license-choice-card"><span class="license-choice-icon">${typeof icon==='function'?icon('credit-card'):'▤'}</span><span class="license-choice-copy"><span class="license-choice-kicker">United States</span><span class="license-choice-title">${esc(s.title)}</span></span><span class="license-choice-arrow">→</span></a>`).join('')}</div><a href="#/create-license" class="license-choice-back">← Back to countries</a></div></div>`, 'USA licenses', 'id-license');
 }
 var LICENSE_PRESETS = {
   hawaii: {
@@ -11187,6 +11210,67 @@ var LICENSE_PRESETS = {
     rest: 'NONE',
     serial: 'NY987654321098',
     signature: 'Sarah Chen'
+  },
+  california: {
+    label: 'California',
+    state: 'California',
+    dln: 'I1234562',
+    fname: 'AVA',
+    lname: 'MARTINEZ',
+    address: '2570 24th Street\nSacramento, CA 95818',
+    dob: '08/07/1996',
+    iss: '05/14/2026',
+    exp: '08/07/2031',
+    gender: 'F',
+    hgt: '5\'-06"',
+    eyes: 'BRN',
+    wgt: '140 lb',
+    cls: 'C',
+    endorse: 'NONE',
+    rest: 'NONE',
+    serial: 'CA123456789012',
+    signature: 'Ava Martinez'
+  },
+  florida: {
+    label: 'Florida',
+    state: 'Florida',
+    dln: '754-898-9516',
+    fname: 'MICHAEL',
+    lname: 'SMITH',
+    address: '123 YOUR ST\nFT LAUDERDALE, FL 33338',
+    dob: '04/20/2019',
+    iss: '10/10/2026',
+    exp: '04/20/2029',
+    gender: 'M',
+    hgt: "3'-10\"",
+    eyes: 'BLUE',
+    wgt: '52 lbs',
+    hair: 'BROWN',
+    cls: 'C',
+    endorse: 'NONE',
+    rest: 'NONE',
+    serial: '754-718-5539',
+    signature: 'Michael Smith'
+  },
+  virginia: {
+    label: 'Virginia',
+    state: 'Virginia',
+    dln: 'T16700285',
+    fname: 'RICHARD BENJAMIN',
+    lname: 'REYES',
+    address: '5235 JOHN TYLER HWY\nWILLIAMSBURG, VA 23185',
+    dob: '01/05/1987',
+    iss: '05/06/2023',
+    exp: '01/05/2031',
+    gender: 'M',
+    hgt: "6'-00\"",
+    eyes: 'BRO',
+    wgt: '185 lb',
+    cls: 'D,M2',
+    endorse: 'S',
+    rest: 'NONE',
+    serial: '71536360',
+    signature: 'Richard B. Reyes'
   }
 };
 
@@ -11194,7 +11278,7 @@ function licenseTypeKey(type){
   const t = String(type || '').toLowerCase().replace(/_/g, '-');
   if(t === 'newyork' || t === 'ny') return 'new-york';
   if(t === 'newjersey' || t === 'nj') return 'new-jersey';
-  return ['texas','pennsylvania','new-jersey','new-york'].includes(t) ? t : 'hawaii';
+  return ['texas','pennsylvania','new-jersey','new-york','california','florida','virginia'].includes(t) ? t : 'hawaii';
 }
 
 function licensePreset(type){
@@ -11269,13 +11353,13 @@ function driverLicenseVariant(key){
  if(k==='uk')return {country:'United Kingdom',region:'England & Wales',title:'UK photocard mockup'};
  if(k==='canada')return {country:'Canada',region:'Ontario',title:'Canadian licence mockup'};
  if(k==='australia')return {country:'Australia',region:'Queensland',title:'Australian photocard mockup'};
- const names={hawaii:'Hawaii',texas:'Texas',pennsylvania:'Pennsylvania','new-jersey':'New Jersey','new-york':'New York',california:'California',florida:'Florida',illinois:'Illinois',washington:'Washington',nevada:'Nevada'};
+ const names={hawaii:'Hawaii',texas:'Texas',pennsylvania:'Pennsylvania','new-jersey':'New Jersey','new-york':'New York',california:'California',florida:'Florida',illinois:'Illinois',washington:'Washington',nevada:'Nevada',virginia:'Virginia'};
  return {country:'United States',region:names[k]||'California',title:'US driver license mockup'};
 }
 function driverLicenseMockupFormVariant(key){
   // Deprecated generic mockup — always open the original Nbatools state/country generators
   const k = String(key||'hawaii').toLowerCase().replace(/_/g,'-').replace(/\s+/g,'-');
-  if(['hawaii','texas','pennsylvania','new-jersey','new-york','newjersey','newyork'].includes(k) || k==='new-jersey' || k==='new-york'){
+  if(['hawaii','texas','pennsylvania','new-jersey','new-york','newjersey','newyork','california','florida','virginia'].includes(k) || k==='new-jersey' || k==='new-york'){
     return idLicenseCreatePort(k==='newjersey'?'new-jersey':k==='newyork'?'new-york':k);
   }
   if(k==='uk'||k==='united-kingdom'||k==='england'||k.includes('wales')) return idUkPort('uk-licence');
@@ -11779,7 +11863,7 @@ function idLicenseHubPort(){
   }
   // Fallback country grid matching original
   return wrapIdPage(`<div class="license-choice-shell"><div class="license-choice"><header class="license-choice-header"><h1>Create Driver's License</h1><p>Choose a country category, then open a specific license generator.</p></header><div class="license-choice-grid">
-    <a href="#/create-license/usa" class="license-choice-card"><span class="license-choice-icon">🇺🇸</span><span class="license-choice-copy"><span class="license-choice-kicker">United States</span><span class="license-choice-title">USA Driver's License</span><span class="license-choice-note">Hawaii, Texas, Pennsylvania, New Jersey, New York</span></span><span class="license-choice-arrow">→</span></a>
+    <a href="#/create-license/usa" class="license-choice-card"><span class="license-choice-icon">🇺🇸</span><span class="license-choice-copy"><span class="license-choice-kicker">United States</span><span class="license-choice-title">USA Driver's License</span><span class="license-choice-note">Hawaii, Texas, Pennsylvania, New Jersey, New York, California, Florida, Virginia</span></span><span class="license-choice-arrow">→</span></a>
     <a href="#/create-license/uk" class="license-choice-card"><span class="license-choice-icon">🇬🇧</span><span class="license-choice-copy"><span class="license-choice-kicker">United Kingdom</span><span class="license-choice-title">UK Driver's License</span></span><span class="license-choice-arrow">→</span></a>
     <a href="#/create-license/canada" class="license-choice-card"><span class="license-choice-icon">🇨🇦</span><span class="license-choice-copy"><span class="license-choice-kicker">Canada</span><span class="license-choice-title">Canada Driver's License</span></span><span class="license-choice-arrow">→</span></a>
     <a href="#/create-license/australia" class="license-choice-card"><span class="license-choice-icon">🇦🇺</span><span class="license-choice-copy"><span class="license-choice-kicker">Australia</span><span class="license-choice-title">Australia Driver's License</span></span><span class="license-choice-arrow">→</span></a>
@@ -11805,14 +11889,8 @@ function idLicenseCreatePort(type){
     if(typeof usaChooser==='function'){
       try{ return wrapIdPage(stripOriginalChrome(usaChooser()), 'USA licenses', 'id-license'); }catch(e){ console.warn(e); }
     }
-    const states=[
-      {id:'hawaii',title:"Hawaii Driver's License"},
-      {id:'texas',title:"Texas Driver's License"},
-      {id:'pennsylvania',title:"Pennsylvania Driver's License"},
-      {id:'new-jersey',title:"New Jersey Driver's License"},
-      {id:'new-york',title:"New York Driver's License"}
-    ];
-    return wrapIdPage(`<div class="license-choice-shell"><div class="license-choice"><header class="license-choice-header"><h1>USA Driver's License</h1><p>Choose a state generator.</p></header><div class="license-choice-grid">${states.map(s=>`<a href="#/create-license/${s.id}" class="license-choice-card"><span class="license-choice-icon">▤</span><span class="license-choice-copy"><span class="license-choice-kicker">United States</span><span class="license-choice-title">${s.title}</span></span><span class="license-choice-arrow">→</span></a>`).join('')}</div><a href="#/create-license" class="license-choice-back">← Back to countries</a></div></div>`, 'USA licenses', 'id-license');
+    const states=window.USA_LICENSE_STATES;
+    return wrapIdPage(`<div class="license-choice-shell"><div class="license-choice"><header class="license-choice-header"><h1>USA Driver's License</h1><p>Choose a state generator.</p></header><div class="license-choice-grid">${states.map(s=>`<a href="#/create-license/${s.id}" class="license-choice-card"><span class="license-choice-icon">${typeof icon==='function'?icon('credit-card'):'▤'}</span><span class="license-choice-copy"><span class="license-choice-kicker">United States</span><span class="license-choice-title">${s.title}</span></span><span class="license-choice-arrow">→</span></a>`).join('')}</div><a href="#/create-license" class="license-choice-back">← Back to countries</a></div></div>`, 'USA licenses', 'id-license');
   }
   if(type==='uk'||type==='united-kingdom') return idUkPort('uk-licence');
   if(type==='australia'||type==='au') return idAuPort('australia-licence');
@@ -11820,7 +11898,7 @@ function idLicenseCreatePort(type){
     return wrapIdPage(`<div class="license-choice-shell"><div class="license-choice"><header class="license-choice-header"><h1>Canada Driver's License</h1><p>Open the country list for UK/Australia or USA state templates.</p></header><a href="#/create-license" class="license-choice-back">← Back</a></div></div>`, 'Canada', 'id-license');
   }
 
-  const usaStates = ['hawaii','texas','pennsylvania','new-jersey','new-york'];
+  const usaStates = window.USA_LICENSE_STATES.map(s=>s.id);
   if(usaStates.includes(type)){
     if(typeof createLicense!=='function'){
       return wrapIdPage(`<div class="card empty"><strong>License generator missing</strong><p>pageCreateLicense is not loaded yet. Hard-refresh the page. If it persists, the license script failed to register.</p><p class="muted" style="font-size:12px">typeof window.pageCreateLicense = ${typeof window.pageCreateLicense}</p><button class="btn btn-accent" onclick="location.reload()">Reload</button></div>`, type, 'create-license/usa');
@@ -16886,6 +16964,67 @@ var LICENSE_PRESETS = {
     rest: 'NONE',
     serial: 'NY987654321098',
     signature: 'Sarah Chen'
+  },
+  california: {
+    label: 'California',
+    state: 'California',
+    dln: 'I1234562',
+    fname: 'AVA',
+    lname: 'MARTINEZ',
+    address: '2570 24th Street\nSacramento, CA 95818',
+    dob: '08/07/1996',
+    iss: '05/14/2026',
+    exp: '08/07/2031',
+    gender: 'F',
+    hgt: '5\'-06"',
+    eyes: 'BRN',
+    wgt: '140 lb',
+    cls: 'C',
+    endorse: 'NONE',
+    rest: 'NONE',
+    serial: 'CA123456789012',
+    signature: 'Ava Martinez'
+  },
+  florida: {
+    label: 'Florida',
+    state: 'Florida',
+    dln: '754-898-9516',
+    fname: 'MICHAEL',
+    lname: 'SMITH',
+    address: '123 YOUR ST\nFT LAUDERDALE, FL 33338',
+    dob: '04/20/2019',
+    iss: '10/10/2026',
+    exp: '04/20/2029',
+    gender: 'M',
+    hgt: "3'-10\"",
+    eyes: 'BLUE',
+    wgt: '52 lbs',
+    hair: 'BROWN',
+    cls: 'C',
+    endorse: 'NONE',
+    rest: 'NONE',
+    serial: '754-718-5539',
+    signature: 'Michael Smith'
+  },
+  virginia: {
+    label: 'Virginia',
+    state: 'Virginia',
+    dln: 'T16700285',
+    fname: 'RICHARD BENJAMIN',
+    lname: 'REYES',
+    address: '5235 JOHN TYLER HWY\nWILLIAMSBURG, VA 23185',
+    dob: '01/05/1987',
+    iss: '05/06/2023',
+    exp: '01/05/2031',
+    gender: 'M',
+    hgt: "6'-00\"",
+    eyes: 'BRO',
+    wgt: '185 lb',
+    cls: 'D,M2',
+    endorse: 'S',
+    rest: 'NONE',
+    serial: '71536360',
+    signature: 'Richard B. Reyes'
   }
 };
 
@@ -16893,7 +17032,7 @@ function licenseTypeKey(type){
   const t = String(type || '').toLowerCase().replace(/_/g, '-');
   if(t === 'newyork' || t === 'ny') return 'new-york';
   if(t === 'newjersey' || t === 'nj') return 'new-jersey';
-  return ['texas','pennsylvania','new-jersey','new-york'].includes(t) ? t : 'hawaii';
+  return ['texas','pennsylvania','new-jersey','new-york','california','florida','virginia'].includes(t) ? t : 'hawaii';
 }
 
 function licensePreset(type){
@@ -17301,20 +17440,14 @@ function pageCreateLicenseChooser(){
 
 function pageUsaLicenseChooser(){
   /* All existing US state DL generators live here */
-  const states = [
-    {id:'hawaii', title:"Hawaii Driver's License"},
-    {id:'texas', title:"Texas Driver's License"},
-    {id:'pennsylvania', title:"Pennsylvania Driver's License"},
-    {id:'new-jersey', title:"New Jersey Driver's License"},
-    {id:'new-york', title:"New York Driver's License"}
-  ];
+  const states = window.USA_LICENSE_STATES;
   return `
   ${navbar('dashboard')}
   <div class="license-choice-shell">
     <div class="license-choice">
       <header class="license-choice-header">
         <h1>USA Driver's License</h1>
-        <p>Choose a state to open its driver's license generator and create a personalized card.</p>
+        <p>Choose a state to open its driver's license mockup generator. Output is a sample for design and demonstration only.</p>
       </header>
       <div class="license-choice-grid">
         ${states.map(s=>`
@@ -17894,6 +18027,12 @@ function pageLicenseHistory(){
 
 /* ---- State-specific Driver License Generator ---- */
 function pageCreateLicense(type='hawaii'){
+  try{
+    if(typeof window.__tpCustomLicensePage==='function'){
+      var __tpCustom = window.__tpCustomLicensePage(type);
+      if(__tpCustom) return __tpCustom;
+    }
+  }catch(__tpE){}
   const typeKey = licenseTypeKey(type);
   const preset = licensePreset(typeKey);
   const cardData = licenseCardDefaults(typeKey);
@@ -21559,20 +21698,14 @@ function pageCreateLicenseChooser(){
 
 function pageUsaLicenseChooser(){
   /* All existing US state DL generators live here */
-  const states = [
-    {id:'hawaii', title:"Hawaii Driver's License"},
-    {id:'texas', title:"Texas Driver's License"},
-    {id:'pennsylvania', title:"Pennsylvania Driver's License"},
-    {id:'new-jersey', title:"New Jersey Driver's License"},
-    {id:'new-york', title:"New York Driver's License"}
-  ];
+  const states = window.USA_LICENSE_STATES;
   return `
   ${navbar('dashboard')}
   <div class="license-choice-shell">
     <div class="license-choice">
       <header class="license-choice-header">
         <h1>USA Driver's License</h1>
-        <p>Choose a state to open its driver's license generator and create a personalized card.</p>
+        <p>Choose a state to open its driver's license mockup generator. Output is a sample for design and demonstration only.</p>
       </header>
       <div class="license-choice-grid">
         ${states.map(s=>`
@@ -21698,6 +21831,67 @@ var LICENSE_PRESETS = {
     rest: 'NONE',
     serial: 'NY987654321098',
     signature: 'Sarah Chen'
+  },
+  california: {
+    label: 'California',
+    state: 'California',
+    dln: 'I1234562',
+    fname: 'AVA',
+    lname: 'MARTINEZ',
+    address: '2570 24th Street\nSacramento, CA 95818',
+    dob: '08/07/1996',
+    iss: '05/14/2026',
+    exp: '08/07/2031',
+    gender: 'F',
+    hgt: '5\'-06"',
+    eyes: 'BRN',
+    wgt: '140 lb',
+    cls: 'C',
+    endorse: 'NONE',
+    rest: 'NONE',
+    serial: 'CA123456789012',
+    signature: 'Ava Martinez'
+  },
+  florida: {
+    label: 'Florida',
+    state: 'Florida',
+    dln: '754-898-9516',
+    fname: 'MICHAEL',
+    lname: 'SMITH',
+    address: '123 YOUR ST\nFT LAUDERDALE, FL 33338',
+    dob: '04/20/2019',
+    iss: '10/10/2026',
+    exp: '04/20/2029',
+    gender: 'M',
+    hgt: "3'-10\"",
+    eyes: 'BLUE',
+    wgt: '52 lbs',
+    hair: 'BROWN',
+    cls: 'C',
+    endorse: 'NONE',
+    rest: 'NONE',
+    serial: '754-718-5539',
+    signature: 'Michael Smith'
+  },
+  virginia: {
+    label: 'Virginia',
+    state: 'Virginia',
+    dln: 'T16700285',
+    fname: 'RICHARD BENJAMIN',
+    lname: 'REYES',
+    address: '5235 JOHN TYLER HWY\nWILLIAMSBURG, VA 23185',
+    dob: '01/05/1987',
+    iss: '05/06/2023',
+    exp: '01/05/2031',
+    gender: 'M',
+    hgt: "6'-00\"",
+    eyes: 'BRO',
+    wgt: '185 lb',
+    cls: 'D,M2',
+    endorse: 'S',
+    rest: 'NONE',
+    serial: '71536360',
+    signature: 'Richard B. Reyes'
   }
 };
 
@@ -21705,7 +21899,7 @@ function licenseTypeKey(type){
   const t = String(type || '').toLowerCase().replace(/_/g, '-');
   if(t === 'newyork' || t === 'ny') return 'new-york';
   if(t === 'newjersey' || t === 'nj') return 'new-jersey';
-  return ['texas','pennsylvania','new-jersey','new-york'].includes(t) ? t : 'hawaii';
+  return ['texas','pennsylvania','new-jersey','new-york','california','florida','virginia'].includes(t) ? t : 'hawaii';
 }
 
 function licensePreset(type){
@@ -22113,20 +22307,14 @@ function pageCreateLicenseChooser(){
 
 function pageUsaLicenseChooser(){
   /* All existing US state DL generators live here */
-  const states = [
-    {id:'hawaii', title:"Hawaii Driver's License"},
-    {id:'texas', title:"Texas Driver's License"},
-    {id:'pennsylvania', title:"Pennsylvania Driver's License"},
-    {id:'new-jersey', title:"New Jersey Driver's License"},
-    {id:'new-york', title:"New York Driver's License"}
-  ];
+  const states = window.USA_LICENSE_STATES;
   return `
   ${navbar('dashboard')}
   <div class="license-choice-shell">
     <div class="license-choice">
       <header class="license-choice-header">
         <h1>USA Driver's License</h1>
-        <p>Choose a state to open its driver's license generator and create a personalized card.</p>
+        <p>Choose a state to open its driver's license mockup generator. Output is a sample for design and demonstration only.</p>
       </header>
       <div class="license-choice-grid">
         ${states.map(s=>`
@@ -22706,6 +22894,12 @@ function pageLicenseHistory(){
 
 /* ---- State-specific Driver License Generator ---- */
 function pageCreateLicense(type='hawaii'){
+  try{
+    if(typeof window.__tpCustomLicensePage==='function'){
+      var __tpCustom = window.__tpCustomLicensePage(type);
+      if(__tpCustom) return __tpCustom;
+    }
+  }catch(__tpE){}
   const typeKey = licenseTypeKey(type);
   const preset = licensePreset(typeKey);
   const cardData = licenseCardDefaults(typeKey);
@@ -25272,7 +25466,8 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
 
   var US_STATES = [
     {id:'hawaii', title:'Hawaii'}, {id:'texas', title:'Texas'}, {id:'pennsylvania', title:'Pennsylvania'},
-    {id:'new-jersey', title:'New Jersey'}, {id:'new-york', title:'New York'}
+    {id:'new-jersey', title:'New Jersey'}, {id:'new-york', title:'New York'},
+    {id:'california', title:'California'}, {id:'florida', title:'Florida'}, {id:'virginia', title:'Virginia'}
   ];
   var LICENSE_COUNTRIES = [
     {id:'usa', title:'United States'}, {id:'uk', title:'United Kingdom'},
@@ -25773,7 +25968,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     clearTimeout(watchT); watchT=setTimeout(fail,15000);
     p.then(function(url){
       if(gen!==speakGen||failed){ try{ URL.revokeObjectURL(url); }catch(e){} return; }
-      var a=new Audio(url); curAudio=a;
+      var a=window.__tpSharedAudio||new Audio(); try{ a.pause(); }catch(e){} a.src=url; curAudio=a;
       function done(){ try{ URL.revokeObjectURL(url); }catch(e){} }
       a.onplaying=function(){ clearTimeout(watchT); if(gen===speakGen) setSpeaking(true); };
       a.onended=function(){ done(); if(gen!==speakGen) return; pauseT=setTimeout(function(){ playGemini(ch,segs,k+1,gen,gn); },call.on?0:60); };
@@ -29634,7 +29829,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
      works and always wins. */
   function rtApplyMic(rt){
     if(!rt||!rt.client) return;
-    var want=!!(call.muted||rt.autoMute);
+    var want=!!(call.muted||(rt.autoMute&&!window.__tpIOS));
     var cur=(typeof rt.client.isMuted==='boolean')?rt.client.isMuted:!!rt.micMuted;
     if(cur===want){ rt.micMuted=want; return; }
     try{ rt.client.toggleMute(); rt.micMuted=want; }catch(e){ console.warn('[Nbatools voice mic]',e); }
@@ -31670,5 +31865,75 @@ html[data-theme="light"] body #tpa-root .tpa-reqact.tpa-reqact button:not(.secon
   window.tpTourStart=function(){ if(!running){ armed=armed||'manual'; start(); } };
 })();
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script id="tp-fl-va-ca-empty-pages">
+(function(){
+  function key(type){
+    var t=String(type||'').toLowerCase().replace(/_/g,'-');
+    if(t==='fl')t='florida'; if(t==='va')t='virginia'; if(t==='ca')t='california';
+    return t;
+  }
+  function isBlocked(type){
+    var t=key(type);
+    return t==='florida'||t==='virginia'||t==='california';
+  }
+  function emptyPage(type){
+    var t=key(type);
+    var label=t==='florida'?'Florida':t==='virginia'?'Virginia':t==='california'?'California':'License';
+    var nav='',foot='';
+    try{ if(typeof navbar==='function') nav=navbar('dashboard'); }catch(e){}
+    try{ if(typeof footer==='function') foot=footer(); }catch(e){}
+    return nav+
+      '<div class="license-generator-shell" style="min-height:50vh;display:flex;align-items:center;justify-content:center;padding:28px 16px">'+
+        '<div style="max-width:560px;text-align:center">'+
+          '<h1 style="margin:0 0 8px;font-size:clamp(22px,4vw,32px);letter-spacing:-.03em">'+label+' Driver\'s License</h1>'+
+          '<p style="margin:0 0 18px;color:var(--muted,#9ca69e);font-size:14px;line-height:1.5">This generator is not available.</p>'+
+          '<a href="#/create-license/usa" class="btn btn-soft" style="display:inline-flex">← Back to USA licenses</a>'+
+        '</div>'+
+      '</div>'+foot;
+  }
+  function wrap(prev){
+    var w=function(type){
+      if(isBlocked(type)) return emptyPage(type);
+      return prev.apply(this, arguments);
+    };
+    w.__tpEmptyFlVaCa=true;
+    return w;
+  }
+  function patch(){
+    if(typeof window.pageCreateLicense==='function' && !window.pageCreateLicense.__tpEmptyFlVaCa){
+      window.pageCreateLicense=wrap(window.pageCreateLicense);
+    }
+    if(typeof window.pageLicenseOutput==='function' && !window.pageLicenseOutput.__tpEmptyFlVaCa){
+      window.pageLicenseOutput=wrap(window.pageLicenseOutput);
+    }
+  }
+  // Source-level early exit if still present via inject (removed); also window hook
+  window.__tpCustomLicensePage=function(type){
+    if(isBlocked(type)) return emptyPage(type);
+    return null;
+  };
+  patch(); setTimeout(patch,0); setTimeout(patch,300); setTimeout(patch,1000);
+  setInterval(patch, 2500);
+  console.info('[Nbatools] Florida, Virginia, California generator pages empty (CTA cards kept)');
+})();
+</script>
+
 </body>
 </html>
