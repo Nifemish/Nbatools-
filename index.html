@@ -26034,14 +26034,14 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       });
     });
   }
-  /* First sentence goes alone (fast start); the rest is grouped into few requests to keep latency + cost low. */
+  /* First sentence goes alone (fast start); the rest is grouped into short pieces so each one is ready before the last one ends. */
   function voiceSegments(ch){
     var segs=[], i=0;
     if(!ch.length) return segs;
     segs.push({text:ch[0],from:0}); i=1;
     while(i<ch.length){
-      var from=i, t='';
-      while(i<ch.length && (t.length+ch[i].length<650 || !t)){ t+=(t?' ':'')+ch[i]; i++; }
+      var from=i, t='', lim=segs.length<2?95:190;   /* the second piece is kept short too, so it is ready while the first sentence is still playing */
+      while(i<ch.length && (t.length+ch[i].length<lim || !t)){ t+=(t?' ':'')+ch[i]; i++; }
       segs.push({text:t,from:from});
     }
     return segs;
@@ -26050,7 +26050,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(gen!==speakGen) return;
     if(k>=segs.length){ setSpeaking(false); speechDone(gen); return; }
     var seg=segs[k], key=k+'|'+gen, ck=seg.text+'|'+gn+'|'+(call.on?'c':'t'), p=gp[key]||(k===0&&ttsCache[ck])||fetchAdminVoice(seg.text,gn); delete gp[key]; if(k===0) delete ttsCache[ck];
-    if(k+1<segs.length){ gp[(k+1)+'|'+gen]=fetchAdminVoice(segs[k+1].text,gn); gp[(k+1)+'|'+gen].catch(function(){}); }
+    for(var ah=1;ah<=2;ah++){ var kk=k+ah, kkey=kk+'|'+gen; if(kk<segs.length&&!gp[kkey]){ gp[kkey]=fetchAdminVoice(segs[kk].text,gn); gp[kkey].catch(function(){}); } }
     var failed=false;
     function fail(){
       if(failed||gen!==speakGen) return; failed=true; clearTimeout(watchT);
@@ -26313,6 +26313,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     setVoiceUI();
     setAgentUI();
     if(voiceToggle) voiceToggle.addEventListener('click',function(){
+      if(voiceOn&&isSpeaking()){ try{ bargeIn(); }catch(e){} return; }   /* while she is talking, one tap just stops her */
       voiceOn=!voiceOn; lsSet(VKEY_ON,voiceOn?'1':'0'); setVoiceUI();
       if(!voiceOn) cancelSpeech();
       else if(voiceAgentOn) resumeVoiceAgent();
@@ -26418,6 +26419,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   }
   if(micBtn){
     micBtn.addEventListener('click',function(){
+      try{ bargeIn(); }catch(e){}   /* tapping the mic stops her so you can speak */
       if(!window.SpeechRecognition && !window.webkitSpeechRecognition){
         addMsg('assistant',"Voice input isn't supported in this browser, but no worries, you can just type to me. Chrome or Edge will work with the mic too.");
         return;
@@ -29257,7 +29259,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     busy=false; sendBtn.disabled=false; scrollDown();
   }
   function startVision(dataUrl){
-    vis.img=dataUrl; vis.lastPhoto=dataUrl; vis.hist=[]; vis.ctx=''; vis.isChat=false;
+    vis.img=dataUrl; vis.lastPhoto=dataUrl; vis.hist=[]; vis.ctx=''; vis.isChat=false; vis.cam=false;
     session={mode:'idle',task:'vision',step:'busy',data:{},idKind:null,sub:null};
     addMsg('assistant',"Let me take a good look at it.",null,'ack');
     visRun('describe','');
@@ -29278,10 +29280,86 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       if(/^(no|nope|nah|skip|no thanks|nothing)$/.test(low)){ visNoShare(); return true; }
       vis.ctx=String(text).slice(0,1500); vis.hist.push({role:'user',text:'Context about the chat: '+vis.ctx}); visRun('reply',''); return true;
     }
+    if(vis.cam&&!camFollowup(text)){ visIdle(); return false; }
     vis.hist.push({role:'user',text:String(text).slice(0,600)});
     if(vis.isChat&&/\b(reply|respond|say|shorter|longer|formal|casual|polite|friendly|firm|funny|rewrite|another|different|tone|decline|refuse|accept|apolog)/i.test(text)) visRun('reply',String(text).slice(0,600));
-    else visRun('followup',String(text).slice(0,600));
+    else visRun(vis.cam?'look':'followup',String(text).slice(0,600));
     return true;
+  }
+
+
+  /* ===== Zara can quietly look through the camera when the user asks her to (no camera screen, no button) ===== */
+  var cam={starting:false,noted:false};
+  function camIntent(raw){
+    var t=String(raw||'');
+    var body='face|skin|hair|teeth|tooth|eyes?|nose|forehead|cheeks?|chin|lips?|neck|ears?|hands?|arms?|legs?|foot|feet|nails?|body|shirt|outfit|clothes|dress';
+    var things='thing|object|item|plant|flower|insect|bug|fruit|food|device|tool|machine|part|medicine|pill|bottle|product|animal|dog|cat';
+    return /\b(use|open|turn on|start|switch on)\b.{0,20}\bcamera\b|\bthrough (the |my )?camera\b|\bscan (me|my|this|that|it|the)\b|\blook at (me|my (face|skin|hair|teeth|eyes?|nose|forehead|cheeks?|neck|hands?|arms?|body|outfit))\b/i.test(t)
+      || new RegExp('\\bcan you see\\b.{0,40}\\b('+body+'|me|room)\\b','i').test(t)
+      || new RegExp('\\b(what|what\'?s|what is|what do you see|see what)\\b.{0,25}\\b(on|in|with|wrong with) my ('+body+')\\b','i').test(t)
+      || new RegExp('\\bwhat\'?s? (is )?(this|that)\\b.{0,12}\\b('+things+')\\b|\\bwhat (is|are) (this|these) ('+things+')','i').test(t)
+      || /\bhow do i look\b|\bdo i look\b|\bhow old (do|would) (i|you) (look|say|think)\b|\bwhat am i (holding|wearing)\b|\bwho is (this|that) (person|man|woman|guy|lady|boy|girl)\b|\bwhat do you see\b/i.test(t)
+      || new RegExp('\\bcheck my ('+body+'|look)\\b','i').test(t)
+      || (vis.cam && (/\b(look|see|scan|check) (at )?(this|that|these|those|it|again|once more|now)\b|\bwhat i'?m (holding|showing)\b|\blook again\b/i.test(t)));
+  }
+  function camWait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  function camGrab(video){
+    var w=video.videoWidth,h=video.videoHeight; if(!w||!h) return null;
+    var k=Math.min(1,960/Math.max(w,h)), c=document.createElement('canvas'); c.width=Math.round(w*k); c.height=Math.round(h*k);
+    var x=c.getContext('2d'); x.drawImage(video,0,0,c.width,c.height);
+    var bright=60;
+    try{ var t=document.createElement('canvas'); t.width=24; t.height=24; var tx=t.getContext('2d'); tx.drawImage(c,0,0,24,24); var d=tx.getImageData(0,0,24,24).data, sum=0; for(var i=0;i<d.length;i+=4) sum+=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; bright=sum/(d.length/4); }catch(e){}
+    var q=.72, url=c.toDataURL('image/jpeg',q);
+    while(url.length>850000&&q>.4){ q-=.1; url=c.toDataURL('image/jpeg',q); }
+    return {url:url,bright:bright};
+  }
+  async function silentLook(question){
+    if(cam.starting) return; cam.starting=true;
+    var q=String(question||'').slice(0,600);
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ cam.starting=false; addMsg('assistant',"I can't use the camera on this device. You can tap the + button to upload a photo and I'll look at that instead.",null,'ask'); return; }
+    if(!cam.noted){ cam.noted=true; addMsg('assistant',"Quick note: when you ask me to look, I take one snapshot from your camera. It's sent to the AI to answer you and isn't saved to your account.",null,'ask'); }
+    addMsg('assistant',pickOf(["One sec, taking a look.","Give me a second, looking now.","One moment, let me look."]),null,'ack');
+    var selfie=/\b(face|skin|me|my (hair|teeth|eyes?|nose|forehead|cheeks?|chin|lips?|neck|ears?)|how old|how do i look|do i look|wearing)\b/i.test(q)||!q;
+    var video=document.createElement('video'); video.setAttribute('playsinline',''); video.setAttribute('muted',''); video.muted=true; video.autoplay=true;
+    video.style.cssText='position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:-1';
+    document.body.appendChild(video);
+    var stream=null, shot=null, dark=false;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:selfie?'user':'environment'},width:{ideal:1280},height:{ideal:1280}},audio:false});
+      video.srcObject=stream; try{ await video.play(); }catch(e){}
+      for(var n=0;n<4;n++){
+        await camWait(n===0?1100:800);
+        var f=camGrab(video);
+        if(f){ shot=f; if(f.bright>=22) break; }
+      }
+      if(shot&&shot.bright<22) dark=true;
+    }catch(err){
+      var nm=err&&err.name;
+      try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+      video.remove(); cam.starting=false;
+      if(nm==='NotAllowedError'||nm==='SecurityError') addMsg('assistant',"I need permission to use your camera. Please allow camera access for this site in your browser or phone settings, then ask me again. Or tap + to upload a photo.",null,'ask');
+      else if(nm==='NotFoundError'||nm==='OverconstrainedError') addMsg('assistant',"I couldn't find a camera on this device. You can tap + to upload a photo instead.",null,'ask');
+      else addMsg('assistant',"I couldn't start the camera just now. Please try again, or tap + to upload a photo.",null,'ask');
+      return;
+    }
+    try{ if(stream) stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
+    video.remove(); cam.starting=false;
+    if(!shot){ addMsg('assistant',"I couldn't get a picture from the camera. Please try again, or tap + to upload a photo.",null,'ask'); return; }
+    if(dark){ addMsg('assistant',"It's too dark for me to see anything. Try again with more light on what you want me to look at.",null,'ask'); return; }
+    camAnalyse(shot.url,q);
+  }
+  function camAnalyse(dataUrl,question){
+    vis.img=dataUrl; vis.lastPhoto=dataUrl; vis.hist=[]; vis.ctx=''; vis.isChat=false; vis.cam=true; vis.lastQ=question||'';
+    if(question) vis.hist.push({role:'user',text:String(question).slice(0,600)});
+    session={mode:'idle',task:'vision',step:'busy',data:{},idKind:null,sub:null};
+    visRun('look',question||'');
+  }
+  /* Typed follow-ups about what she just saw stay on the picture; anything else goes back to normal chat. */
+  function camFollowup(t){
+    t=String(t||'').trim();
+    if(/^(thanks|thank you|ok|okay|cool|great|nice|bye|hi|hello|hey|good|alright)\W*$/i.test(t)) return false;
+    if(/\b(app|nbatools|zara|credits?|shipments?|flights?|receipts?|account|price|weather|news|bitcoin|naira)\b/i.test(t)) return false;
+    return /\b(get rid of|remove|fix|treat|heal|clear|cure|stop|prevent|avoid) (it|this|that|them|these)\b|\b(is|does|will|can|could|should|would|was) (it|this|that|they|these)\b|\bwhat (is|are|does|do) (it|this|that|these|they)\b|\bhow (long|bad|serious|did|can i|do i|should i)\b|\bshould i\b|\bcan i (use|put|apply|take|eat|drink|touch|pop|squeeze|wash)\b|\b(causes?|serious|dangerous|worried|worry|doctor|dermatolog\w*|pharmac\w*|remed(y|ies)|cream|ointment|medicine|home treatment)\b|\bwhy\b.{0,20}\b(it|this|that|there|my)\b/i.test(t)||t.split(/\s+/).length<=2;
   }
 
   /* Route a single photo the user attached with the + button */
@@ -29733,11 +29811,13 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   }
   async function sendText(text){
     text=(text||'').trim(); if(!text||busy) return;
+    try{ bargeIn(); }catch(e){}   /* a new message cuts off whatever she was still saying */
     var chips=$('tpa-chips'); if(chips) chips.remove();
     addMsg('user',text); msgs.push({role:'user',text:text});
     var u=currentUser();
     if(!u){ addMsg('assistant',"Looks like you're not signed in yet. Sign in and I'll be happy to help!"); return; }
     if(session.mode==='idle'&&!session.task&&await applyChatRecordEdit(text)) return;
+    if(!call.on && (!session.task||session.task==='vision') && session.mode==='idle' && camIntent(text)){ silentLook(text); return; }
     if(session.task==='imageedit' && ieHandleText(text)) return;
     if(session.task==='videodl' && vdHandleText(text)) return;
     if(session.task==='vision' && await visHandleText(text)) return;
@@ -29783,7 +29863,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         var reply=j.reply;
         if(!reply){
           if(r.status===401) reply='Looks like your session expired. Please sign in again and we can pick up right where we left off.';
-          else throw new Error('server '+r.status+(j.error?': '+String(j.error).slice(0,80):''));
+          else { var se=new Error('server '+r.status+(j.error?': '+String(j.error).slice(0,80):'')); se.userMessage=String(j.userMessage||j.message||'').slice(0,300); throw se; }
         }
         var human=/\[\[HUMAN\]\]/.test(reply); reply=reply.replace(/\s*\[\[HUMAN\]\]\s*/g,'').trim();
         typing.classList.remove('tpa-typing'); typing.innerHTML=''; rich(typing,reply); msgs.push({role:'assistant',text:reply});
@@ -29813,7 +29893,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         console.warn('[tpa] AI server failed',err);
         var friendly=(err&&err.name==='AbortError')
           ? "I'm sorry, the AI service is taking longer than expected. Please try again in a moment."
-          : "I'm sorry, Zara's AI service is temporarily unavailable. The team is working to restore it. Please try again shortly.";
+          : ((err&&err.userMessage)||"I'm sorry, Zara's AI service is temporarily unavailable. The team is working to restore it. Please try again shortly.");
         typing.classList.remove('tpa-typing'); typing.innerHTML=''; rich(typing,friendly);
         /* Do not pretend that a failed remote answer was completed by a fallback agent. */
       }
