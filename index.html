@@ -13106,7 +13106,7 @@ if(p==='id-citizenship'||p==='create-id-card/citizenship'||p.indexOf('create-id-
 if(p.startsWith('uk-licence')||p==='id-driver-mockup-uk')return idUkPort(p);
 if(p.startsWith('australia-licence')||p==='id-driver-mockup-australia')return idAuPort(p);
 if(p==='document-creation')return creationPlaceholder('Document creation','Forms and paperwork','Build clean document layouts for organized records and professional paperwork.','▧');
-if(p==='track')return track();if(p.startsWith('track/')){window.trackQ=p.slice(6);return track()}if(p==='history')return history();if(p==='tools')return tools();if(p==='sharing')return sharing();if(p==='route-planner')return routePlanner();if(p==='settings')return settings();
+if(p==='web-build')return (window.tpWebBuildPage?window.tpWebBuildPage():tools());if(p==='track')return track();if(p.startsWith('track/')){window.trackQ=p.slice(6);return track()}if(p==='history')return history();if(p==='tools')return tools();if(p==='sharing')return sharing();if(p==='route-planner')return routePlanner();if(p==='settings')return settings();
 if(p==='admin')return adminDashboard();
 if(p.startsWith('shipment-receipt/'))return pageShipmentReceipt(p.slice(17));
 if(p.startsWith('shipment-')){const x=state.shipments.find(x=>x.trackingNumber===p.slice(9));return x?`<div class="screen"><div class="container">${topbar('Shipment','track')}${shipmentDetailPanel(x,true)}${navBar('track')}</div></div>`:track()}
@@ -25433,7 +25433,6 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     <div class="tpa-log" id="tpa-log"></div>
     <div class="tpa-reqbar"><button type="button" class="tpa-reqbtn" id="tpa-req-btn" aria-label="Make a request to the admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>Make a request</button></div>
     <form class="tpa-form" id="tpa-form" autocomplete="off">
-      <button class="tpa-webbuild-btn" id="tpa-webbuild-open" type="button" title="Build a web application">⌘ <span>Web Build</span></button>
       <button class="tpa-agent-toggle" id="tpa-agent-toggle" type="button" aria-pressed="false" aria-label="Start hands-free voice agent" title="Talk to Zara hands-free"><svg class="tpa-i"><use href="#tpa-mic"/></svg><span>Talk</span></button>
       <button class="tpa-attach" id="tpa-attach" type="button" aria-label="Upload photos" title="Attach photos (package picture, ID portrait, or photos to edit)">＋</button>
       <input id="tpa-package-file" type="file" accept="image/*" multiple hidden>
@@ -25576,6 +25575,12 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       {key:'discountRate', q:"Any discount, in percent? Or skip.", optional:true},
       {key:'items', q:"Now for the good part: what was bought? Give me each item as description, quantity, price. Put one per line, or split them with a semicolon.\nFor example: Laptop bag, 1, 45; Shipping, 1, 10"},
       {key:'notes', q:"Any notes you'd like to add on the receipt? Or skip.", optional:true}
+    ],
+    webbuild: [
+      {key:'type', q:"What kind of app should I build?\n• **Banking app**: balances, history & admin\n• **Investment platform**: portfolio & management\n• **Broker website**: paper trading & dashboard\n• **Custom website**: your own idea\n\nTap one below or just type it.", actions:function(){ return ['Banking app','Investment platform','Broker website','Custom website'].map(function(l){ return {label:l, fn:function(){ sendText(l); }}; }); }},
+      {key:'appName', q:"What should the app be called? For example **Nova Bank**."},
+      {key:'adminEmail', q:"Which email should be the demo **admin account**? That identity gets the admin dashboard inside the app."},
+      {key:'extra', q:"Anything special you want in it, like pages, features, colours or style? Say **skip** and I'll build the standard version. (For a custom website, please describe what you want.)"}
     ],
     credits: [
       {key:'plan', q:"Which plan suits you best?\n• **Starter**: 50 credits · ₦2,500\n• **Plus**: 120 credits · ₦5,500\n• **Pro**: 300 credits · ₦12,000\n• **Business**: 800 credits · ₦30,000\n\nJust tell me the plan name, or how many credits you'd like."}
@@ -25821,10 +25826,11 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       ['Save TikTok video','Download a TikTok video'],
       ['Buy credits','I want to buy credits'],
       ['Make a request',null],
+      ['Web Build','__webbuild'],
       ['App help','What can you do in Nbatools?']
     ].forEach(function(c,i){
       var b=document.createElement('button'); b.type='button'; b.className='tpa-chip'; b.style.setProperty('--i',i); b.textContent=c[0];
-      b.onclick=function(){ if(c[1]) sendText(c[1]); else openRequestCard(); }; wrap.appendChild(b);
+      b.onclick=function(){ if(c[1]==='__webbuild'){ var ch0=$('tpa-chips'); if(ch0) ch0.remove(); addMsg('user','Build a web app'); msgs.push({role:'user',text:'Build a web app'}); startTask('webbuild',''); } else if(c[1]) sendText(c[1]); else openRequestCard(); }; wrap.appendChild(b);
     });
     log.appendChild(wrap); scrollDown();
   }
@@ -26500,6 +26506,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
   function detectTask(text){
     var t=norm(text);
     if(/\b(buy credit|top ?up|purchase credit|get credit|wallet|subscription|starter|plus plan|pro plan|business plan)\b/.test(t) || /\bcredits?\b/.test(t) && /\b(buy|purchase|need|want|add|top)\b/.test(t)) return 'credits';
+    if(/\bweb ?build\b/.test(t) || (/\b(build|create|make|generate)\b/.test(t) && /\b(web ?app|web application|website|banking app|investment platform|broker website)\b/.test(t))) return 'webbuild';
     if(/\b(ship|shipment|package|parcel|send|courier|logistics)\b/.test(t)) return 'shipment';
     if(/\b(flight|ticket|airline|boarding|plane)\b/.test(t)) return 'flight';
     if(/\b(receipt|invoice)\b/.test(t)) return 'receipt';
@@ -26572,6 +26579,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(session.task==='flight') return FLOWS.flight;
     if(session.task==='receipt') return FLOWS.receipt;
     if(session.task==='credits') return FLOWS.credits;
+    if(session.task==='webbuild') return FLOWS.webbuild;
     if(session.task==='id'){
       if(session.sub==='license_country') return FLOWS.id_license_country;
       if(session.sub==='license_state') return FLOWS.id_license_state;
@@ -26638,6 +26646,8 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       addMsg('assistant',"Ooh, somebody's going on a trip, I love it! I'll ask a few easy questions, and then I'll book the ticket for you right here in the chat and show you the result.");
     } else if(task==='receipt'){
       addMsg('assistant',"Absolutely, let's make a lovely receipt! I'll ask a few easy things about the business, the customer and what was bought, and then I'll generate the receipt for you right here in the chat.");
+    } else if(task==='webbuild'){
+      addMsg('assistant',"Love it, let's build your web app! I'll ask a few quick questions: the type of app, its name, the admin email and any special instructions. Then I'll generate it, show you a **watermarked preview**, and put the original file in your **cart** for **₦30,000**. After your payment is approved, the download unlocks.");
     } else if(task==='credits'){
       addMsg('assistant',"Nbatools credits:\n• Starter 50 · ₦2,500\n• Plus 120 · ₦5,500\n• Pro 300 · ₦12,000\n• Business 800 · ₦30,000\n\nEvery account gets **50 free credits**, one time only, new and existing accounts alike. After that you buy a plan.\n\nCreations cost about 5–10 credits each. Pick a plan and I'll open the **payment page** with bank details.");
     }
@@ -26673,7 +26683,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     var pre='';
     if(total>6 && n===total) pre='Last one, I promise! ';
     else if(total>6 && n===total-3) pre='We\u2019re almost there! ';
-    addMsg('assistant', pre+s.q, null, 'ask');
+    addMsg('assistant', pre+s.q, s.actions?s.actions():null, 'ask');
   }
 
   function handleCollect(text){
@@ -26691,6 +26701,9 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       return;
     }
 
+    if(session.task==='webbuild' && s.key==='extra' && session.data.type!=='custom' && isSkip(val)){
+      session.data.extra=''; session.step++; session.ack=pickSkip(); askCurrent(); return;
+    }
     if(isSkip(val)){
       if(!s.optional){ addMsg('assistant',"Sorry, I do need this one before we can move on. "+s.q); return; }
       session.data[s.key]='';
@@ -26742,6 +26755,17 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       } else if(s.key==='currency') session.data.currency=val.toUpperCase().replace(/[^A-Z]/g,'').slice(0,3)||'USD';
       else if(s.key==='taxRate'||s.key==='discountRate') session.data[s.key]=String(parseFloat(val)||0);
       else session.data[s.key]=val;
+    } else if(session.task==='webbuild'){
+      if(s.key==='type'){
+        var lw=norm(val), tp=/bank/.test(lw)?'banking':/invest/.test(lw)?'investment':/broker|trad/.test(lw)?'broker':/custom|other|own|website|idea/.test(lw)?'custom':'';
+        if(!tp){ addMsg('assistant',"Please pick one: **Banking app**, **Investment platform**, **Broker website** or **Custom website**.",s.actions(),'ask'); return; }
+        session.data.type=tp;
+      } else if(s.key==='adminEmail'){
+        var em=val.toLowerCase();
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){ addMsg('assistant',"That doesn't look like a valid email. Try something like **admin@example.com**."); return; }
+        session.data.adminEmail=em;
+      } else if(s.key==='appName'){ session.data.appName=val.slice(0,60); }
+      else session.data[s.key]=val.slice(0,5000);
     } else if(session.task==='credits'){
       var plan=matchPlan(val);
       if(!plan){ addMsg('assistant',"Hmm, I didn't catch which plan you mean. Is it **Starter, Plus, Pro,** or **Business**? You can also tell me how many credits you're after, like 120."); return; }
@@ -26822,6 +26846,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         '**Tax:** '+(d.taxRate||'0')+'% · **Discount:** '+(d.discountRate||'0')+'%',
         itemLines.length?('**Items:**\n'+itemLines.join('\n')):'**Items:** —'
       ];
+    } else if(session.task==='webbuild'){
+      title='Web app';
+      var tmap={banking:'Banking app',investment:'Investment platform',broker:'Broker website',custom:'Custom website'};
+      lines=['**Type:** '+(tmap[d.type]||'Custom website'),'**App name:** '+(d.appName||'—'),'**Admin email:** '+(d.adminEmail||'—'),d.extra?('**Instructions:** '+(d.extra.length>160?d.extra.slice(0,160)+'…':d.extra)):'**Instructions:** standard version'];
     } else if(session.task==='credits'){
       var p=d.plan;
       title='Credits';
@@ -26858,7 +26886,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
      the AI collects the details, runs the creator in the background (same
      credit charge, same saved record, same cloud sync as the forms) and
      posts the finished result as a card. No form is opened. */
-  var BG_TASKS = {shipment:1, flight:1, receipt:1};
+  var BG_TASKS = {shipment:1, flight:1, receipt:1, webbuild:1};
   /* ID creations: US driver's licenses are generated right in the chat (canvas drawers shared with the ID pages). */
   function idInChat(){
     if(session.task!=='id') return false;
@@ -26972,6 +27000,9 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       opts.forEach(function(o){
         acts.push({label:o.tag+' · '+o.airline+' '+o.flightNo+' · '+o.depTime+'→'+o.arrTime+' · '+money(o.price,'USD'), fn:function(){ executeTask(o); }});
       });
+    } else if(task==='webbuild'){
+      intro+="\n\nShall I build it now? It can take a minute or two. You'll get a **watermarked preview**, and the original file goes to your **cart** for **₦30,000**.";
+      acts.push({label:'Yes, build it', fn:function(){ executeTask(); }});
     } else {
       intro+="\n\nShall I generate it now?";
       acts.push({label:'Yes, create it', fn:function(){ executeTask(); }});
@@ -26981,9 +27012,9 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     }
     var cost=costOf(task);
     if(cost) intro+="\n_This uses "+cost+" credits._";
-    intro+="\n_Something not right? Just tell me, like “change the "+({shipment:'recipient name',flight:'passenger',receipt:'customer name',id:'name'}[task]||'name')+" to Davis Brown”, and I'll fix it straight away._";
+    if(task!=='webbuild') intro+="\n_Something not right? Just tell me, like “change the "+({shipment:'recipient name',flight:'passenger',receipt:'customer name',id:'name'}[task]||'name')+" to Davis Brown”, and I'll fix it straight away._";
     session.opts=opts;
-    acts.push({label:'Edit something', secondary:true, fn:function(){ var st=editSet(); if(st) editChooseField(st); }});
+    if(task!=='webbuild') acts.push({label:'Edit something', secondary:true, fn:function(){ var st=editSet(); if(st) editChooseField(st); }});
     acts.push({label:'Start over', secondary:true, fn:function(){
       resetSession(); addMsg('assistant',"No worries, scrapped it! What would you like to make instead?", null,'ask'); showChips();
     }});
@@ -27365,8 +27396,50 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     return (got && !isBlank(got)) ? got : null;
   }
 
+  /* Florida + Virginia: render the SAME original card template the ID pages use (not the generic canvas). */
+  async function idFlVa(d,type){
+    var N=window.tpFlVaNative; if(!N) return null;
+    var t=N.key(type), src=N.decode(t);
+    N.css(t,src.css); await N.tailwind();
+    var p=licensePreset(t)||{};
+    var fn=String(d.firstName||'').trim(), ln=String(d.lastName||'').trim();
+    var ab=t==='virginia'?'VA':'FL', city=String(d.city||'').trim(), zip=String(d.zip||'').trim();
+    var pl=String(p.address||'').split('\n');
+    var cs=city?(city+(/,\s*[A-Za-z]{2}\b/.test(city)?'':', '+ab)+(zip?' '+zip:'')):(pl[1]||'');
+    var addr=String(d.address||'').trim()||pl[0]||'';
+    var hgt=p.hgt||'';
+    if(d.height){ var hm=String(d.height).match(/^(\d)\s*[-'.]\s*(\d{1,2})"?$/); hgt=hm?(hm[1]+"'-"+hm[2].padStart(2,'0')+'"'):String(d.height).trim(); }
+    var eyes=d.eyes?String(d.eyes).trim().toUpperCase().slice(0,t==='virginia'?3:5):(p.eyes||'');
+    var F={
+      'input-firstname':fn.toUpperCase(), 'input-lastname':ln.toUpperCase(), 'input-signature':(fn+' '+ln).trim(),
+      'input-address':addr, 'input-citystate':cs,
+      'input-dob':d.dob?idDate(d.dob,t,true):(p.dob||''), 'input-sex':d.sex?String(d.sex).trim().charAt(0).toUpperCase():(p.gender||''),
+      'input-eyes':eyes, 'input-hgt':hgt,
+      'input-iss':d.issueDate?idDate(d.issueDate,t):(p.iss||''), 'input-exp':d.expDate?idDate(d.expDate,t):(p.exp||''),
+      'input-class':p.cls||''
+    };
+    if(t==='virginia'){ F['input-number']=p.dln||''; F['input-endos']=p.endorse||''; F['input-restrictions']=p.rest||''; }
+    else { F['input-ph1']=p.dln||''; F['input-ph2']=p.serial||''; F['input-wgt']=p.wgt||''; F['input-hair']=p.hair||''; }
+    var photo=d.photo||PH_SVG;
+    var html='<div id="tp-flva-native-root" data-tp-flva="'+t+'"><main class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">'+src.main+'</main></div>';
+    var cv=await capture(html,'#id-card-container',1180,async function(h){
+      try{ new Function(src.js)(); }catch(e){ console.warn('[tpa] flva bindings',e); }
+      Object.keys(F).forEach(function(id){ var el=h.querySelector('#'+id); if(el){ el.value=F[id]; el.dispatchEvent(new Event('input',{bubbles:true})); } });
+      var ims=[h.querySelector('#card-photo'),h.querySelector('#card-ghost-photo')].filter(Boolean);
+      ims.forEach(function(im){ im.src=photo; });
+      await sleep(900);
+      await Promise.race([Promise.all(ims.map(function(im){ return im.decode?im.decode().catch(function(){}):null; })),sleep(3000)]);
+    },null,{scale:3});
+    try{ // same storage the Florida/Virginia pages read, so "View / edit full ID" opens this exact card
+      var store=Object.assign({},F); if(d.photo) store.photo=d.photo;
+      try{ localStorage.setItem('tpNativeFlVa:'+t,JSON.stringify(store)); }catch(q){ delete store.photo; localStorage.setItem('tpNativeFlVa:'+t,JSON.stringify(store)); }
+    }catch(e){ console.warn('[tpa] flva cache',e); }
+    var nm=(fn+' '+ln).trim(), label=(p.label||(t==='virginia'?'Virginia':'Florida'))+" driver's license";
+    return fin(cv,label,nm,[['Type',label],['Name',nm],['Date of birth',F['input-dob']],['License no.',t==='virginia'?F['input-number']:F['input-ph1']]],t+'-driver-license.png','license-output/'+t);
+  }
   async function idUs(d){
     var type=licenseTypeKey(d.state), p=licensePreset(type)||{};
+    if(type==='florida'||type==='virginia'){ try{ var fv=await idFlVa(d,type); if(fv) return fv; }catch(e){ console.warn('[tpa] original FL/VA card failed, using fallback',e); } }
     var fn=String(d.firstName||'').trim(), ln=String(d.lastName||'').trim();
     var city=[String(d.city||'').trim(),String(d.zip||'').trim()].filter(Boolean).join(', ');
     var data=Object.assign({},p,{
@@ -27535,8 +27608,20 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     id:["On it! Generating your ID now…","Working on it, one moment while I draw the card…"],
     shipment:["On it! Creating your shipment now…","Working on it, one moment while I set up the shipment…"],
     flight:["On it! Booking your flight now…","Working on it, one moment while I book the ticket…"],
+    webbuild:["On it! Building your web app now. This can take a minute or two…","Working on it, I'm writing your app's code right now. Hang tight…"],
     receipt:["On it! Generating your receipt now…","Working on it, one moment while I put the receipt together…"]
   };
+
+  async function webBuildCard(item){
+    var url=''; try{ url=window.tpWebBuildPreviewUrl(item); }catch(e){}
+    var price=Number(window.tpWebBuildPrice||30000).toLocaleString('en-NG');
+    var txt='**'+item.appName+'** is built! 🎉\n\nI made a **watermarked preview** so you can try it out. The original, watermark-free HTML file is already in your **cart** for **₦'+price+'**. Once you pay and the admin approves it, the **download button unlocks** along with the hosting guide.';
+    addMsg('assistant', txt, [
+      {label:'Open preview', fn:function(){ try{ window.tpWebBuildPreview(item); }catch(e){} }},
+      {label:'Copy preview link', secondary:true, fn:async function(){ try{ await navigator.clipboard.writeText(url); addMsg('assistant','Preview link copied. It works in this browser session.'); }catch(e){ addMsg('assistant','I could not copy it automatically. Tap **Open preview** instead.'); } }},
+      {label:'Go to cart', fn:function(){ closeChat(); if(typeof nav==='function') nav('cart'); }}
+    ], 'done');
+  }
 
   async function runInBackground(choice){
     if(bgBusy) return;
@@ -27552,6 +27637,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       res = task==='shipment' ? await bgShipment(d,pick)
           : task==='flight'   ? await bgFlight(d,pick)
           :   task==='id'         ? await bgId(d,idk)
+          : task==='webbuild' ? await window.tpWebBuildRun(d)
           :                     await bgReceipt(d);
     }catch(e){ console.error('[tpa] background',e); res={ok:false,error:'Something unexpected happened.'}; }
     try{ if(typing&&typing.parentNode) typing.parentNode.removeChild(typing); }catch(e){}
@@ -27561,8 +27647,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       if(task==='shipment') { if(lastChatRecord)lastChatRecord.card=await shipmentCard(res.record); queuedPackageImage=''; var upn=$('tpa-upload-note'); if(upn)upn.remove(); }
       else if(task==='flight') { if(lastChatRecord)lastChatRecord.card=await flightCard(res.record); }
       else if(task==='id') await idCard(res.record);
+      else if(task==='webbuild') await webBuildCard(res.item);
       else await receiptCard(res.record);
       var done={
+        webbuild:"Want to build another app, or something else?",
         shipment:"All done! Your shipment is live. Share the tracking number or link with your recipient. Want to create another, or something else?",
         flight:"All booked! Your ticket is saved and trackable with the number above. Anything else I can set up?",
         id:"Your ID is ready! Tap **Download PNG** above to save it. Want another one, or something else?",
@@ -28167,7 +28255,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       return;
     }
     var task=detectTask(t);
-    if(task==='shipment'||task==='flight'||task==='receipt'||task==='credits'||task==='id'){
+    if(task==='shipment'||task==='flight'||task==='receipt'||task==='credits'||task==='id'||task==='webbuild'){
       startTask(task, t); return;
     }
     if(task==='track'){
@@ -29856,7 +29944,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     if(ended){ ended=false; addMsg('assistant',pickOf(["Oh, you're back! I missed you for, like, a whole minute. Let's pick things up.","Welcome back! Okay, where were we? Let's get going."])); }
     if(nbaMeaningIntent(text)){ busy=true; sendBtn.disabled=true; try{ nbaMeaningReply(); await outQ; }finally{ busy=false; sendBtn.disabled=false; } scrollDown(); return; }
     if(sportsIntent(text)){ busy=true; sendBtn.disabled=true; try{ sportsReply(); await outQ; }finally{ busy=false; sendBtn.disabled=false; } scrollDown(); return; }
-    if(session.task&&(session.mode==='collect'||session.mode==='confirm')&&tryEditDetails(text)){ busy=true; sendBtn.disabled=true; try{ await outQ; }finally{ busy=false; sendBtn.disabled=false; } scrollDown(); return; }
+    if(session.task&&session.task!=='webbuild'&&(session.mode==='collect'||session.mode==='confirm')&&tryEditDetails(text)){ busy=true; sendBtn.disabled=true; try{ await outQ; }finally{ busy=false; sendBtn.disabled=false; } scrollDown(); return; }
 
     if(!call.on && callIntent(text)){ await startCallFromChat(); return; }
     if(session.mode==='contact'){ busy=true; sendBtn.disabled=true; try{ await handleContactChat(text); }finally{ busy=false; sendBtn.disabled=false; } return; }
@@ -32230,6 +32318,7 @@ var FL_STUDIO_B64 = "PGh0bWwgbGFuZz0iZW4iIGNsYXNzPSJoLWZ1bGwiPgo8aGVhZD4KICAgIDx
   }
   patch();setTimeout(patch,0);setTimeout(patch,300);setTimeout(patch,1000);
   var mo=new MutationObserver(function(){var r=document.getElementById('tp-flva-native-root');if(r&&!r.dataset.tpReady)init();});mo.observe(document.documentElement,{childList:true,subtree:true});
+  window.tpFlVaNative={key:key,decode:decodeStudio,css:nativeCss,tailwind:ensureTailwind};
   window.__tpCustomLicensePage=function(){return null;};
 })();
 </script>
@@ -32810,12 +32899,13 @@ window.tpFramePage = function () {
 <style id="tp-webbuild-style">
 .tpa-webbuild-btn{flex:none;display:flex;align-items:center;gap:6px;height:40px;padding:0 11px;border-radius:22px;border:1px solid var(--tpa-a,var(--accent));background:color-mix(in srgb,var(--tpa-a,var(--accent)) 12%,var(--surface,#fff));color:var(--ink,#111);font:700 12px inherit;cursor:pointer;white-space:nowrap}.tpa-webbuild-btn span{font-size:12px}.tpa-webbuild-btn:active{transform:scale(.97)}
 #tp-webbuild-modal,#tp-webbuild-preview{position:fixed;inset:0;z-index:2147483500;background:rgba(0,0,0,.72);display:none;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}#tp-webbuild-modal.on,#tp-webbuild-preview.on{display:flex}.tp-wb-box{width:min(720px,100%);max-height:92dvh;overflow:auto;background:var(--surface,#fff);color:var(--ink,#111);border:1px solid var(--line,#ddd);border-radius:22px;padding:20px;box-shadow:0 24px 80px #0008}.tp-wb-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.tp-wb-head h2{margin:0;font-size:23px}.tp-wb-close{border:0;background:var(--surface2);color:var(--ink);border-radius:50%;width:38px;height:38px;font-size:20px}.tp-wb-types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.tp-wb-type{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--surface2);color:var(--ink);text-align:left;cursor:pointer}.tp-wb-type.on{border:2px solid var(--accent,var(--tpa-a));background:color-mix(in srgb,var(--accent,var(--tpa-a)) 10%,var(--surface))}.tp-wb-type b{display:block;margin-bottom:5px}.tp-wb-field{display:block;margin:12px 0;font-size:12px;font-weight:800}.tp-wb-field input,.tp-wb-field textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface2);color:var(--ink);font:inherit}.tp-wb-field textarea{min-height:110px;resize:vertical}.tp-wb-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:15px}.tp-wb-primary,.tp-wb-secondary{border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}.tp-wb-primary{background:var(--accent,var(--tpa-a));color:var(--accent-contrast,#111)}.tp-wb-secondary{background:var(--surface2);color:var(--ink)}.tp-wb-note{font-size:12px;color:var(--muted);line-height:1.5}.tp-wb-progress{padding:16px;border-radius:14px;background:var(--surface2);margin-top:14px;display:none}.tp-wb-preview-frame{width:min(1200px,96vw);height:88dvh;background:#fff;border:0;border-radius:14px}.tp-wb-preview-wrap{position:relative}.tp-wb-watermark{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;color:rgba(255,255,255,.45);font-size:clamp(34px,8vw,100px);font-weight:1000;letter-spacing:.12em;transform:rotate(-27deg);text-shadow:0 2px 5px #000,0 0 2px #000;white-space:nowrap;z-index:2}.tp-wb-preview-top{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#fff;margin-bottom:10px}
+#tp-webbuild-modal.tp-wb-embed{position:static;inset:auto;z-index:auto;background:none;padding:0;display:block}#tp-webbuild-modal.tp-wb-embed .tp-wb-box{width:100%;max-width:720px;max-height:none;overflow:visible;box-shadow:none;margin:0 auto}#tp-webbuild-modal.tp-wb-embed .tp-wb-close{display:none}#tp-wb-page{padding:4px 0 24px}
 @media(max-width:520px){.tpa-webbuild-btn{padding:0 8px}.tpa-webbuild-btn span{font-size:11px}.tp-wb-box{padding:15px;border-radius:18px}.tp-wb-types{grid-template-columns:1fr 1fr}.tp-wb-type{padding:11px;font-size:12px}}
 </style>
 <script id="tp-webbuild-feature">
 (function(){
 'use strict';
-var API='https://trackport-ai.nbatoolz.workers.dev/chat', PRICE=30000, selected='banking', generated=null, previewUrl='';
+var modalEl=null;var API='https://trackport-ai.nbatoolz.workers.dev/chat', PRICE=30000, selected='banking', generated=null, previewUrl='';
 var presets={
  banking:{title:'Banking App',prompt:'Build a polished banking dashboard demo with user registration/login UI, account overview, available and current balance, recent transaction history, transaction search/filter, profile/settings, notifications and a complete admin dashboard. Admin can manage demo users, edit displayed demo account balances, add/edit demo transactions, freeze/unfreeze demo accounts and view activity. Use simulated money only; no real payments, transfers, deposits, withdrawals or bank integrations.'},
  investment:{title:'Investment Platform',prompt:'Build a polished investment platform demo with user dashboard, portfolio overview, simulated holdings, performance charts, watchlist, educational market cards, simulated transaction history, profile/settings and admin dashboard. Admin can manage demo users, edit simulated portfolios and balances, manage demo investment plans and view activity. No real investments, deposits, withdrawals, securities execution or financial advice.'},
@@ -32827,18 +32917,31 @@ function buildsKey(){return 'tpWebBuilds:'+uid()}
 function getBuilds(){try{return JSON.parse(localStorage.getItem(buildsKey())||'{}')}catch(e){return {}}}
 function putBuild(p){var m=getBuilds();m[p.id]=p;try{localStorage.setItem(buildsKey(),JSON.stringify(m))}catch(e){throw new Error('Storage is full. Please try a smaller app build.')}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function ensureModal(){if(document.getElementById('tp-webbuild-modal'))return;var d=document.createElement('div');d.id='tp-webbuild-modal';d.innerHTML='<div class="tp-wb-box"><div class="tp-wb-head"><div><div class="eyebrow">ZARA · APP STUDIO</div><h2>Build your web app.</h2></div><button class="tp-wb-close" id="tp-wb-close">×</button></div><p class="tp-wb-note">Choose a starter, name your app, assign its demo admin and add your own instructions.</p><p class="tp-wb-note"><a href="https://nbatools.cc.cd/" target="_blank" rel="noopener" style="color:var(--accent);font-weight:800">Build more with Nbatools ↗</a></p><div class="tp-wb-types" id="tp-wb-types"><button class="tp-wb-type on" data-type="banking"><b>🏦 Banking app</b>Balances, history & admin</button><button class="tp-wb-type" data-type="investment"><b>📈 Investment platform</b>Portfolio & management</button><button class="tp-wb-type" data-type="broker"><b>💹 Broker website</b>Paper trading & dashboard</button><button class="tp-wb-type" data-type="custom"><b>✦ Custom website</b>Your own idea</button></div><label class="tp-wb-field">APP NAME<input id="tp-wb-name" maxlength="60" placeholder="e.g. Nova Bank"></label><label class="tp-wb-field">ADMIN ACCOUNT EMAIL<input id="tp-wb-email" type="email" maxlength="120" placeholder="admin@example.com"></label><label class="tp-wb-field">BUILD PROMPT / EXTRA INSTRUCTIONS<textarea id="tp-wb-prompt" maxlength="5000" placeholder="Describe the pages, features, style and workflows you want..."></textarea></label><p class="tp-wb-note">The supplied email is configured as the app\'s demo administrator. This is a front-end demo identity only; real admin authentication needs a secure backend. All financial activity is simulated.</p><div class="tp-wb-actions"><button class="tp-wb-primary" id="tp-wb-generate">Generate app</button><button class="tp-wb-secondary" id="tp-wb-cancel">Cancel</button></div><div class="tp-wb-progress" id="tp-wb-progress">Zara is planning and building your application… This may take a little while.</div></div>';
-d.appendChild(d.firstChild);document.body.appendChild(d);d.querySelector('#tp-wb-close').onclick=d.querySelector('#tp-wb-cancel').onclick=closeBuilder;d.addEventListener('click',function(e){if(e.target===d)closeBuilder()});d.querySelectorAll('[data-type]').forEach(function(b){b.onclick=function(){selected=b.dataset.type;d.querySelectorAll('[data-type]').forEach(function(x){x.classList.toggle('on',x===b)});d.querySelector('#tp-wb-prompt').value=presets[selected].prompt}});d.querySelector('#tp-wb-generate').onclick=build;d.querySelector('#tp-wb-prompt').value=presets.banking.prompt;}
-function openBuilder(){ensureModal();var d=document.getElementById('tp-webbuild-modal');d.classList.add('on');if(!presets[selected].prompt&&selected==='custom'){} }
-function closeBuilder(){var d=document.getElementById('tp-webbuild-modal');if(d)d.classList.remove('on')}
+function ensureModal(){if(modalEl)return;var d=document.createElement('div');modalEl=d;d.id='tp-webbuild-modal';d.innerHTML='<div class="tp-wb-box"><div class="tp-wb-head"><div><div class="eyebrow">ZARA · APP STUDIO</div><h2>Build your web app.</h2></div><button class="tp-wb-close" id="tp-wb-close">×</button></div><p class="tp-wb-note">Choose a starter, name your app, assign its demo admin and add your own instructions.</p><p class="tp-wb-note"><a href="https://nbatools.cc.cd/" target="_blank" rel="noopener" style="color:var(--accent);font-weight:800">Build more with Nbatools ↗</a></p><div class="tp-wb-types" id="tp-wb-types"><button class="tp-wb-type on" data-type="banking"><b>🏦 Banking app</b>Balances, history & admin</button><button class="tp-wb-type" data-type="investment"><b>📈 Investment platform</b>Portfolio & management</button><button class="tp-wb-type" data-type="broker"><b>💹 Broker website</b>Paper trading & dashboard</button><button class="tp-wb-type" data-type="custom"><b>✦ Custom website</b>Your own idea</button></div><label class="tp-wb-field">APP NAME<input id="tp-wb-name" maxlength="60" placeholder="e.g. Nova Bank"></label><label class="tp-wb-field">ADMIN ACCOUNT EMAIL<input id="tp-wb-email" type="email" maxlength="120" placeholder="admin@example.com"></label><label class="tp-wb-field">BUILD PROMPT / EXTRA INSTRUCTIONS<textarea id="tp-wb-prompt" maxlength="5000" placeholder="Describe the pages, features, style and workflows you want..."></textarea></label><p class="tp-wb-note">The supplied email is configured as the app\'s demo administrator. This is a front-end demo identity only; real admin authentication needs a secure backend. All financial activity is simulated.</p><div class="tp-wb-actions"><button class="tp-wb-primary" id="tp-wb-generate">Generate app</button><button class="tp-wb-secondary" id="tp-wb-cancel">Cancel</button></div><div class="tp-wb-progress" id="tp-wb-progress">Zara is planning and building your application… This may take a little while.</div></div>';
+d.appendChild(d.firstChild);document.body.appendChild(d);d.querySelector('#tp-wb-close').onclick=d.querySelector('#tp-wb-cancel').onclick=leaveBuilder;d.querySelectorAll('[data-type]').forEach(function(b){b.onclick=function(){selected=b.dataset.type;d.querySelectorAll('[data-type]').forEach(function(x){x.classList.toggle('on',x===b)});d.querySelector('#tp-wb-prompt').value=presets[selected].prompt}});d.querySelector('#tp-wb-generate').onclick=build;d.querySelector('#tp-wb-prompt').value=presets.banking.prompt;}
+function openBuilder(){try{var cp=document.getElementById('tpa-panel');if(cp&&cp.classList.contains('open')){var cx=document.getElementById('tpa-x');if(cx)cx.click();else cp.classList.remove('open')}}catch(e){}ensureModal();if(typeof nav==='function')nav('web-build')}
+function closeBuilder(){if(modalEl)modalEl.classList.remove('on')}
+function leaveBuilder(){if(typeof nav==='function')nav('tools')}
+function mountPage(){var host=document.getElementById('tp-wb-page');if(!host)return;ensureModal();if(modalEl.parentNode!==host)host.appendChild(modalEl);modalEl.classList.add('on','tp-wb-embed')}
+window.tpWebBuildPage=function(){return '<div class="screen"><div class="container">'+topbar('Web Build','tools')+'<div id="tp-wb-page"></div>'+navBar('tools')+'</div></div>'};
+try{var appEl=document.getElementById('app');if(appEl)new MutationObserver(function(){mountPage()}).observe(appEl,{childList:true})}catch(e){}
 function addAssistant(text){try{var l=document.getElementById('tpa-log');if(!l)return;var b=document.createElement('div');b.className='tpa-m a';b.textContent=text;l.appendChild(b);l.scrollTop=l.scrollHeight}catch(e){}}
 function makePrompt(name,email,type,extra){return 'You are a senior full-stack frontend engineer. Generate ONE complete, polished, self-contained HTML5 web application file. Return ONLY the complete HTML source, beginning with <!doctype html> and ending with </html>. Do not use markdown fences, explanations, external build tools, modules, or separate files. Inline all CSS and JavaScript. CDN libraries may be used only when essential; prefer vanilla JS. The app must be mobile-first, responsive, accessible, polished and fully interactive. App name: '+name+'. Application category: '+presets[type].title+'. DEMO ADMIN EMAIL: '+email+'. Include a clearly labelled demo login experience and configure the supplied email as the admin identity in the front-end demo. Do not claim this is secure authentication: show a small note that production admin authentication requires a secure server. Build type requirements: '+presets[type].prompt+'. Visual design: premium modern product UI, consistent design system, responsive navigation, dashboards, empty states, forms, search/filter, charts where appropriate, realistic sample data and localStorage persistence. Add a visible Demo Mode label. Financial operations must be simulated only: no real money movement, real deposits/withdrawals, real investment execution, real brokerage orders or connections to banks. Use sample data and clear simulation labels. Extra user instructions: '+extra+'. Ensure every visible control works in the demo, forms validate, navigation works, and no feature depends on a missing backend. Output compact but complete source, target under 400 KB.'}
 function extractHtml(raw){var t=String(raw||'').trim(),a=t.indexOf('```'),b=-1;if(a>=0){var c=t.indexOf('\n',a);b=t.indexOf('```',c);if(c>=0&&b>c)t=t.slice(c+1,b).trim()}var i=t.toLowerCase().indexOf('<!doctype html');if(i<0)i=t.toLowerCase().indexOf('<html');if(i>0)t=t.slice(i);if(t.toLowerCase().indexOf('<html')<0||t.toLowerCase().lastIndexOf('</html>')<0)throw new Error('Zara did not return a complete HTML file. Please try again with a shorter prompt.');return t}
-async function build(){var d=document.getElementById('tp-webbuild-modal'),name=d.querySelector('#tp-wb-name').value.trim(),email=d.querySelector('#tp-wb-email').value.trim().toLowerCase(),extra=d.querySelector('#tp-wb-prompt').value.trim(),btn=d.querySelector('#tp-wb-generate'),prog=d.querySelector('#tp-wb-progress');if(!name)return alert('Enter an application name.');if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert('Enter a valid admin email address.');if(!extra)return alert('Add a build prompt.');if(!window.firebaseAuth||!firebaseAuth.currentUser)return alert('Please sign in to Nbatools before building an app.');btn.disabled=true;prog.style.display='block';try{var token=await firebaseAuth.currentUser.getIdToken(),prompt=makePrompt(name,email,selected,extra),ctrl=new AbortController(),timer=setTimeout(function(){ctrl.abort()},180000);var res=await fetch(API,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:[{role:'user',text:prompt}],account:{email:firebaseAuth.currentUser.email},context:{feature:'web-build',output:'single HTML file'},mood:{mood:'focused',intensity:'medium'},webSearch:false,persona:{name:'Zara',aiName:'Zara',style:'Precise senior software engineer. Output only complete HTML source.'}})});clearTimeout(timer);var j=await res.json();if(!res.ok||!j||!j.reply)throw new Error((j&&j.error)||'The app generator could not complete the request.');var html=extractHtml(j.reply);if(html.length>500000)throw new Error('This app is too large for the current secure order storage limit. Ask Zara to generate a more compact version.');var id='wb_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8),item={id:id,name:name+' — Web App',appName:name,adminEmail:email,buildType:selected,priceNgn:PRICE,desc:'Custom '+presets[selected].title+' HTML application. Admin: '+email,customBuild:true,html:html,createdMs:Date.now()};putBuild(item);generated=item;closeBuilder();addAssistant('Your '+name+' app is ready! I have created a preview for you. The original HTML has been added to your cart for ₦30,000. After your payment is approved, you can download the HTML and hosting instructions.');showPreview(item);try{var S=window.tpStore;if(S&&S.cart){if(S.cart.indexOf(id)<0)S.cart.push(id);localStorage.setItem('tpStoreCart:'+uid(),JSON.stringify(S.cart));if(typeof nav==='function')nav('cart');}}catch(e){console.warn('Cart integration',e)}if(window.tpStore&&typeof window.tpStore==='object'){/* refresh cart UI */setTimeout(function(){try{var el=document.getElementById('tp-cart-body');if(el)el.innerHTML='';if(typeof window.tpStoreCheckout==='function'){}location.hash='#cart'}catch(e){}},150)}
+async function build(){var d=document.getElementById('tp-webbuild-modal'),name=d.querySelector('#tp-wb-name').value.trim(),email=d.querySelector('#tp-wb-email').value.trim().toLowerCase(),extra=d.querySelector('#tp-wb-prompt').value.trim(),btn=d.querySelector('#tp-wb-generate'),prog=d.querySelector('#tp-wb-progress');if(!name)return alert('Enter an application name.');if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return alert('Enter a valid admin email address.');if(!extra)return alert('Add a build prompt.');var __au=null;try{__au=(typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||(window.firebase&&firebase.apps&&firebase.apps.length&&firebase.auth().currentUser)||null}catch(e){}if(!__au)return alert('Please sign in to Nbatools before building an app.');btn.disabled=true;prog.style.display='block';try{var token=await __au.getIdToken(),prompt=makePrompt(name,email,selected,extra),ctrl=new AbortController(),timer=setTimeout(function(){ctrl.abort()},180000);var res=await fetch(API,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:[{role:'user',text:prompt}],account:{email:__au.email},context:{feature:'web-build',output:'single HTML file'},mood:{mood:'focused',intensity:'medium'},webSearch:false,persona:{name:'Zara',aiName:'Zara',style:'Precise senior software engineer. Output only complete HTML source.'}})});clearTimeout(timer);var j=await res.json();if(!res.ok||!j||!j.reply)throw new Error((j&&j.error)||'The app generator could not complete the request.');var html=extractHtml(j.reply);if(html.length>500000)throw new Error('This app is too large for the current secure order storage limit. Ask Zara to generate a more compact version.');var id='wb_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8),item={id:id,name:name+' — Web App',appName:name,adminEmail:email,buildType:selected,priceNgn:PRICE,desc:'Custom '+presets[selected].title+' HTML application. Admin: '+email,customBuild:true,html:html,createdMs:Date.now()};putBuild(item);generated=item;closeBuilder();addAssistant('Your '+name+' app is ready! I have created a preview for you. The original HTML has been added to your cart for ₦30,000. After your payment is approved, you can download the HTML and hosting instructions.');showPreview(item);try{var S=window.tpStore;if(S&&S.cart){if(S.cart.indexOf(id)<0)S.cart.push(id);localStorage.setItem('tpStoreCart:'+uid(),JSON.stringify(S.cart));if(typeof nav==='function')nav('cart');}}catch(e){console.warn('Cart integration',e)}if(window.tpStore&&typeof window.tpStore==='object'){/* refresh cart UI */setTimeout(function(){try{var el=document.getElementById('tp-cart-body');if(el)el.innerHTML='';if(typeof window.tpStoreCheckout==='function'){}location.hash='#cart'}catch(e){}},150)}
 }catch(e){console.error('[Web Build]',e);alert(e&&e.message||'Could not build the app. Please try again.')}finally{btn.disabled=false;prog.style.display='none'}}
-function showPreview(item){var old=document.getElementById('tp-webbuild-preview');if(old)old.remove();var d=document.createElement('div');d.id='tp-webbuild-preview';d.className='on';var blob=new Blob([item.html],{type:'text/html'});previewUrl=URL.createObjectURL(blob);d.innerHTML='<div style="width:100%;max-width:1240px"><div class="tp-wb-preview-top"><b>'+esc(item.appName)+' · WATERMARKED PREVIEW</b><div><button class="tp-wb-secondary" id="tp-wb-copy">Copy preview link</button> <button class="tp-wb-secondary" id="tp-wb-preview-close">Close</button></div></div><div class="tp-wb-preview-wrap"><iframe class="tp-wb-preview-frame" title="Watermarked web app preview" sandbox="allow-scripts allow-forms allow-same-origin" src="'+previewUrl+'"></iframe><div class="tp-wb-watermark">NBATOOLS PREVIEW</div></div><p style="color:#fff;font-size:12px">Preview only · Original HTML is locked until the ₦30,000 order is paid and approved.</p></div>';document.body.appendChild(d);d.querySelector('#tp-wb-preview-close').onclick=function(){d.remove();if(previewUrl)URL.revokeObjectURL(previewUrl);previewUrl=''};d.querySelector('#tp-wb-copy').onclick=async function(){try{await navigator.clipboard.writeText(previewUrl);this.textContent='Copied'}catch(e){prompt('Preview URL (available in this browser session)',previewUrl)}};}
+function showPreview(item){var old=document.getElementById('tp-webbuild-preview');if(old)old.remove();var d=document.createElement('div');d.id='tp-webbuild-preview';d.className='on';previewUrl=previewUrlFor(item);d.innerHTML='<div style="width:100%;max-width:1240px"><div class="tp-wb-preview-top"><b>'+esc(item.appName)+' · WATERMARKED PREVIEW</b><div><button class="tp-wb-secondary" id="tp-wb-copy">Copy preview link</button> <button class="tp-wb-secondary" id="tp-wb-preview-close">Close</button></div></div><div class="tp-wb-preview-wrap"><iframe class="tp-wb-preview-frame" title="Watermarked web app preview" sandbox="allow-scripts allow-forms allow-same-origin" src="'+previewUrl+'"></iframe></div><p style="color:#fff;font-size:12px">Preview only · Original HTML is locked until the ₦30,000 order is paid and approved.</p></div>';document.body.appendChild(d);d.querySelector('#tp-wb-preview-close').onclick=function(){d.remove();previewUrl=''};d.querySelector('#tp-wb-copy').onclick=async function(){try{await navigator.clipboard.writeText(previewUrl);this.textContent='Copied'}catch(e){prompt('Preview URL (available in this browser session)',previewUrl)}};}
+function wm(html){var svg="<svg xmlns='http://www.w3.org/2000/svg' width='760' height='520'><text x='50%' y='50%' text-anchor='middle' dominant-baseline='middle' transform='rotate(-27 380 260)' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-size='118' letter-spacing='6' fill='rgba(255,255,255,.5)' stroke='rgba(0,0,0,.55)' stroke-width='3'>NBATOOLS</text></svg>";var css='html body #nbt-wm{position:fixed!important;inset:0!important;z-index:2147483647!important;pointer-events:none!important;display:block!important;opacity:1!important;background:url("data:image/svg+xml;utf8,'+encodeURIComponent(svg)+'") center/760px 520px repeat!important}';var tag='<style>'+css+'</style><div id="nbt-wm" aria-hidden="true"></div>';var i=html.toLowerCase().lastIndexOf('</body>');return i>=0?html.slice(0,i)+tag+html.slice(i):html+tag}
+var puCache={};
+function previewUrlFor(item){if(puCache[item.id])return puCache[item.id];var u=URL.createObjectURL(new Blob([wm(item.html)],{type:'text/html'}));puCache[item.id]=u;return u}
+function curUser(){try{return (typeof firebaseAuth!=='undefined'&&firebaseAuth&&firebaseAuth.currentUser)||(window.firebase&&firebase.apps&&firebase.apps.length&&firebase.auth().currentUser)||null}catch(e){return null}}
+function addToCart(id){try{var k='tpStoreCart:'+uid(),a=JSON.parse(localStorage.getItem(k)||'[]')||[];if(a.indexOf(id)<0)a.push(id);localStorage.setItem(k,JSON.stringify(a));var S=window.tpStore;if(S&&S.cart&&S.cart.indexOf(id)<0)S.cart.push(id)}catch(e){console.warn('Cart integration',e)}}
+window.tpWebBuildRun=async function(d){try{var au=curUser();if(!au)return {ok:false,error:'Please sign in to Nbatools before building an app.'};var type=presets[d.type]?d.type:'custom',name=String(d.appName||'').trim(),email=String(d.adminEmail||'').trim().toLowerCase(),extra=String(d.extra||'').trim()||(presets[type].prompt?'Follow the build type requirements above and use polished, sensible defaults.':'Build a polished general-purpose web app.');var token=await au.getIdToken(),prompt=makePrompt(name,email,type,extra),ctrl=new AbortController(),timer=setTimeout(function(){ctrl.abort()},180000);var res=await fetch(API,{method:'POST',signal:ctrl.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({messages:[{role:'user',text:prompt}],account:{email:au.email},context:{feature:'web-build',output:'single HTML file'},mood:{mood:'focused',intensity:'medium'},webSearch:false,persona:{name:'Zara',aiName:'Zara',style:'Precise senior software engineer. Output only complete HTML source.'}})});clearTimeout(timer);var j={};try{j=await res.json()}catch(e){}if(!res.ok||!j||!j.reply)throw new Error((j&&j.error)||'The app generator could not complete the request.');var html=extractHtml(j.reply);if(html.length>500000)throw new Error('This app came out too large for secure order storage. Try again with a simpler description.');var id='wb_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8),item={id:id,name:name+' — Web App',appName:name,adminEmail:email,buildType:type,priceNgn:PRICE,desc:'Custom '+presets[type].title+' HTML application. Admin: '+email,customBuild:true,html:html,createdMs:Date.now()};putBuild(item);generated=item;addToCart(id);return {ok:true,item:item}}catch(e){console.error('[Web Build]',e);return {ok:false,error:e&&e.name==='AbortError'?'The build took too long and timed out.':(e&&e.message||'Could not build the app.')}}};
+window.tpWebBuildPreview=function(item){showPreview(item)};
+window.tpWebBuildPreviewUrl=previewUrlFor;
+window.tpWebBuildPrice=PRICE;
 window.tpWebBuildReadme=function(name){var txt=''+name+' — HOSTING GUIDE\n\n1. Download the HTML file from your Nbatools purchase.\n2. Create a GitHub account and a new repository.\n3. Upload the downloaded .html file. Rename it to index.html.\n4. Commit the file to the main branch.\n5. Open Vercel and import the GitHub repository.\n6. Choose Other as the framework preset if asked. Set the build command and output directory to blank or defaults; deploy the static site.\n7. Vercel will provide a public deployment URL.\n\nImportant: this is a standalone front-end demo. Do not use it to store real banking credentials or process real money. The admin email is a demo role only. For production, add secure server-side authentication, database rules, audit logging and payment integrations.\n';var a=document.createElement('a'),u=URL.createObjectURL(new Blob([txt],{type:'text/plain'}));a.href=u;a.download=(String(name||'web-app').replace(/[^a-z0-9_-]+/gi,'-')+'-HOSTING-GUIDE.txt');document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},5000)};
-function bind(){window.tpOpenWebBuilder=openBuilder;var b=document.getElementById('tpa-webbuild-open');if(b&&!b._wb){b._wb=true;b.addEventListener('click',openBuilder)} }
+function bind(){window.tpOpenWebBuilder=openBuilder;try{mountPage()}catch(e){}var b=document.getElementById('tpa-webbuild-open');if(b&&!b._wb){b._wb=true;b.addEventListener('click',openBuilder)} }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();setInterval(bind,1200);
 })();
 </script>
