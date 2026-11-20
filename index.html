@@ -28643,7 +28643,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
 
   /* ===== Voice call mode: hands-free, interruptible. Mic -> browser speech recognition (free) -> GLM (/chat) -> Melo voice ===== */
   var PHONE='<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2a1 1 0 011-.25 11.4 11.4 0 003.6.57 1 1 0 011 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.6a1 1 0 01-.25 1z"/></svg>';
-  var call={on:false,mini:false,muted:false,stream:null,ctx:null,src:null,proc:null,t0:0,timer:null,noise:0.008,frames:0,speech:false,buf:[],pre:[],lastVoice:0,startedAt:0,busy:0,q:Promise.resolve(),state:''};
+  var call={on:false,mini:false,muted:false,stream:null,ctx:null,src:null,proc:null,cameraEnabled:false,cameraStream:null,cameraVideo:null,cameraBusy:false,cameraLastQuestion:'',firebaseToken:'',voiceHost:'',t0:0,timer:null,noise:0.008,frames:0,speech:false,buf:[],pre:[],lastVoice:0,startedAt:0,busy:0,q:Promise.resolve(),state:''};
   var cEl={};
   function isSpeaking(){ return !!(speechBusy||(curAudio&&!curAudio.paused&&!curAudio.ended)||(synth&&synth.speaking)); }
   function callClock(){ var t=Math.max(0,Math.floor((Date.now()-(call.liveT0||call.t0))/1000)); return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0'); }
@@ -28657,6 +28657,8 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       +'<button type="button" class="tpa-cb" data-c="spk" aria-label="Speaker"><b></b>Speaker</button>'
       +'<button type="button" class="tpa-cb" data-c="mute" aria-label="Mute"><b></b>Mute</button>'
       +'<button type="button" class="tpa-cb" data-c="pad" aria-label="Keypad"><b></b>Keypad</button>'
+      +'<button type="button" class="tpa-cb" data-c="camera" aria-label="Enable camera"><b></b>Camera off</button>'
+      +'<button type="button" class="tpa-cb" data-c="look" aria-label="Look now"><b></b>Look now</button>'
       +'<button type="button" class="tpa-cb end" data-c="end" aria-label="End call"><b></b>End</button></div>';
     panel.appendChild(ov);
     var bar=document.createElement('div'); bar.className='tpa-callbar'; bar.hidden=true;
@@ -28664,8 +28666,10 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     panel.insertBefore(bar,log);
     try{ var _capEl=ov.querySelector('.tpa-call-cap'); new MutationObserver(function(){ ov.classList.toggle('cap-warn',/problem|no sound|microphone|isn.t available|couldn.t/i.test(_capEl.textContent||'')); }).observe(_capEl,{childList:true,characterData:true,subtree:true}); }catch(e){}
     cEl={ov:ov,bar:bar,orb:ov.querySelector('.tpa-orb'),st:ov.querySelector('.tpa-call-state'),cap:ov.querySelector('.tpa-call-cap'),time:ov.querySelector('time'),btxt:bar.querySelector('span')};
+    var camStyle=document.createElement('style'); camStyle.textContent='.tpa-livecam-preview{position:absolute;right:14px;top:66px;width:104px;height:138px;object-fit:cover;border-radius:14px;border:1px solid rgba(255,255,255,.35);box-shadow:0 8px 24px rgba(0,0,0,.28);background:#111;z-index:4}.tpa-cb[data-c=camera].on{background:#16865b;border-color:#16865b}.tpa-call-btns{flex-wrap:wrap}'; document.head.appendChild(camStyle);
+    var camPreview=document.createElement('video'); camPreview.className='tpa-livecam-preview'; camPreview.autoplay=true; camPreview.muted=true; camPreview.playsInline=true; camPreview.hidden=true; ov.appendChild(camPreview); call.cameraVideo=camPreview;
     function act(e){ var kk=e.target.closest('[data-k]'); if(kk){ kpPress(kk.getAttribute('data-k')); return; } var b=e.target.closest('[data-c]'); if(!b) return; var c=b.getAttribute('data-c');
-      if(c==='mute') callMute(); else if(c==='min'){ call.mini=true; callSync(); } else if(c==='spk'){ voiceToggle.click(); callSync(); }
+      if(c==='mute') callMute(); else if(c==='camera') voiceCameraToggle(); else if(c==='look') voiceCameraLook('Please describe what you can see in my camera.'); else if(c==='min'){ call.mini=true; callSync(); } else if(c==='spk'){ voiceToggle.click(); callSync(); }
       else if(c==='pad'){ kpToggle(true); } else if(c==='padhide'){ kpToggle(false); }
       else if(c==='open'){ call.mini=false; callSync(); } else if(c==='end') callEnd(); }
     ov.addEventListener('click',act); bar.addEventListener('click',act);
@@ -30214,7 +30218,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
 
   /* ===== Cloudflare Agents real-time voice call =====
      Continuous microphone audio, server-side turn detection, streamed GLM replies,
-     Cloudflare-hosted speech recognition and Cloudflare-hosted text-to-speech. */
+     Cloudflare-hosted speech recognition and Cloudflare-hosted text-to-speech, with opt-in live camera vision. */
   var TP_VOICE_HOST=(window.TRACKPORT_VOICE_HOST||'trackport-voice.nbatoolz.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
   var TP_VOICE_HOST_BACKUP=(window.TRACKPORT_VOICE_HOST_BACKUP||'trackport-cloudflare-voice.trackport.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
   var TP_VOICE_HOST_BACKUP2=(window.TRACKPORT_VOICE_HOST_BACKUP2||'trackport-cloudflare-voiceai.opsonsh.workers.dev').replace(/^https?:\/\//,'').replace(/\/$/,'');
@@ -30308,6 +30312,58 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       rt.unmuteT=setTimeout(function(){ if(!call.on||call.rt!==rt) return; rt.autoMute=false; rtApplyMic(rt); },120);
     }
   }
+  function voiceCamIntent(text){
+    return /\b(what am i holding|what is this|what's this|what do you see|can you see|look at this|look through the camera|describe what you see|read this|what am i wearing|how do i look|check my face|check my skin|what is in front of me|what's in front of me|identify this object)\b/i.test(String(text||''));
+  }
+  async function voiceCameraToggle(){
+    if(!call.on) return;
+    if(call.cameraEnabled){ voiceCameraStop(); return; }
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ cEl.cap.textContent='This browser cannot access a camera. Please use the typed chat photo upload instead.'; return; }
+    try{
+      var stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'},width:{ideal:960},height:{ideal:720}},audio:false});
+      if(!call.on){ stream.getTracks().forEach(function(t){t.stop();}); return; }
+      call.cameraStream=stream; call.cameraEnabled=true;
+      if(call.cameraVideo){ call.cameraVideo.srcObject=stream; call.cameraVideo.hidden=false; try{await call.cameraVideo.play();}catch(e){} }
+      var b=cEl.ov&&cEl.ov.querySelector('[data-c=camera]'); if(b){b.classList.add('on');b.textContent='Camera on';}
+      cEl.cap.textContent='Camera is on. Ask me to look at something, or tap Look now.';
+      callSync();
+    }catch(e){
+      var n=e&&e.name; cEl.cap.textContent=(n==='NotAllowedError'||n==='SecurityError')?'Camera permission was denied. Allow camera access in your browser settings and try again.':'I could not start your camera. Please try again.';
+    }
+  }
+  function voiceCameraStop(){
+    try{if(call.cameraStream) call.cameraStream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+    call.cameraStream=null; call.cameraEnabled=false; call.cameraBusy=false;
+    if(call.cameraVideo){try{call.cameraVideo.pause();call.cameraVideo.srcObject=null;call.cameraVideo.hidden=true;}catch(e){}}
+    var b=cEl.ov&&cEl.ov.querySelector('[data-c=camera]'); if(b){b.classList.remove('on');b.textContent='Camera off';}
+    cEl.cap.textContent='Camera is off.';
+  }
+  async function voiceCameraLook(question){
+    var rt=call.rt; if(!call.on||!call.cameraEnabled||!call.cameraVideo||!rt||!rt.client){ cEl.cap.textContent='Turn the camera on first.'; return false; }
+    if(call.cameraBusy) return false;
+    var v=call.cameraVideo, w=v.videoWidth, h=v.videoHeight; if(!w||!h){cEl.cap.textContent='Camera is starting. Try again in a moment.';return false;}
+    call.cameraBusy=true;
+    try{
+      var scale=Math.min(1,960/Math.max(w,h)), canvas=document.createElement('canvas'); canvas.width=Math.round(w*scale);canvas.height=Math.round(h*scale);
+      canvas.getContext('2d').drawImage(v,0,0,canvas.width,canvas.height);
+      var quality=.72, image=canvas.toDataURL('image/jpeg',quality); while(image.length>850000&&quality>.32){quality-=.1;image=canvas.toDataURL('image/jpeg',quality);}
+      var u=currentUser(); if(!u) throw new Error('Please sign in again.');
+      var token=call.firebaseToken||await u.getIdToken();
+      var host=call.voiceHost||TP_VOICE_HOST; var controller=new AbortController(), timer=setTimeout(function(){controller.abort();},65000);
+      var response=await fetch('https://'+host+'/vision',{method:'POST',signal:controller.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({mode:'look',image:image,question:String(question||'Describe what you can see.').slice(0,500)})});
+      clearTimeout(timer); var data=await response.json().catch(function(){return {};});
+      if(!response.ok||!data.ok) throw new Error(data.message||data.error||('Vision request failed ('+response.status+')'));
+      rt.client.sendJSON({type:'trackport_camera_context',description:String(data.reply||'').slice(0,1800),question:String(question||'').slice(0,500),capturedAt:Date.now()});
+      call.cameraLastQuestion=String(question||''); setTimeout(function(){if(call.cameraLastQuestion===String(question||''))call.cameraLastQuestion='';},5000); cEl.cap.textContent='I can see it now. Go ahead with your question.';
+      return true;
+    }catch(e){console.warn('[TrackPort voice camera]',e);cEl.cap.textContent='I could not analyse the camera image: '+String(e&&e.message||e).slice(0,120);return false;}
+    finally{call.cameraBusy=false;}
+  }
+  async function voiceCameraMaybe(text){
+    if(!call.on||!call.cameraEnabled||!voiceCamIntent(text)) return;
+    if(call.cameraBusy||call.cameraLastQuestion===String(text||'')) return;
+    await voiceCameraLook(String(text||'').slice(0,500));
+  }
   async function callStart(opts){
     if(call.on){call.mini=false;callSync();return;}
     var u=currentUser(); if(!u){addMsg('assistant','Sign in first and then we can chat by voice.');return;}
@@ -30320,7 +30376,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     voiceOn=true;lsSet(VKEY_ON,'1');setVoiceUI();callBuild();cEl.cap.textContent='';cEl.st.textContent='calling…';try{kpReset();}catch(e){}cEl.orb.className='tpa-orb connecting';callSync();callState();try{tpRingStart();}catch(e){}
     clearInterval(call.timer);call.timer=setInterval(function(){if(call.on&&ended)callEnd();else callState();},200);
     try{
-      var token=await u.getIdToken(); if(!call.on)return;
+      var token=await u.getIdToken(); call.firebaseToken=token; if(!call.on)return;
       var mod=await Promise.race([rtLoadClient(),new Promise(function(_,rej){setTimeout(function(){rej(new Error('voice client load timeout'));},12000);})]); if(!call.on)return;
       var room='tp-'+(window.crypto&&crypto.randomUUID?crypto.randomUUID().replace(/-/g,'').slice(0,24):Math.random().toString(36).slice(2)+Date.now().toString(36));
       var selectedVoice=await tpGetAdminCloudflareVoice();
@@ -30329,7 +30385,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
       var connectOn=function(idx){
         var old=call.rt;
         if(old&&old.client){ clearInterval(old.diag); try{old.client.endCall();}catch(e){} try{old.client.disconnect();}catch(e){} }
-        var host=hosts[idx];
+        var host=hosts[idx]; call.voiceHost=host;
         var client=new mod.VoiceClient({agent:TP_VOICE_AGENT,host:host,name:room+(idx?('-b'+idx):'')+(lap?('-l'+lap):''),interruptThreshold:2,interruptChunks:99}); /* interrupting is off: the app mutes the mic while Zara talks */
         var rt={client:client,seen:0,authed:false,status:'connecting',timer:null,hostIdx:idx,t0:Date.now(),gotText:false};
         call.rt=rt;
@@ -30362,6 +30418,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         client.addEventListener('custommessage',function(ev){
           var d=rtEventValue(ev); if(typeof d==='string'){try{d=JSON.parse(d);}catch(e){}}
           if(!d||!call.on||call.rt!==rt)return;
+          if(d.type==='trackport_camera_context_ok'){ cEl.cap.textContent='Camera context is ready.'; return; }
           if(d.type==='trackport_reply_start'){
             rt.replyOpen=true; clearTimeout(rt.replyT);
             rt.replyT=setTimeout(function(){ if(call.on&&call.rt===rt){ rt.replyOpen=false; try{ rtAutoMic(rt); }catch(e){} } },30000);   /* safety: never stay muted if the end signal is lost */
@@ -30396,7 +30453,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
         client.addEventListener('transcriptchange',function(ev){rtTranscriptChange(rtEventValue(ev));});
         client.addEventListener('interimtranscript',function(ev){
           var t=rtEventValue(ev); if(t&&typeof t==='object')t=t.text||t.transcript||'';
-          if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent=''; }
+          if(call.on&&call.rt===rt&&t){ rt.gotText=true; cEl.cap.textContent=''; voiceCameraMaybe(String(t)); }
         });
         client.addEventListener('audiolevelchange',function(ev){
           var n=Number(rtEventValue(ev)); if(call.on&&call.rt===rt&&isFinite(n)){ cEl.orb.style.setProperty('--lvl',Math.max(0,Math.min(1,n*2.4)).toFixed(2)); if(n>0.06&&rt.status==='listening'){ rt.heardAt=rt.heardAt||Date.now(); } }
@@ -30639,7 +30696,7 @@ html body #tpa-call-btn{display:inline-flex!important;visibility:visible!importa
     try{ log.querySelectorAll('.tpa-callmsg').forEach(function(n){ n.remove(); }); }catch(e){}
   }
   function callEnd(){
-    if(!call.on)return;var t=callClock();call.on=false;clearInterval(call.timer);clearTimeout(call.pendT);clearTimeout(call.specT);
+    if(!call.on)return;try{voiceCameraStop();}catch(e){}call.firebaseToken='';call.voiceHost='';var t=callClock();call.on=false;clearInterval(call.timer);clearTimeout(call.pendT);clearTimeout(call.specT);
     var rt=call.rt;
     var callTr=(call.log&&call.log.length?call.log:msgs.slice(call.msgStart||0)).map(function(m){ return {role:m.role==='assistant'?'assistant':'user',text:String(m.text||'')}; });
     if(!call.log||!call.log.length){ try{ msgs.length=Math.min(msgs.length,call.msgStart||0); }catch(e){} }   /* fallback calls: chat memory never keeps the call dialogue */
